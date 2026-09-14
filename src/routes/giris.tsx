@@ -65,26 +65,21 @@ function AuthPage() {
 
   const signInWithGoogle = async () => {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
 
-    if (error) {
+    if (result.error) {
       setBusy(false);
-      toast.error(
-        /provider|secret|not enabled/i.test(error.message)
-          ? "Google ile giriş şu anda etkin değil. Lütfen telefon numaranızla giriş yapın."
-          : "Google ile giriş yapılamadı: " + error.message,
-      );
+      toast.error("Google ile giriş yapılamadı.");
+      return;
     }
+
+    if (result.redirected) return;
+
+    void navigate({ to: "/" });
   };
+
 
   const onSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
