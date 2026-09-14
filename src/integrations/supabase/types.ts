@@ -62,10 +62,8 @@ export type Database = {
       orders: {
         Row: {
           address: string
-          archived_at: string | null
           business_name: string
           created_at: string
-          district: string
           full_name: string
           id: string
           note: string
@@ -76,10 +74,8 @@ export type Database = {
         }
         Insert: {
           address: string
-          archived_at?: string | null
           business_name: string
           created_at?: string
-          district?: string
           full_name: string
           id?: string
           note?: string
@@ -90,10 +86,8 @@ export type Database = {
         }
         Update: {
           address?: string
-          archived_at?: string | null
           business_name?: string
           created_at?: string
-          district?: string
           full_name?: string
           id?: string
           note?: string
