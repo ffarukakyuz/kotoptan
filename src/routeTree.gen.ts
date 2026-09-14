@@ -9,50 +9,206 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as GirisRouteImport } from './routes/giris'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
+import { Route as AuthenticatedSepetRouteImport } from './routes/_authenticated/sepet'
+import { Route as AuthenticatedSiparislerimRouteImport } from './routes/_authenticated/siparislerim'
+import { Route as AuthenticatedYonetimRouteImport } from './routes/_authenticated/yonetim'
+import { Route as AuthenticatedUrunIdRouteImport } from './routes/_authenticated/urun.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GirisRoute = GirisRouteImport.update({
+  id: '/giris',
+  path: '/giris',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSepetRoute = AuthenticatedSepetRouteImport.update({
+  id: '/sepet',
+  path: '/sepet',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSiparislerimRoute =
+  AuthenticatedSiparislerimRouteImport.update({
+    id: '/siparislerim',
+    path: '/siparislerim',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedYonetimRoute = AuthenticatedYonetimRouteImport.update({
+  id: '/yonetim',
+  path: '/yonetim',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedUrunIdRoute = AuthenticatedUrunIdRouteImport.update({
+  id: '/urun/$id',
+  path: '/urun/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/giris': typeof GirisRoute
+  '/profil': typeof AuthenticatedProfilRoute
+  '/sepet': typeof AuthenticatedSepetRoute
+  '/siparislerim': typeof AuthenticatedSiparislerimRoute
+  '/yonetim': typeof AuthenticatedYonetimRoute
+  '/urun/$id': typeof AuthenticatedUrunIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/giris': typeof GirisRoute
+  '/profil': typeof AuthenticatedProfilRoute
+  '/sepet': typeof AuthenticatedSepetRoute
+  '/siparislerim': typeof AuthenticatedSiparislerimRoute
+  '/yonetim': typeof AuthenticatedYonetimRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/urun/$id': typeof AuthenticatedUrunIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/giris': typeof GirisRoute
+  '/_authenticated/profil': typeof AuthenticatedProfilRoute
+  '/_authenticated/sepet': typeof AuthenticatedSepetRoute
+  '/_authenticated/siparislerim': typeof AuthenticatedSiparislerimRoute
+  '/_authenticated/yonetim': typeof AuthenticatedYonetimRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/urun/$id': typeof AuthenticatedUrunIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/giris'
+    | '/profil'
+    | '/sepet'
+    | '/siparislerim'
+    | '/yonetim'
+    | '/urun/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/giris'
+    | '/profil'
+    | '/sepet'
+    | '/siparislerim'
+    | '/yonetim'
+    | '/'
+    | '/urun/$id'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/giris'
+    | '/_authenticated/profil'
+    | '/_authenticated/sepet'
+    | '/_authenticated/siparislerim'
+    | '/_authenticated/yonetim'
+    | '/_authenticated/'
+    | '/_authenticated/urun/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  GirisRoute: typeof GirisRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/giris': {
+      id: '/giris'
+      path: '/giris'
+      fullPath: '/giris'
+      preLoaderRoute: typeof GirisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profil': {
+      id: '/_authenticated/profil'
+      path: '/profil'
+      fullPath: '/profil'
+      preLoaderRoute: typeof AuthenticatedProfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sepet': {
+      id: '/_authenticated/sepet'
+      path: '/sepet'
+      fullPath: '/sepet'
+      preLoaderRoute: typeof AuthenticatedSepetRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/siparislerim': {
+      id: '/_authenticated/siparislerim'
+      path: '/siparislerim'
+      fullPath: '/siparislerim'
+      preLoaderRoute: typeof AuthenticatedSiparislerimRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/yonetim': {
+      id: '/_authenticated/yonetim'
+      path: '/yonetim'
+      fullPath: '/yonetim'
+      preLoaderRoute: typeof AuthenticatedYonetimRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/urun/$id': {
+      id: '/_authenticated/urun/$id'
+      path: '/urun/$id'
+      fullPath: '/urun/$id'
+      preLoaderRoute: typeof AuthenticatedUrunIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
+  AuthenticatedSepetRoute: typeof AuthenticatedSepetRoute
+  AuthenticatedSiparislerimRoute: typeof AuthenticatedSiparislerimRoute
+  AuthenticatedYonetimRoute: typeof AuthenticatedYonetimRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedUrunIdRoute: typeof AuthenticatedUrunIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedProfilRoute: AuthenticatedProfilRoute,
+  AuthenticatedSepetRoute: AuthenticatedSepetRoute,
+  AuthenticatedSiparislerimRoute: AuthenticatedSiparislerimRoute,
+  AuthenticatedYonetimRoute: AuthenticatedYonetimRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedUrunIdRoute: AuthenticatedUrunIdRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  GirisRoute: GirisRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
