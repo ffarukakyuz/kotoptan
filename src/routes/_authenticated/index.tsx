@@ -198,7 +198,7 @@ function ProductCard({ product }: { product: Product }) {
 function HeroShowcase({ products, loading }: { products: Product[]; loading: boolean }) {
   const slides = useMemo(() => {
     const withImage = products.filter((p) => p.image_url);
-    return (withImage.length > 0 ? withImage : products).slice(0, 8);
+    return withImage.length > 0 ? withImage : products;
   }, [products]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -319,7 +319,7 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
 }
 
 function ProductMarquee({ products }: { products: Product[] }) {
-  const items = products.slice(0, 12);
+  const items = products;
   if (items.length < 3) return null;
   const loop = [...items, ...items];
 
