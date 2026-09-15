@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Check, PackageSearch } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, Plus, Check, PackageSearch, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -201,12 +201,20 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
     return (withImage.length > 0 ? withImage : products).slice(0, 8);
   }, [products]);
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  const goTo = (i: number) => {
+    if (slides.length === 0) return;
+    setIndex(((i % slides.length) + slides.length) % slides.length);
+  };
 
   useEffect(() => {
-    if (slides.length < 2) return;
+    if (slides.length < 2 || paused) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), 3500);
     return () => clearInterval(id);
-  }, [slides.length]);
+  }, [slides.length, paused]);
+
 
   if (loading) {
     return <Skeleton className="aspect-[4/3] w-full rounded-2xl bg-white/10 sm:aspect-[16/7]" />;
@@ -223,7 +231,23 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
   const active = slides[index]!;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 shadow-pop">
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 shadow-pop"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={(e) => {
+        setPaused(true);
+        touchStartX.current = e.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(e) => {
+        const start = touchStartX.current;
+        touchStartX.current = null;
+        setPaused(false);
+        if (start == null) return;
+        const delta = (e.changedTouches[0]?.clientX ?? start) - start;
+        if (Math.abs(delta) > 40) goTo(index + (delta < 0 ? 1 : -1));
+      }}
+    >
       <Link
         to="/urun/$id"
         params={{ id: active.id }}
@@ -270,6 +294,26 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
           />
         ))}
       </div>
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Önceki ürün"
+            onClick={() => goTo(index - 1)}
+            className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur transition hover:bg-black/70"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Sonraki ürün"
+            onClick={() => goTo(index + 1)}
+            className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur transition hover:bg-black/70"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }
