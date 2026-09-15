@@ -231,7 +231,23 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
   const active = slides[index]!;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 shadow-pop">
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 shadow-pop"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={(e) => {
+        setPaused(true);
+        touchStartX.current = e.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(e) => {
+        const start = touchStartX.current;
+        touchStartX.current = null;
+        setPaused(false);
+        if (start == null) return;
+        const delta = (e.changedTouches[0]?.clientX ?? start) - start;
+        if (Math.abs(delta) > 40) goTo(index + (delta < 0 ? 1 : -1));
+      }}
+    >
       <Link
         to="/urun/$id"
         params={{ id: active.id }}
