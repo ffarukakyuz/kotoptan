@@ -294,6 +294,26 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
           />
         ))}
       </div>
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Önceki ürün"
+            onClick={() => goTo(index - 1)}
+            className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur transition hover:bg-black/70"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Sonraki ürün"
+            onClick={() => goTo(index + 1)}
+            className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur transition hover:bg-black/70"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }
