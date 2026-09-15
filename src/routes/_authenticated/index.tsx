@@ -201,12 +201,20 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
     return (withImage.length > 0 ? withImage : products).slice(0, 8);
   }, [products]);
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  const goTo = (i: number) => {
+    if (slides.length === 0) return;
+    setIndex(((i % slides.length) + slides.length) % slides.length);
+  };
 
   useEffect(() => {
-    if (slides.length < 2) return;
+    if (slides.length < 2 || paused) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), 3500);
     return () => clearInterval(id);
-  }, [slides.length]);
+  }, [slides.length, paused]);
+
 
   if (loading) {
     return <Skeleton className="aspect-[4/3] w-full rounded-2xl bg-white/10 sm:aspect-[16/7]" />;
