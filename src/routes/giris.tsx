@@ -44,10 +44,25 @@ const signUpSchema = z.object({
   phone: z
     .string()
     .trim()
-    .refine((v) => normalizePhone(v).length >= 10, "Geçerli bir telefon numarası girin"),
+    .refine(
+      (v) => /^5\d{9}$/.test(normalizePhone(v)),
+      "Geçerli bir cep telefonu girin (05xx xxx xx xx)",
+    ),
   password: z.string().min(6, "Şifre en az 6 karakter olmalı").max(72),
-  full_name: z.string().trim().min(2, "Ad soyad gerekli").max(100),
-  business_name: z.string().trim().min(2, "Market/bakkal adı gerekli").max(120),
+  full_name: z
+    .string()
+    .trim()
+    .min(5, "Ad ve soyadınızı eksiksiz yazın")
+    .max(100)
+    .refine(
+      (v) => /^[A-Za-zÇĞİÖŞÜçğıöşü' -]+$/.test(v),
+      "Ad soyad yalnızca harflerden oluşmalı",
+    )
+    .refine(
+      (v) => v.split(/\s+/).filter((w) => w.length >= 2).length >= 2,
+      "Ad ve soyadınızı eksiksiz yazın",
+    ),
+  business_name: z.string().trim().min(3, "Market/bakkal adı gerekli").max(120),
   address: z.string().trim().min(10, "Teslimat adresi gerekli").max(500),
 });
 
