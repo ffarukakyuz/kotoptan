@@ -83,20 +83,29 @@ function AuthPage() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const phone = String(fd.get("phone") ?? "");
+    const rawPassword = String(fd.get("password") ?? "");
+
     if (normalizePhone(phone).length < 10) {
       toast.error("Geçerli bir telefon numarası girin");
       return;
     }
+
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: phoneIdentity(phone),
-      password: String(fd.get("password") ?? ""),
+    const targetEmail = phoneIdentity(phone);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: targetEmail,
+      password: rawPassword,
     });
+
     setBusy(false);
+
     if (error) {
-      toast.error("Telefon numarası veya şifre hatalı");
+      console.error("Giriş Hatası Detayı:", error);
+      alert("Giriş Yapılamadı: " + error.message);
       return;
     }
+
     toast.success("Giriş yapıldı");
     void navigate({ to: "/" });
   };
@@ -111,32 +120,42 @@ function AuthPage() {
       business_name: fd.get("business_name"),
       address: fd.get("address"),
     });
+
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Bilgileri kontrol edin");
       return;
     }
+
     setBusy(true);
     const { password, ...meta } = parsed.data;
-    const { error } = await supabase.auth.signUp({
-      email: phoneIdentity(meta.phone),
+    const targetEmail = phoneIdentity(meta.phone);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: targetEmail,
       password,
       options: { data: meta },
     });
+
     if (error) {
       setBusy(false);
-      toast.error(
-        error.message.includes("already registered")
-          ? "Bu telefon numarası ile zaten bir hesap var"
-          : "Kayıt oluşturulamadı",
-      );
+      console.error("Kayıt Hatası Detayı:", error);
+      alert("Kayıt Oluşturulamadı: " + error.message);
       return;
     }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      await supabase.auth.signInWithPassword({ email: phoneIdentity(meta.phone), password });
-    }
+    // Otomatik Giriş
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email: targetEmail,
+      password,
+    });
+
     setBusy(false);
+
+    if (loginError) {
+      alert("Hesap açıldı fakat otomatik giriş başarısız: " + loginError.message);
+      return;
+    }
+
     toast.success("Hesabınız oluşturuldu");
     void navigate({ to: "/" });
   };
