@@ -165,19 +165,6 @@ function AuthPage() {
         yeterli.
       </p>
 
-      <Button
-        variant="outline"
-        className="mt-6 w-full"
-        disabled={busy}
-        onClick={() => void signInWithGoogle()}
-      >
-        Google ile devam et
-      </Button>
-
-      <div className="my-6 flex items-center gap-3 text-xs uppercase text-muted-foreground">
-        <span className="h-px flex-1 bg-border" /> veya <span className="h-px flex-1 bg-border" />
-      </div>
-
       {mode === "login" ? (
         <>
           <form className="space-y-4" onSubmit={onSignIn}>
