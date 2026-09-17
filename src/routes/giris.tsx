@@ -79,22 +79,6 @@ function AuthPage() {
     }
   }, [user, loading, navigate, pathname]);
 
-  const signInWithGoogle = async () => {
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-
-    if (error) {
-      setBusy(false);
-      toast.error("Google ile giriş yapılamadı.");
-      return;
-    }
-  };
-
   const onSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
