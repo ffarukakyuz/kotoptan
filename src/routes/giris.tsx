@@ -79,22 +79,6 @@ function AuthPage() {
     }
   }, [user, loading, navigate, pathname]);
 
-  const signInWithGoogle = async () => {
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-
-    if (error) {
-      setBusy(false);
-      toast.error("Google ile giriş yapılamadı.");
-      return;
-    }
-  };
-
   const onSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -164,19 +148,6 @@ function AuthPage() {
         Telefon numaranız ve şifrenizle giriş yapın. Market/bakkal bilgilerinizi bir kez kaydetmeniz
         yeterli.
       </p>
-
-      <Button
-        variant="outline"
-        className="mt-6 w-full"
-        disabled={busy}
-        onClick={() => void signInWithGoogle()}
-      >
-        Google ile devam et
-      </Button>
-
-      <div className="my-6 flex items-center gap-3 text-xs uppercase text-muted-foreground">
-        <span className="h-px flex-1 bg-border" /> veya <span className="h-px flex-1 bg-border" />
-      </div>
 
       {mode === "login" ? (
         <>

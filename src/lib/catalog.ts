@@ -3,6 +3,7 @@ export const CATEGORIES = [
   { value: "gida", label: "Gıda" },
   { value: "bakliyat", label: "Bakliyat" },
   { value: "temizlik", label: "Temizlik" },
+  { value: "kisisel", label: "Kişisel Bakım" },
 ] as const;
 
 export const PRODUCT_CATEGORIES = CATEGORIES.filter((c) => c.value !== "tumu");
