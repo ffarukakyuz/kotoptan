@@ -8,4 +8,7 @@
 - [x] Google/eposta giriş butonu kaldırıldı, kayıt kuralları sıkılaştırıldı
 - [x] PDF listesindeki 226 ürün fotoğrafları ve koli içi bilgileriyle eklendi
 - [ ] GitHub deposu bağlantısı (kullanıcı tarafında: + menüsü → GitHub → Connect project)
+- [ ] Yönetim panelinden müşteri adı/telefon/adres düzenleme, şifre yenileme ve hesap silme
+- [ ] Yönetici hesaplarını silme/değiştirmeye karşı koruma
+- [ ] Kod, ürün görselleri ve veritabanı durumunun GitHub/Lovable Cloud aktarım kontrolü
 - [ ] Siteyi yayınla
