@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Fragment, useRef, useState } from "react";
 import {
   Pencil,
@@ -12,13 +13,20 @@ import {
   XCircle,
   Archive,
   ArchiveRestore,
+  KeyRound,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { listAppUsers } from "@/lib/admin-users.functions";
+import {
+  deleteAppUser,
+  listAppUsers,
+  resetAppUserPassword,
+  updateAppUser,
+  type AppUser,
+} from "@/lib/admin-users.functions";
 import {
   ORDER_STATUSES,
   PRODUCT_CATEGORIES,
@@ -36,6 +44,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -825,6 +851,14 @@ function ProductsPanel() {
 }
 
 function UsersPanel() {
+  const qc = useQueryClient();
+  const updateUser = useServerFn(updateAppUser);
+  const resetPassword = useServerFn(resetAppUserPassword);
+  const removeUser = useServerFn(deleteAppUser);
+  const [editing, setEditing] = useState<AppUser | null>(null);
+  const [passwordUser, setPasswordUser] = useState<AppUser | null>(null);
+  const [deleting, setDeleting] = useState<AppUser | null>(null);
+  const [busy, setBusy] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => listAppUsers(),
@@ -847,6 +881,68 @@ function UsersPanel() {
   }
 
   const users = data ?? [];
+
+  const refreshUsers = async () => {
+    await qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  };
+
+  const saveUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editing) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    try {
+      await updateUser({
+        data: {
+          id: editing.id,
+          full_name: String(form.get("full_name") ?? ""),
+          business_name: String(form.get("business_name") ?? ""),
+          phone: String(form.get("phone") ?? ""),
+          address: String(form.get("address") ?? ""),
+        },
+      });
+      await refreshUsers();
+      setEditing(null);
+      toast.success("Müşteri bilgileri güncellendi");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Bilgiler güncellenemedi");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const savePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!passwordUser) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    try {
+      await resetPassword({
+        data: { id: passwordUser.id, password: String(form.get("password") ?? "") },
+      });
+      setPasswordUser(null);
+      toast.success("Yeni şifre kaydedildi");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Şifre değiştirilemedi");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setBusy(true);
+    try {
+      await removeUser({ data: { id: deleting.id } });
+      await refreshUsers();
+      setDeleting(null);
+      toast.success("Müşteri hesabı silindi");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Hesap silinemedi");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="mt-6">
@@ -881,12 +977,71 @@ function UsersPanel() {
                   : "Kayıt yok"}
               </p>
             </div>
+            {!u.is_admin && (
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                <Button variant="outline" size="sm" onClick={() => setEditing(u)}>
+                  <Pencil className="h-4 w-4" /> Bilgileri düzenle
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPasswordUser(u)}>
+                  <KeyRound className="h-4 w-4" /> Şifre belirle
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setDeleting(u)}>
+                  <Trash2 className="h-4 w-4" /> Hesabı sil
+                </Button>
+              </div>
+            )}
           </div>
         ))}
         {users.length === 0 && (
           <p className="text-sm text-muted-foreground">Henüz kayıtlı üye yok.</p>
         )}
       </div>
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Müşteri bilgilerini düzenle</DialogTitle>
+            <DialogDescription>Telefon değişirse müşteri yeni numarasıyla giriş yapar.</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <form className="space-y-4" onSubmit={saveUser}>
+              <div><Label htmlFor="edit-full-name">Ad soyad</Label><Input id="edit-full-name" name="full_name" defaultValue={editing.full_name} required /></div>
+              <div><Label htmlFor="edit-business">İşletme adı</Label><Input id="edit-business" name="business_name" defaultValue={editing.business_name} required /></div>
+              <div><Label htmlFor="edit-phone">Telefon</Label><Input id="edit-phone" name="phone" type="tel" defaultValue={editing.profile_phone || editing.phone || ""} required /></div>
+              <div><Label htmlFor="edit-address">Adres</Label><Textarea id="edit-address" name="address" defaultValue={editing.address} required rows={3} /></div>
+              <DialogFooter><Button type="submit" disabled={busy}>Kaydet</Button></DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={passwordUser !== null} onOpenChange={(open) => !open && setPasswordUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yeni şifre belirle</DialogTitle>
+            <DialogDescription>{passwordUser?.business_name || passwordUser?.full_name} için en az 6 karakterli yeni şifre girin.</DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={savePassword}>
+            <div><Label htmlFor="new-password">Yeni şifre</Label><Input id="new-password" name="password" type="password" minLength={6} maxLength={72} required /></div>
+            <DialogFooter><Button type="submit" disabled={busy}>Şifreyi kaydet</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Müşteri hesabı silinsin mi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting?.business_name || deleting?.full_name} hesabı kalıcı olarak silinecek. Sipariş geçmişi bulunan hesaplar silinmez.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmDelete()} disabled={busy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hesabı sil</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
