@@ -270,12 +270,13 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
           ) : (
             <div
               key={active.id}
-              className="animate-slide-fade flex h-full w-full flex-col items-center justify-center gap-3 bg-white/5 px-6 text-center"
+              className="animate-slide-fade flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center"
             >
-              <PackageSearch className="h-12 w-12 text-brand-green" />
-              <p className="text-2xl font-extrabold text-white">{active.name}</p>
+              <PackageSearch className="h-12 w-12 text-primary" />
+              <p className="text-2xl font-extrabold text-foreground">{active.name}</p>
             </div>
           )}
+
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-16">
           <p className="text-xs font-semibold uppercase tracking-widest text-brand-green">
@@ -285,20 +286,10 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
           <p className="text-sm text-white/70">Birim: {active.unit} · Ürünü görüntüle</p>
         </div>
       </Link>
-      <div className="absolute right-4 top-4 flex gap-1.5">
-        {slides.map((s, i) => (
-          <button
-            key={s.id}
-            aria-label={`${i + 1}. ürün`}
-            onClick={() => setIndex(i)}
-            className={
-              i === index
-                ? "h-1.5 w-6 rounded-full bg-brand-green transition-all"
-                : "h-1.5 w-1.5 rounded-full bg-white/50 transition-all"
-            }
-          />
-        ))}
+      <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+        {index + 1} / {slides.length}
       </div>
+
       {slides.length > 1 && (
         <>
           <button
