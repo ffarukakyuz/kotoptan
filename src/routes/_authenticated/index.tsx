@@ -60,34 +60,37 @@ function Index() {
   return (
     <>
       <section className="bg-brand-gradient text-white">
-        <div className="mx-auto max-w-6xl px-4 pt-6 sm:pt-8">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1.45fr_1fr] lg:items-stretch">
           <HeroShowcase products={data ?? []} loading={isLoading} />
-        </div>
 
-        <ProductMarquee products={data ?? []} />
+          <div className="flex flex-col gap-5">
+            <ProductMarquee products={data ?? []} />
 
-        <div className="mx-auto max-w-6xl px-4 pb-10 pt-2 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-green">
-            Toptan depo kataloğu
-          </p>
-          <h1 className="mx-auto mt-2 max-w-3xl text-2xl font-extrabold leading-tight sm:text-3xl">
-            Ürünleri görün, adetleri seçin, siparişi gönderin.
-          </h1>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
-              <a href="#urunler">Ürünleri incele</a>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
-            >
-              <Link to="/sepet">Sepetim</Link>
-            </Button>
+            <div className="text-center lg:text-left">
+              <p className="text-xs font-semibold uppercase tracking-widest text-brand-green">
+                Toptan depo kataloğu
+              </p>
+              <h1 className="mt-2 text-2xl font-extrabold leading-tight sm:text-3xl">
+                Ürünleri görün, adetleri seçin, siparişi gönderin.
+              </h1>
+              <div className="mt-5 flex flex-wrap justify-center gap-3 lg:justify-start">
+                <Button asChild size="lg">
+                  <a href="#urunler">Ürünleri incele</a>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+                >
+                  <Link to="/sepet">Sepetim</Link>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
 
       <section id="urunler" className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
