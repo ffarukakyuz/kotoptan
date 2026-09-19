@@ -320,15 +320,16 @@ function ProductMarquee({ products }: { products: Product[] }) {
   const loop = [...items, ...items];
 
   return (
-    <div className="relative mt-6 overflow-hidden border-y border-white/10 py-5">
-      <div className="animate-marquee flex w-max gap-4">
+    <div className="relative h-56 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 lg:h-72">
+      <div className="animate-marquee-y flex flex-col gap-2">
         {loop.map((p, i) => (
           <Link
             key={`${p.id}-${i}`}
             to="/urun/$id"
             params={{ id: p.id }}
-            className="flex w-40 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2 transition-colors hover:border-brand-green/60 hover:bg-white/10"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2 transition-colors hover:border-brand-green/60 hover:bg-white/10"
           >
+
             {p.image_url ? (
               <img
                 src={p.image_url}
