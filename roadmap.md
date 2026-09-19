@@ -11,4 +11,6 @@
 - [ ] Yönetim panelinden müşteri adı/telefon/adres düzenleme, şifre yenileme ve hesap silme
 - [ ] Yönetici hesaplarını silme/değiştirmeye karşı koruma
 - [ ] Kod, ürün görselleri ve veritabanı durumunun GitHub/Lovable Cloud aktarım kontrolü
+- [ ] Kırık ürün görsellerini tespit edip çalışan görsellerle değiştir
+- [ ] Ana sayfa vitrinini dikdörtgen yap; kayan bölüm sola, tanıtım ve yazı sağa
 - [ ] Siteyi yayınla
