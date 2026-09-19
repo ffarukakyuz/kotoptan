@@ -220,16 +220,17 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
 
 
   if (loading) {
-    return <Skeleton className="aspect-[4/3] w-full rounded-2xl bg-white/10 sm:aspect-[16/7]" />;
+    return <Skeleton className="aspect-[16/9] w-full rounded-2xl bg-white/10" />;
   }
 
   if (slides.length === 0) {
     return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-white/60 sm:aspect-[16/7]">
+      <div className="flex aspect-[16/9] w-full items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-white/60">
         <PackageSearch className="h-10 w-10" />
       </div>
     );
   }
+
 
   const active = slides[index]!;
 
@@ -257,14 +258,15 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
         aria-label={`${active.name} ürününü aç`}
         className="block"
       >
-        <div className="aspect-[4/3] w-full sm:aspect-[16/7]">
+        <div className="aspect-[16/9] w-full bg-white p-4">
           {active.image_url ? (
             <img
               key={active.id}
               src={active.image_url}
               alt={active.name}
-              className="animate-slide-fade h-full w-full object-cover"
+              className="animate-slide-fade h-full w-full object-contain"
             />
+
           ) : (
             <div
               key={active.id}
