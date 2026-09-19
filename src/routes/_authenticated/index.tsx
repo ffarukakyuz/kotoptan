@@ -335,9 +335,10 @@ function ProductMarquee({ products }: { products: Product[] }) {
                 src={p.image_url}
                 alt={p.name}
                 loading="lazy"
-                className="h-10 w-10 rounded-lg object-cover"
+                className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain p-0.5"
               />
             ) : (
+
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-brand-green">
                 <PackageSearch className="h-5 w-5" />
               </span>
