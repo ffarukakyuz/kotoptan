@@ -60,34 +60,37 @@ function Index() {
   return (
     <>
       <section className="bg-brand-gradient text-white">
-        <div className="mx-auto max-w-6xl px-4 pt-6 sm:pt-8">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1.45fr_1fr] lg:items-stretch">
           <HeroShowcase products={data ?? []} loading={isLoading} />
-        </div>
 
-        <ProductMarquee products={data ?? []} />
+          <div className="flex flex-col gap-5">
+            <ProductMarquee products={data ?? []} />
 
-        <div className="mx-auto max-w-6xl px-4 pb-10 pt-2 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-green">
-            Toptan depo kataloğu
-          </p>
-          <h1 className="mx-auto mt-2 max-w-3xl text-2xl font-extrabold leading-tight sm:text-3xl">
-            Ürünleri görün, adetleri seçin, siparişi gönderin.
-          </h1>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
-              <a href="#urunler">Ürünleri incele</a>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
-            >
-              <Link to="/sepet">Sepetim</Link>
-            </Button>
+            <div className="text-center lg:text-left">
+              <p className="text-xs font-semibold uppercase tracking-widest text-brand-green">
+                Toptan depo kataloğu
+              </p>
+              <h1 className="mt-2 text-2xl font-extrabold leading-tight sm:text-3xl">
+                Ürünleri görün, adetleri seçin, siparişi gönderin.
+              </h1>
+              <div className="mt-5 flex flex-wrap justify-center gap-3 lg:justify-start">
+                <Button asChild size="lg">
+                  <a href="#urunler">Ürünleri incele</a>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+                >
+                  <Link to="/sepet">Sepetim</Link>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
 
       <section id="urunler" className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -217,16 +220,17 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
 
 
   if (loading) {
-    return <Skeleton className="aspect-[4/3] w-full rounded-2xl bg-white/10 sm:aspect-[16/7]" />;
+    return <Skeleton className="aspect-[16/9] w-full rounded-2xl bg-white/10" />;
   }
 
   if (slides.length === 0) {
     return (
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-white/60 sm:aspect-[16/7]">
+      <div className="flex aspect-[16/9] w-full items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-white/60">
         <PackageSearch className="h-10 w-10" />
       </div>
     );
   }
+
 
   const active = slides[index]!;
 
@@ -254,23 +258,25 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
         aria-label={`${active.name} ürününü aç`}
         className="block"
       >
-        <div className="aspect-[4/3] w-full sm:aspect-[16/7]">
+        <div className="aspect-[16/9] w-full bg-white p-4">
           {active.image_url ? (
             <img
               key={active.id}
               src={active.image_url}
               alt={active.name}
-              className="animate-slide-fade h-full w-full object-cover"
+              className="animate-slide-fade h-full w-full object-contain"
             />
+
           ) : (
             <div
               key={active.id}
-              className="animate-slide-fade flex h-full w-full flex-col items-center justify-center gap-3 bg-white/5 px-6 text-center"
+              className="animate-slide-fade flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center"
             >
-              <PackageSearch className="h-12 w-12 text-brand-green" />
-              <p className="text-2xl font-extrabold text-white">{active.name}</p>
+              <PackageSearch className="h-12 w-12 text-primary" />
+              <p className="text-2xl font-extrabold text-foreground">{active.name}</p>
             </div>
           )}
+
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-16">
           <p className="text-xs font-semibold uppercase tracking-widest text-brand-green">
@@ -280,20 +286,10 @@ function HeroShowcase({ products, loading }: { products: Product[]; loading: boo
           <p className="text-sm text-white/70">Birim: {active.unit} · Ürünü görüntüle</p>
         </div>
       </Link>
-      <div className="absolute right-4 top-4 flex gap-1.5">
-        {slides.map((s, i) => (
-          <button
-            key={s.id}
-            aria-label={`${i + 1}. ürün`}
-            onClick={() => setIndex(i)}
-            className={
-              i === index
-                ? "h-1.5 w-6 rounded-full bg-brand-green transition-all"
-                : "h-1.5 w-1.5 rounded-full bg-white/50 transition-all"
-            }
-          />
-        ))}
+      <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+        {index + 1} / {slides.length}
       </div>
+
       {slides.length > 1 && (
         <>
           <button
@@ -324,23 +320,25 @@ function ProductMarquee({ products }: { products: Product[] }) {
   const loop = [...items, ...items];
 
   return (
-    <div className="relative mt-6 overflow-hidden border-y border-white/10 py-5">
-      <div className="animate-marquee flex w-max gap-4">
+    <div className="relative h-56 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 lg:h-72">
+      <div className="animate-marquee-y flex flex-col gap-2">
         {loop.map((p, i) => (
           <Link
             key={`${p.id}-${i}`}
             to="/urun/$id"
             params={{ id: p.id }}
-            className="flex w-40 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2 transition-colors hover:border-brand-green/60 hover:bg-white/10"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2 transition-colors hover:border-brand-green/60 hover:bg-white/10"
           >
+
             {p.image_url ? (
               <img
                 src={p.image_url}
                 alt={p.name}
                 loading="lazy"
-                className="h-10 w-10 rounded-lg object-cover"
+                className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain p-0.5"
               />
             ) : (
+
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-brand-green">
                 <PackageSearch className="h-5 w-5" />
               </span>

@@ -240,6 +240,20 @@
   animation: marquee-x 32s linear infinite;
 }
 
+@keyframes marquee-y {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@utility animate-marquee-y {
+  animation: marquee-y 28s linear infinite;
+}
+
+
 @utility animate-slide-fade {
   animation: slide-fade-in 0.7s ease-out both;
 }
