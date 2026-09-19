@@ -8,9 +8,9 @@
 - [x] Google/eposta giriş butonu kaldırıldı, kayıt kuralları sıkılaştırıldı
 - [x] PDF listesindeki 226 ürün fotoğrafları ve koli içi bilgileriyle eklendi
 - [ ] GitHub deposu bağlantısı (kullanıcı tarafında: + menüsü → GitHub → Connect project)
-- [ ] Yönetim panelinden müşteri adı/telefon/adres düzenleme, şifre yenileme ve hesap silme
-- [ ] Yönetici hesaplarını silme/değiştirmeye karşı koruma
-- [ ] Kod, ürün görselleri ve veritabanı durumunun GitHub/Lovable Cloud aktarım kontrolü
-- [ ] Kırık ürün görsellerini tespit edip çalışan görsellerle değiştir
-- [ ] Ana sayfa vitrinini dikdörtgen yap; kayan bölüm sola, tanıtım ve yazı sağa
+- [x] Yönetim panelinden müşteri adı/telefon/adres düzenleme, şifre yenileme ve hesap silme
+- [x] Yönetici hesaplarını silme/değiştirmeye karşı koruma
+- [x] Kod, ürün görselleri ve veritabanı durumunun aktarım kontrolü (Lovable Cloud'da; GitHub bağlantısı bekliyor)
+- [x] Kırık/eksik ürün görselleri düzeltildi — 255 ürünün tamamında fotoğraf var
+- [x] Ana sayfa vitrini dikdörtgen yapıldı; kayan bölüm sola, tanıtım ve yazı sağa alındı
 - [ ] Siteyi yayınla
