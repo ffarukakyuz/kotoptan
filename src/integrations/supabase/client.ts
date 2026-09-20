@@ -1,15 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Çevre değişkenlerini okur, yoksa doğrudan yedek tanımları kullanır
-const SUPABASE_URL = 
-  import.meta.env.VITE_SUPABASE_URL || 
-  'https://fxpbsnojtdsemztmzavz.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-const SUPABASE_ANON_KEY = 
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4cGJzbm9qdGRzZW16dG16YXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMzMzNzEsImV4cCI6MjEwMzYwOTM3MX0.hGloigcRKmZFcMHnJP9U6x00KBlZ2Kx5qd_qFjrkIrA';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    'Missing Supabase environment variables. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) in Cloudflare Pages settings.',
+  );
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
