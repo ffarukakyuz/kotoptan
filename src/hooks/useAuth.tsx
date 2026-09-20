@@ -10,6 +10,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import { syncAdminRole } from "@/lib/admin-allowlist.functions";
 
 export type Profile = {
   id: string;
@@ -51,6 +52,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(Boolean(roleRows?.some((r) => r.role === "admin")));
   }, []);
 
+  // The fixed admin allowlist is the single source of truth: on every sign-in we
+  // ask the server to grant admin only to allowlisted phones and revoke it from
+  // anyone else, then read the resulting roles. The sync is best-effort so a
+  // transient failure never blocks login.
+  const syncAndLoad = useCallback(
+    async (userId: string) => {
+      try {
+        await syncAdminRole();
+      } catch {
+        // Ignore: fall back to whatever roles are already stored for this user.
+      }
+      await loadDetails(userId);
+    },
+    [loadDetails],
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -59,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
-        void loadDetails(nextSession.user.id);
+        void syncAndLoad(nextSession.user.id);
       } else {
         setProfile(null);
         setIsAdmin(false);
@@ -71,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (data.session?.user) await loadDetails(data.session.user.id);
+      if (data.session?.user) await syncAndLoad(data.session.user.id);
       setLoading(false);
     })();
 
@@ -79,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadDetails]);
+  }, [syncAndLoad]);
 
   const refreshProfile = useCallback(async () => {
     if (user) await loadDetails(user.id);
