@@ -15,6 +15,7 @@ import { CartProvider } from "@/lib/cart";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { SupportChat } from "@/components/SupportChat";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 
 function NotFoundComponent() {
   return (
@@ -75,12 +76,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0F3D2E" },
-      { name: "application-name", content: "Kotoptan" },
-      { name: "apple-mobile-web-app-title", content: "Kotoptan" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
+      },
+      { name: "theme-color", content: "#060b08" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "application-name", content: "KasımOğulları" },
+      { name: "apple-mobile-web-app-title", content: "KasımOğulları" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "format-detection", content: "telephone=no" },
       { title: "KasımOğulları Ltd. Şti. — Toptan Ürün Kataloğu" },
       {
         name: "description",
@@ -101,6 +108,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/apple-touch-icon.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "icon", sizes: "192x192", type: "image/png", href: "/icon-192x192.png" },
+      { rel: "icon", sizes: "512x512", type: "image/png", href: "/icon-512x512.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -131,6 +141,7 @@ function RootComponent() {
       <AuthProvider>
         <CartProvider>
           <div className="flex min-h-screen flex-col font-sans">
+            <PWAInstallBanner />
             <SiteHeader />
             <main className="flex-1">
               {/* Required: nested routes render here. */}

@@ -275,18 +275,19 @@
   .animate-slide-fade,
   .animate-wordmark-in {
     animation: none !important;
-    /* Lovable & GPTEngineer rozetlerini kesin olarak gizler */
-    #lovable-badge,
-    [data-lovable-badge],
-    [id*="gptengineer"],
-    iframe[src*="lovable"],
-    a[href*="lovable.dev"],
-    div[class*="lovable"] {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-      transform: scale(0) !important;
-    }
   }
+}
+
+/* Lovable & GPTEngineer rozetlerini kesin olarak gizler */
+#lovable-badge,
+[data-lovable-badge],
+[id*="gptengineer"],
+iframe[src*="lovable"],
+a[href*="lovable.dev"],
+div[class*="lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: scale(0) !important;
 }

@@ -9,17 +9,31 @@ import {
   Search,
   Box,
   X,
+  Smartphone,
 } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { PWAInstallModal } from "@/components/PWAInstallBanner";
 
 export function SiteHeader() {
   const { totalQuantity } = useCart();
   const { user, isAdmin, profile, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [showPwaGuide, setShowPwaGuide] = useState(false);
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const router = useRouter();
+
+  const handleInstallClick = async () => {
+    setOpen(false);
+    if (isInstallable) {
+      await install();
+    } else {
+      setShowPwaGuide(true);
+    }
+  };
 
   const handleSearchClick = () => {
     if (window.location.pathname !== "/") {
@@ -146,6 +160,20 @@ export function SiteHeader() {
       {open && (
         <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-1 border-t border-white/10 bg-[#060b08] px-4 py-3 shadow-xl">
           {navLinks}
+          {/* Kısayol Ekle / Ana Ekrana Ekle Butonu */}
+          {!isInstalled && (
+            <div className="mt-2 border-t border-white/10 pt-2">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="flex w-full items-center gap-2 rounded-lg bg-[#166534]/40 hover:bg-[#166534] px-3 py-2 text-xs font-semibold text-emerald-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <Smartphone className="h-4 w-4 text-emerald-400" />
+                <span>Ana Ekrana Kısayol Ekle</span>
+              </button>
+            </div>
+          )}
+
           {user ? (
             <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2">
               <Link
@@ -181,6 +209,8 @@ export function SiteHeader() {
           )}
         </div>
       )}
+
+      {showPwaGuide && <PWAInstallModal isIOS={isIOS} onClose={() => setShowPwaGuide(false)} />}
     </header>
   );
 }
