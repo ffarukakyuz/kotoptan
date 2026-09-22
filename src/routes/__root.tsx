@@ -136,9 +136,9 @@ function RootComponent() {
               {/* Required: nested routes render here. */}
               <Outlet />
             </main>
-            <footer className="mt-16 bg-secondary py-8 text-secondary-foreground">
-              <div className="mx-auto max-w-6xl px-4 text-sm text-secondary-foreground/70">
-                <p className="font-semibold text-secondary-foreground">KasımOğulları Ltd. Şti.</p>
+            <footer className="mt-auto border-t border-white/10 bg-[#040806] py-8 text-white/60">
+              <div className="mx-auto max-w-6xl px-4 text-sm">
+                <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
                 <p className="mt-1">
                   Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır,
                   ödeme teslimat sırasında yapılır.

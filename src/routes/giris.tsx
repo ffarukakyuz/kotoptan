@@ -4,6 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_MEMBERS } from "@/lib/admin-config";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -29,10 +30,16 @@ export const Route = createFileRoute("/giris")({
   component: AuthPage,
 });
 
-/** Telefon numarasını sadece rakamlara indirger. */
+/** Telefon numarasını sadece rakamlara indirger ve standart 10 haneli formata dönüştürür. */
 function normalizePhone(raw: string) {
-  const digits = raw.replace(/\D/g, "");
-  return digits.startsWith("0") ? digits.slice(1) : digits;
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("90") && digits.length === 12) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  return digits;
 }
 
 /** Telefon numarasından sabit bir giriş kimliği üretir. */
@@ -52,18 +59,15 @@ const signUpSchema = z.object({
   full_name: z
     .string()
     .trim()
-    .min(5, "Ad ve soyadınızı eksiksiz yazın")
+    .min(3, "Ad ve soyadınızı yazın")
     .max(100)
-    .refine(
-      (v) => /^[A-Za-zÇĞİÖŞÜçğıöşü' -]+$/.test(v),
-      "Ad soyad yalnızca harflerden oluşmalı",
-    )
+    .refine((v) => /^[A-Za-zÇĞİÖŞÜçğıöşü' -]+$/.test(v), "Ad soyad yalnızca harflerden oluşmalı")
     .refine(
       (v) => v.split(/\s+/).filter((w) => w.length >= 2).length >= 2,
       "Ad ve soyadınızı eksiksiz yazın",
     ),
-  business_name: z.string().trim().min(3, "Market/bakkal adı gerekli").max(120),
-  address: z.string().trim().min(10, "Teslimat adresi gerekli").max(500),
+  business_name: z.string().trim().min(2, "Market/bakkal adı gerekli").max(120),
+  address: z.string().trim().min(5, "Teslimat adresi gerekli").max(500),
 });
 
 function AuthPage() {
@@ -72,6 +76,8 @@ function AuthPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [loginPhone, setLoginPhone] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
 
   useEffect(() => {
     if (!loading && user && pathname === "/giris") {
@@ -82,30 +88,65 @@ function AuthPage() {
   const onSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const phone = String(fd.get("phone") ?? "");
+    const identifier = String(fd.get("phone") ?? "").trim();
     const rawPassword = String(fd.get("password") ?? "");
 
-    if (normalizePhone(phone).length < 10) {
-      toast.error("Geçerli bir telefon numarası girin");
-      return;
+    // Özel kişiler için gizli misafir girişi (ekranda görünmez, kod seviyesinde desteklenir)
+    const isGuest =
+      identifier.toLocaleLowerCase("tr") === "misafir" ||
+      identifier.toLowerCase() === "misafir@kotoptan.local";
+
+    let targetEmail = "";
+    const normalized = normalizePhone(identifier);
+
+    if (isGuest) {
+      targetEmail = "misafir@kotoptan.local";
+    } else {
+      // Rastgele veya geçersiz numaraları reddet (Türk cep numarası formatı: 05xx xxx xx xx)
+      if (!/^5\d{9}$/.test(normalized)) {
+        toast.error("Lütfen geçerli bir cep telefonu numarası girin (Örn: 05xx xxx xx xx)");
+        return;
+      }
+      targetEmail = phoneIdentity(identifier);
     }
 
     setBusy(true);
-    const targetEmail = phoneIdentity(phone);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: targetEmail,
       password: rawPassword,
     });
 
-    setBusy(false);
-
     if (error) {
-      console.error("Giriş Hatası Detayı:", error);
-      alert("Giriş Yapılamadı: " + error.message);
+      setBusy(false);
+
+      if (isGuest) {
+        toast.error("Şifre hatalı. Lütfen kontrol edin.");
+        return;
+      }
+
+      // Yönetici mi kontrolü
+      const isAdmin = ADMIN_MEMBERS.some((m) => m.normalizedPhone === normalized);
+
+      // Numara kayıtlı mı kontrolü
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(targetEmail);
+      const isAccountRegistered =
+        isAdmin ||
+        resetErr?.message?.includes("cannot receive email") ||
+        resetErr?.message?.includes("not allowed");
+
+      if (!isAccountRegistered) {
+        toast.error("Bu telefon numarası kayıtlı değil. Lütfen önce hesap oluşturun.");
+        setRegisterPhone(normalized.startsWith("0") ? normalized : `0${normalized}`);
+        setMode("register");
+        return;
+      }
+
+      toast.error("Girdiğiniz şifre hatalı. Lütfen kontrol edip tekrar deneyin.");
       return;
     }
 
+    setBusy(false);
     toast.success("Giriş yapıldı");
     void navigate({ to: "/" });
   };
@@ -130,7 +171,7 @@ function AuthPage() {
     const { password, ...meta } = parsed.data;
     const targetEmail = phoneIdentity(meta.phone);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: targetEmail,
       password,
       options: { data: meta },
@@ -139,7 +180,13 @@ function AuthPage() {
     if (error) {
       setBusy(false);
       console.error("Kayıt Hatası Detayı:", error);
-      alert("Kayıt Oluşturulamadı: " + error.message);
+      if (error.message.includes("already registered")) {
+        toast.error("Bu telefon numarasıyla zaten bir hesap kayıtlı. Lütfen giriş yapın.");
+        setLoginPhone(meta.phone);
+        setMode("login");
+        return;
+      }
+      toast.error("Kayıt oluşturulamadı: " + error.message);
       return;
     }
 
@@ -152,11 +199,12 @@ function AuthPage() {
     setBusy(false);
 
     if (loginError) {
-      alert("Hesap açıldı fakat otomatik giriş başarısız: " + loginError.message);
+      toast.error("Hesap açıldı fakat otomatik giriş başarısız. Lütfen şifrenizle giriş yapın.");
+      setMode("login");
       return;
     }
 
-    toast.success("Hesabınız oluşturuldu");
+    toast.success("Hesabınız başarıyla oluşturuldu");
     void navigate({ to: "/" });
   };
 
@@ -172,25 +220,39 @@ function AuthPage() {
         <>
           <form className="space-y-4" onSubmit={onSignIn}>
             <div>
-              <Label htmlFor="si-phone">Telefon numarası</Label>
+              <Label htmlFor="si-phone">Telefon Numarası</Label>
               <Input
                 id="si-phone"
                 name="phone"
-                type="tel"
-                inputMode="tel"
+                type="text"
                 placeholder="05xx xxx xx xx"
+                value={loginPhone}
+                onChange={(e) => setLoginPhone(e.target.value)}
                 required
-                maxLength={20}
+                maxLength={40}
+                autoComplete="username"
               />
             </div>
             <div>
               <Label htmlFor="si-password">Şifre</Label>
-              <Input id="si-password" name="password" type="password" required maxLength={72} />
+              <Input
+                id="si-password"
+                name="password"
+                type="password"
+                required
+                maxLength={72}
+                autoComplete="current-password"
+              />
             </div>
-            <Button type="submit" className="w-full" disabled={busy}>
-              Giriş yap
+            <Button
+              type="submit"
+              className="w-full bg-[#166534] hover:bg-[#14532d] text-white"
+              disabled={busy}
+            >
+              {busy ? "Giriş yapılıyor..." : "Giriş yap"}
             </Button>
           </form>
+
           <button
             type="button"
             className="mt-4 w-full text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -204,11 +266,23 @@ function AuthPage() {
           <form className="space-y-4" onSubmit={onSignUp}>
             <div>
               <Label htmlFor="su-name">Ad soyad</Label>
-              <Input id="su-name" name="full_name" required maxLength={100} />
+              <Input
+                id="su-name"
+                name="full_name"
+                placeholder="Adınız ve Soyadınız"
+                required
+                maxLength={100}
+              />
             </div>
             <div>
               <Label htmlFor="su-business">Market / bakkal adı</Label>
-              <Input id="su-business" name="business_name" required maxLength={120} />
+              <Input
+                id="su-business"
+                name="business_name"
+                placeholder="Örn: Güven Market"
+                required
+                maxLength={120}
+              />
             </div>
             <div>
               <Label htmlFor="su-phone">Telefon numarası</Label>
@@ -218,20 +292,33 @@ function AuthPage() {
                 type="tel"
                 inputMode="tel"
                 placeholder="05xx xxx xx xx"
+                value={registerPhone}
+                onChange={(e) => setRegisterPhone(e.target.value)}
                 required
                 maxLength={20}
               />
             </div>
             <div>
               <Label htmlFor="su-address">Teslimat adresi</Label>
-              <Textarea id="su-address" name="address" required maxLength={500} rows={3} />
+              <Textarea
+                id="su-address"
+                name="address"
+                placeholder="İl, ilçe, mahalle ve cadde bilgisi..."
+                required
+                maxLength={500}
+                rows={3}
+              />
             </div>
             <div>
-              <Label htmlFor="su-password">Şifre</Label>
+              <Label htmlFor="su-password">Şifre (En az 6 karakter)</Label>
               <Input id="su-password" name="password" type="password" required maxLength={72} />
             </div>
-            <Button type="submit" className="w-full" disabled={busy}>
-              Hesap oluştur
+            <Button
+              type="submit"
+              className="w-full bg-[#166534] hover:bg-[#14532d] text-white"
+              disabled={busy}
+            >
+              {busy ? "Kayıt yapılıyor..." : "Hesap oluştur"}
             </Button>
           </form>
           <button

@@ -62,7 +62,8 @@ function OrderCard({ order }: { order: OrderRow }) {
         </p>
       )}
       <p className="mt-1 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">Adres:</span> {districtLabel(order.district)} — {order.address}
+        <span className="font-medium text-foreground">Adres:</span> {districtLabel(order.district)}{" "}
+        — {order.address}
       </p>
     </article>
   );

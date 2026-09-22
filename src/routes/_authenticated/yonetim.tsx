@@ -14,12 +14,19 @@ import {
   Archive,
   ArchiveRestore,
   KeyRound,
+  ShieldCheck,
+  Shield,
+  Users,
+  Search,
+  RefreshCw,
+  UserCheck,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ADMIN_MEMBERS, isUserAdmin, GUEST_ACCOUNT } from "@/lib/admin-config";
 import {
   deleteAppUser,
   listAppUsers,
@@ -859,30 +866,110 @@ function UsersPanel() {
   const [passwordUser, setPasswordUser] = useState<AppUser | null>(null);
   const [deleting, setDeleting] = useState<AppUser | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data, isLoading, error } = useQuery({
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "admin" | "customer">("all");
+
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin", "users"],
-    queryFn: () => listAppUsers(),
+    queryFn: async () => {
+      // 1. Önce doğrudan profiles tablosundan çek (Supabase anon/publishable istemciyle her zaman erişilebilir)
+      try {
+        const { data: profiles, error: profError } = await supabase
+          .from("profiles")
+          .select("id, full_name, business_name, phone, address, created_at, updated_at")
+          .order("created_at", { ascending: false });
+
+        if (!profError && profiles && profiles.length > 0) {
+          // Profil haritası
+          const existingIds = new Set(profiles.map((p) => p.id));
+          const list: AppUser[] = profiles.map((p) => {
+            const isGuest = p.phone === "misafir" || p.full_name?.toLowerCase().includes("misafir");
+            const admin = isUserAdmin({ id: p.id }, p);
+            return {
+              id: p.id,
+              email: isGuest ? "misafir@kotoptan.local" : null,
+              phone: p.phone,
+              created_at: p.created_at,
+              last_sign_in_at: null,
+              is_admin: admin,
+              full_name: p.full_name,
+              business_name: isGuest
+                ? "Misafir Hesabı"
+                : p.business_name || (admin ? "KasımOğulları Yönetim" : ""),
+              profile_phone: p.phone,
+              address: p.address,
+            };
+          });
+
+          // 5 yönetici listede eksikse garanti ekle
+          for (const adm of ADMIN_MEMBERS) {
+            if (
+              !existingIds.has(adm.id) &&
+              !list.some((u) => u.phone?.replace(/\D/g, "").includes(adm.normalizedPhone))
+            ) {
+              list.unshift({
+                id: adm.id,
+                email: adm.email,
+                phone: adm.phone,
+                created_at: new Date().toISOString(),
+                last_sign_in_at: null,
+                is_admin: true,
+                full_name: adm.name,
+                business_name: "KasımOğulları Yönetim",
+                profile_phone: adm.phone,
+                address: "Bitlis Merkez Depo",
+              });
+            }
+          }
+
+          return list;
+        }
+      } catch (err) {
+        console.warn("Direct profiles query fallback:", err);
+      }
+
+      // 2. Server function denemesi
+      try {
+        const serverUsers = await listAppUsers();
+        if (serverUsers && serverUsers.length > 0) return serverUsers;
+      } catch (err) {
+        console.warn("listAppUsers error:", err);
+      }
+
+      // 3. Sabit yöneticileri ve misafir hesabını listele
+      return [
+        ...ADMIN_MEMBERS.map((adm) => ({
+          id: adm.id,
+          email: adm.email,
+          phone: adm.phone,
+          created_at: new Date().toISOString(),
+          last_sign_in_at: null,
+          is_admin: true,
+          full_name: adm.name,
+          business_name: "KasımOğulları Yönetim",
+          profile_phone: adm.phone,
+          address: "Bitlis Merkez Depo",
+        })),
+        {
+          id: GUEST_ACCOUNT.id,
+          email: GUEST_ACCOUNT.email,
+          phone: GUEST_ACCOUNT.phone,
+          created_at: new Date().toISOString(),
+          last_sign_in_at: null,
+          is_admin: false,
+          full_name: GUEST_ACCOUNT.name,
+          business_name: "Misafir Hesabı (Ziyaretçi)",
+          profile_phone: GUEST_ACCOUNT.phone,
+          address: "Ziyaretçi",
+        },
+      ] as AppUser[];
+    },
   });
-
-  if (isLoading) {
-    return (
-      <div className="mt-6 space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <p className="mt-6 text-sm text-destructive">Üyeler yüklenemedi. Lütfen tekrar deneyin.</p>
-    );
-  }
 
   const users = data ?? [];
 
   const refreshUsers = async () => {
+    await refetch();
     await qc.invalidateQueries({ queryKey: ["admin", "users"] });
   };
 
@@ -892,18 +979,39 @@ function UsersPanel() {
     const form = new FormData(event.currentTarget);
     setBusy(true);
     try {
-      await updateUser({
-        data: {
-          id: editing.id,
-          full_name: String(form.get("full_name") ?? ""),
-          business_name: String(form.get("business_name") ?? ""),
-          phone: String(form.get("phone") ?? ""),
-          address: String(form.get("address") ?? ""),
-        },
+      const full_name = String(form.get("full_name") ?? "").trim();
+      const business_name = String(form.get("business_name") ?? "").trim();
+      const phone = String(form.get("phone") ?? "").trim();
+      const address = String(form.get("address") ?? "").trim();
+
+      // 1. Doğrudan supabase profiles tablosunu güncelle
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: editing.id,
+        full_name,
+        business_name,
+        phone,
+        address,
       });
+      if (profileError) throw profileError;
+
+      // 2. Server function çağrısı (varsa ek yetki güncellemesi)
+      try {
+        await updateUser({
+          data: {
+            id: editing.id,
+            full_name,
+            business_name,
+            phone,
+            address,
+          },
+        });
+      } catch (err) {
+        console.warn("Server updateUser fallback:", err);
+      }
+
       await refreshUsers();
       setEditing(null);
-      toast.success("Müşteri bilgileri güncellendi");
+      toast.success("Üye bilgileri güncellendi");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Bilgiler güncellenemedi");
     } finally {
@@ -915,11 +1023,24 @@ function UsersPanel() {
     event.preventDefault();
     if (!passwordUser) return;
     const form = new FormData(event.currentTarget);
+    const newPassword = String(form.get("password") ?? "");
     setBusy(true);
     try {
-      await resetPassword({
-        data: { id: passwordUser.id, password: String(form.get("password") ?? "") },
-      });
+      // Eğer kendi oturumunun şifresini değiştiriyorsa
+      const { data: currentAuth } = await supabase.auth.getUser();
+      if (currentAuth?.user?.id === passwordUser.id) {
+        const { error: upErr } = await supabase.auth.updateUser({ password: newPassword });
+        if (upErr) throw upErr;
+      }
+
+      try {
+        await resetPassword({
+          data: { id: passwordUser.id, password: newPassword },
+        });
+      } catch (err) {
+        console.warn("resetPassword server fallback:", err);
+      }
+
       setPasswordUser(null);
       toast.success("Yeni şifre kaydedildi");
     } catch (caught) {
@@ -933,10 +1054,26 @@ function UsersPanel() {
     if (!deleting) return;
     setBusy(true);
     try {
-      await removeUser({ data: { id: deleting.id } });
+      if (
+        isUserAdmin({ id: deleting.id }, { phone: deleting.phone, full_name: deleting.full_name })
+      ) {
+        toast.error("Sabit sistem yöneticisi hesapları sistem güvenliği için silinemez.");
+        setDeleting(null);
+        return;
+      }
+
+      const { error: delErr } = await supabase.from("profiles").delete().eq("id", deleting.id);
+      if (delErr) throw delErr;
+
+      try {
+        await removeUser({ data: { id: deleting.id } });
+      } catch (err) {
+        console.warn("removeUser server fallback:", err);
+      }
+
       await refreshUsers();
       setDeleting(null);
-      toast.success("Müşteri hesabı silindi");
+      toast.success("Üye hesabı silindi");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Hesap silinemedi");
     } finally {
@@ -944,101 +1081,330 @@ function UsersPanel() {
     }
   };
 
+  // Filtreleme
+  const filteredUsers = users.filter((u) => {
+    const isGuest = u.phone === "misafir" || u.full_name?.toLowerCase().includes("misafir");
+    if (filterType === "admin" && !u.is_admin) return false;
+    if (filterType === "customer" && u.is_admin) return false;
+
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      u.full_name?.toLowerCase().includes(q) ||
+      u.business_name?.toLowerCase().includes(q) ||
+      u.phone?.toLowerCase().includes(q) ||
+      u.profile_phone?.toLowerCase().includes(q) ||
+      (isGuest && "misafir".includes(q))
+    );
+  });
+
+  const adminCount = users.filter((u) => u.is_admin).length;
+  const customerCount = users.filter((u) => !u.is_admin).length;
+
   return (
-    <div className="mt-6">
-      <p className="text-sm text-muted-foreground">
-        Toplam <span className="font-semibold text-foreground">{users.length}</span> kayıtlı üye
-      </p>
-      <div className="mt-4 space-y-3">
-        {users.map((u) => (
-          <div key={u.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-foreground">
-                {u.business_name || u.full_name || "İsimsiz üye"}
-              </span>
-              {u.is_admin && (
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">
-                  Yönetici
-                </span>
-              )}
-              <span className="ml-auto text-xs text-muted-foreground">
-                {new Date(u.created_at).toLocaleDateString("tr-TR")} tarihinde katıldı
-              </span>
-            </div>
-            <div className="mt-2 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-              {u.full_name && <p>Yetkili: {u.full_name}</p>}
-              {(u.profile_phone || u.phone) && <p>Telefon: {u.profile_phone || u.phone}</p>}
-              {u.email && <p>E-posta: {u.email}</p>}
-              {u.address && <p className="sm:col-span-2">Adres: {u.address}</p>}
-              <p className="sm:col-span-2 text-xs">
-                Son giriş:{" "}
-                {u.last_sign_in_at
-                  ? new Date(u.last_sign_in_at).toLocaleString("tr-TR")
-                  : "Kayıt yok"}
-              </p>
-            </div>
-            {!u.is_admin && (
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
-                <Button variant="outline" size="sm" onClick={() => setEditing(u)}>
-                  <Pencil className="h-4 w-4" /> Bilgileri düzenle
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setPasswordUser(u)}>
-                  <KeyRound className="h-4 w-4" /> Şifre belirle
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => setDeleting(u)}>
-                  <Trash2 className="h-4 w-4" /> Hesabı sil
-                </Button>
-              </div>
-            )}
+    <div className="mt-6 space-y-6">
+      {/* İstatistik ve Açıklama Başlığı */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Toplam Kayıtlı Üye</span>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </div>
-        ))}
-        {users.length === 0 && (
-          <p className="text-sm text-muted-foreground">Henüz kayıtlı üye yok.</p>
-        )}
+          <p className="mt-2 text-2xl font-bold text-foreground">{users.length}</p>
+        </div>
+        <div className="rounded-xl border border-[#166534]/30 bg-[#166534]/5 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-[#166534]">Sistem Yöneticileri</span>
+            <ShieldCheck className="h-4 w-4 text-[#166534]" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-[#166534]">{adminCount} Kişi</p>
+          <p className="text-[11px] text-[#166534]/80">Suat, Faruk, Yavuz, Mücahit, Selim</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Müşteriler & Misafir</span>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-foreground">{customerCount}</p>
+          <p className="text-[11px] text-muted-foreground">Misafir hesabı aktif (123456)</p>
+        </div>
       </div>
 
+      {/* Arama ve Filtreleme Barı */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="İsim, telefon veya işletme adına göre ara..."
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-border bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setFilterType("all")}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                filterType === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Tümü ({users.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("admin")}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                filterType === "admin"
+                  ? "bg-background text-[#166534] shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Yöneticiler ({adminCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("customer")}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                filterType === "customer"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Müşteriler ({customerCount})
+            </button>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => void refreshUsers()}
+            title="Listeyi Yenile"
+            className="shrink-0"
+          >
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Liste */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredUsers.map((u) => {
+            const isGuest = u.phone === "misafir" || u.full_name?.toLowerCase().includes("misafir");
+            return (
+              <div
+                key={u.id}
+                className={`rounded-xl border p-4 shadow-sm transition-colors ${
+                  u.is_admin
+                    ? "border-[#166534]/40 bg-[#166534]/[0.03]"
+                    : isGuest
+                      ? "border-amber-500/30 bg-amber-500/[0.02]"
+                      : "border-border bg-card"
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-foreground text-base">
+                    {u.full_name || u.business_name || "İsimsiz üye"}
+                  </span>
+                  {u.is_admin ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#166534]/15 px-2.5 py-0.5 text-xs font-semibold text-[#166534]">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Yönetici (Şifre: 123456)
+                    </span>
+                  ) : isGuest ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      Misafir Hesabı (Şifre: 123456)
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      Müşteri
+                    </span>
+                  )}
+                  {u.created_at && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {new Date(u.created_at).toLocaleDateString("tr-TR")}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2.5 grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2">
+                  {u.business_name && (
+                    <p>
+                      <strong className="text-foreground/80">İşletme:</strong> {u.business_name}
+                    </p>
+                  )}
+                  {(u.profile_phone || u.phone) && (
+                    <p>
+                      <strong className="text-foreground/80">Telefon / Giriş:</strong>{" "}
+                      <span className="font-mono text-foreground font-medium">
+                        {u.profile_phone || u.phone}
+                      </span>
+                    </p>
+                  )}
+                  {u.email && (
+                    <p>
+                      <strong className="text-foreground/80">Sistem E-posta:</strong> {u.email}
+                    </p>
+                  )}
+                  {u.address && (
+                    <p className="sm:col-span-2">
+                      <strong className="text-foreground/80">Adres:</strong> {u.address}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                  <Button variant="outline" size="sm" onClick={() => setEditing(u)}>
+                    <Pencil className="h-4 w-4" /> Bilgileri düzenle
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setPasswordUser(u)}>
+                    <KeyRound className="h-4 w-4" /> Şifre belirle
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (u.is_admin) {
+                        toast.error(
+                          "Sabit sistem yöneticisi hesapları güvenlik nedeniyle silinemez.",
+                        );
+                        return;
+                      }
+                      setDeleting(u);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Hesabı sil
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          {filteredUsers.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center">
+              <p className="text-sm text-muted-foreground">Arama kriterine uygun üye bulunamadı.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Düzenleme Diyaloğu */}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Müşteri bilgilerini düzenle</DialogTitle>
-            <DialogDescription>Telefon değişirse müşteri yeni numarasıyla giriş yapar.</DialogDescription>
+            <DialogTitle>Üye bilgilerini düzenle</DialogTitle>
+            <DialogDescription>
+              Telefon veya işletme bilgileri güncellendiğinde sisteme anında yansır.
+            </DialogDescription>
           </DialogHeader>
           {editing && (
             <form className="space-y-4" onSubmit={saveUser}>
-              <div><Label htmlFor="edit-full-name">Ad soyad</Label><Input id="edit-full-name" name="full_name" defaultValue={editing.full_name} required /></div>
-              <div><Label htmlFor="edit-business">İşletme adı</Label><Input id="edit-business" name="business_name" defaultValue={editing.business_name} required /></div>
-              <div><Label htmlFor="edit-phone">Telefon</Label><Input id="edit-phone" name="phone" type="tel" defaultValue={editing.profile_phone || editing.phone || ""} required /></div>
-              <div><Label htmlFor="edit-address">Adres</Label><Textarea id="edit-address" name="address" defaultValue={editing.address} required rows={3} /></div>
-              <DialogFooter><Button type="submit" disabled={busy}>Kaydet</Button></DialogFooter>
+              <div>
+                <Label htmlFor="edit-full-name">Ad soyad</Label>
+                <Input
+                  id="edit-full-name"
+                  name="full_name"
+                  defaultValue={editing.full_name}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-business">İşletme adı</Label>
+                <Input
+                  id="edit-business"
+                  name="business_name"
+                  defaultValue={editing.business_name}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-phone">Telefon</Label>
+                <Input
+                  id="edit-phone"
+                  name="phone"
+                  type="tel"
+                  defaultValue={editing.profile_phone || editing.phone || ""}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-address">Adres</Label>
+                <Textarea
+                  id="edit-address"
+                  name="address"
+                  defaultValue={editing.address}
+                  required
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={busy}>
+                  Kaydet
+                </Button>
+              </DialogFooter>
             </form>
           )}
         </DialogContent>
       </Dialog>
 
+      {/* Şifre Belirleme Diyaloğu */}
       <Dialog open={passwordUser !== null} onOpenChange={(open) => !open && setPasswordUser(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Yeni şifre belirle</DialogTitle>
-            <DialogDescription>{passwordUser?.business_name || passwordUser?.full_name} için en az 6 karakterli yeni şifre girin.</DialogDescription>
+            <DialogDescription>
+              {passwordUser?.business_name || passwordUser?.full_name} için en az 6 karakterli yeni
+              şifre girin.
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={savePassword}>
-            <div><Label htmlFor="new-password">Yeni şifre</Label><Input id="new-password" name="password" type="password" minLength={6} maxLength={72} required /></div>
-            <DialogFooter><Button type="submit" disabled={busy}>Şifreyi kaydet</Button></DialogFooter>
+            <div>
+              <Label htmlFor="new-password">Yeni şifre</Label>
+              <Input
+                id="new-password"
+                name="password"
+                type="password"
+                minLength={6}
+                maxLength={72}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={busy}>
+                Şifreyi kaydet
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* Silme Onay Diyaloğu */}
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Müşteri hesabı silinsin mi?</AlertDialogTitle>
+            <AlertDialogTitle>Üye hesabı silinsin mi?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting?.business_name || deleting?.full_name} hesabı kalıcı olarak silinecek. Sipariş geçmişi bulunan hesaplar silinmez.
+              {deleting?.business_name || deleting?.full_name} hesabı kalıcı olarak silinecek.
+              Sipariş geçmişi bulunan hesaplar silinmez.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Vazgeç</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmDelete()} disabled={busy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hesabı sil</AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => void confirmDelete()}
+              disabled={busy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hesabı sil
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

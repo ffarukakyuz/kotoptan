@@ -1,0 +1,5 @@
+{
+  "name": "KasımOğulları Toptan",
+  "description": "KasımOğulları depomuzun ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

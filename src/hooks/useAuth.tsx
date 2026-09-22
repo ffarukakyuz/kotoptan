@@ -10,6 +10,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import { isUserAdmin } from "@/lib/admin-config";
 
 export type Profile = {
   id: string;
@@ -38,17 +39,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadDetails = useCallback(async (userId: string) => {
-    const [{ data: profileRow }, { data: roleRows }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, business_name, phone, address")
-        .eq("id", userId)
-        .maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-    ]);
-    setProfile((profileRow as Profile | null) ?? null);
-    setIsAdmin(Boolean(roleRows?.some((r) => r.role === "admin")));
+  const loadDetails = useCallback(async (userId: string, currentUser?: User | null) => {
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("id, full_name, business_name, phone, address")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const prof = (profileRow as Profile | null) ?? null;
+    setProfile(prof);
+
+    // Kesin kural: Yalnızca belirlenen 5 numara/hesap yönetici olabilir, başka hiç kimse olamaz.
+    const adminStatus = isUserAdmin(currentUser ?? { id: userId }, prof);
+    setIsAdmin(adminStatus);
   }, []);
 
   useEffect(() => {
@@ -57,9 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
       setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
-        void loadDetails(nextSession.user.id);
+      const nextUser = nextSession?.user ?? null;
+      setUser(nextUser);
+      if (nextUser) {
+        void loadDetails(nextUser.id, nextUser);
       } else {
         setProfile(null);
         setIsAdmin(false);
@@ -70,8 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase.auth.getSession();
       if (!active) return;
       setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) await loadDetails(data.session.user.id);
+      const initialUser = data.session?.user ?? null;
+      setUser(initialUser);
+      if (initialUser) await loadDetails(initialUser.id, initialUser);
       setLoading(false);
     })();
 
@@ -82,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadDetails]);
 
   const refreshProfile = useCallback(async () => {
-    if (user) await loadDetails(user.id);
+    if (user) await loadDetails(user.id, user);
   }, [user, loadDetails]);
 
   const signOut = useCallback(async () => {

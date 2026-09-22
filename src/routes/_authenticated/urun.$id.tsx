@@ -5,7 +5,7 @@ import { ArrowLeft, Minus, Plus, PackageSearch, ShoppingCart } from "lucide-reac
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { categoryLabel, type Product } from "@/lib/catalog";
+import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
 import { useCart } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,13 +38,18 @@ function ProductDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, description, category, unit, image_url, is_active")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return (data ?? null) as Product | null;
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("id, name, description, category, unit, image_url, is_active")
+          .eq("id", id)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) return data as Product;
+      } catch (err) {
+        console.warn("Product fetch fallback active", err);
+      }
+      return FALLBACK_PRODUCTS.find((p) => p.id === id) ?? null;
     },
   });
 
