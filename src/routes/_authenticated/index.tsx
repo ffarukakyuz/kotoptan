@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -29,6 +29,44 @@ import {
   GidaCategoryIcon,
   BakliyatCategoryIcon,
 } from "@/components/CategoryIcons";
+
+async function fetchProductsFromDatabase(): Promise<Product[]> {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, description, category, unit, image_url, is_active")
+      .eq("is_active", true)
+      .order("name")
+      .limit(1000);
+
+    if (!error && data && data.length > 0) {
+      return data as Product[];
+    }
+  } catch (err) {
+    console.warn("[Products] Supabase client query threw:", err);
+  }
+
+  // Fallback to direct REST endpoint if client had any network/auth issue
+  try {
+    const restEndpoint = `${SUPABASE_URL}/rest/v1/products?select=id,name,description,category,unit,image_url,is_active&is_active=eq.true&order=name&limit=1000`;
+    const res = await fetch(restEndpoint, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json) && json.length > 0) {
+        return json as Product[];
+      }
+    }
+  } catch (restErr) {
+    console.warn("[Products] Direct REST fetch query threw:", restErr);
+  }
+
+  return [];
+}
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -60,33 +98,60 @@ function Index() {
   const [category, setCategory] = useState<string>("tumu");
   const [search, setSearch] = useState("");
 
-  const { data: dbProducts, isLoading } = useQuery({
+  // 1. TanStack Query for caching and server-rendering integration
+  const { data: dbProducts, isLoading: isQueryLoading } = useQuery({
     queryKey: ["products", "active"],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("id, name, description, category, unit, image_url, is_active")
-          .eq("is_active", true)
-          .order("name")
-          .limit(1000);
-        if (error) throw error;
-        return (data ?? []) as Product[];
-      } catch (err) {
-        console.warn("Supabase products fetch fallback active", err);
-        return [] as Product[];
-      }
-    },
+    queryFn: fetchProductsFromDatabase,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: true,
   });
+
+  // 2. Direct client-side state guarantee: runs in browser on component mount
+  const [clientProducts, setClientProducts] = useState<Product[]>([]);
+  const [isClientLoading, setIsClientLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadClientSide() {
+      try {
+        const items = await fetchProductsFromDatabase();
+        if (active && items.length > 0) {
+          setClientProducts(items);
+        }
+      } catch (err) {
+        console.warn("[Products] Client-side fetch error:", err);
+      } finally {
+        if (active) {
+          setIsClientLoading(false);
+        }
+      }
+    }
+
+    loadClientSide();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Merge client state and query data (whichever is populated first / most up-to-date)
+  const loadedProducts = useMemo(() => {
+    if (clientProducts.length > 0) return clientProducts;
+    if (dbProducts && dbProducts.length > 0) return dbProducts;
+    return [];
+  }, [clientProducts, dbProducts]);
 
   // Merge DB products with FALLBACK_PRODUCTS (ensuring Dalan soap and catalog items exist)
   const allProducts = useMemo(() => {
-    if (dbProducts && dbProducts.length > 0) {
-      const hasDalan = dbProducts.some((p) => p.name.toLowerCase().includes("dalan"));
-      return hasDalan ? dbProducts : [...FALLBACK_PRODUCTS.slice(0, 1), ...dbProducts];
+    if (loadedProducts && loadedProducts.length > 0) {
+      const hasDalan = loadedProducts.some((p) => p.name.toLowerCase().includes("dalan"));
+      return hasDalan ? loadedProducts : [...FALLBACK_PRODUCTS.slice(0, 1), ...loadedProducts];
     }
     return FALLBACK_PRODUCTS;
-  }, [dbProducts]);
+  }, [loadedProducts]);
+
+  const isLoading = isQueryLoading && isClientLoading && loadedProducts.length === 0;
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLocaleLowerCase("tr");

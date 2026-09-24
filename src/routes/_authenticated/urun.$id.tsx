@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Minus, Plus, PackageSearch, ShoppingCart, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -32,6 +32,42 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
   component: ProductDetail,
 });
 
+async function fetchSingleProduct(id: string): Promise<Product | null> {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, description, category, unit, image_url, is_active")
+      .eq("id", id)
+      .maybeSingle();
+    if (!error && data) return data as Product;
+  } catch (err) {
+    console.warn("[ProductDetail] Supabase client fetch failed:", err);
+  }
+
+  // REST fallback
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=id,name,description,category,unit,image_url,is_active&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+    if (res.ok) {
+      const arr = await res.json();
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr[0] as Product;
+      }
+    }
+  } catch (restErr) {
+    console.warn("[ProductDetail] REST fetch fallback failed:", restErr);
+  }
+
+  return FALLBACK_PRODUCTS.find((p) => p.id === id) ?? null;
+}
+
 function ProductDetail() {
   const { id } = Route.useParams();
   const { isAdmin } = useAuth();
@@ -40,20 +76,9 @@ function ProductDetail() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("id, name, description, category, unit, image_url, is_active")
-          .eq("id", id)
-          .maybeSingle();
-        if (error) throw error;
-        if (data) return data as Product;
-      } catch (err) {
-        console.warn("Product fetch fallback active", err);
-      }
-      return FALLBACK_PRODUCTS.find((p) => p.id === id) ?? null;
-    },
+    queryFn: () => fetchSingleProduct(id),
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: true,
   });
 
   if (isLoading) {

@@ -30,7 +30,7 @@ import { GoogleDriveSyncPanel } from "@/components/GoogleDriveSyncPanel";
 import type { DriveOrder } from "@/lib/google-drive";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ADMIN_MEMBERS, isUserAdmin, GUEST_ACCOUNT } from "@/lib/admin-config";
 import {
@@ -165,17 +165,49 @@ function AdminPage() {
     },
   });
 
-  const { data: allProducts = [] } = useQuery({
-    queryKey: ["admin-products"],
-    queryFn: async () => {
+  async function fetchAdminProductsList(): Promise<Product[]> {
+    try {
       const { data, error } = await supabase
         .from("products")
         .select("id, name, description, category, unit, image_url, is_active")
         .order("created_at", { ascending: false })
         .limit(1000);
-      if (error) throw error;
-      return (data ?? []) as Product[];
-    },
+      if (!error && data && data.length > 0) {
+        return data as Product[];
+      }
+    } catch (err) {
+      console.warn("[Admin] Supabase products fetch failed:", err);
+    }
+
+    // REST fallback
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/products?select=id,name,description,category,unit,image_url,is_active&order=created_at.desc&limit=1000`,
+        {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+        },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json) && json.length > 0) {
+          return json as Product[];
+        }
+      }
+    } catch (restErr) {
+      console.warn("[Admin] REST fetch fallback failed:", restErr);
+    }
+
+    return [];
+  }
+
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ["admin-products"],
+    queryFn: fetchAdminProductsList,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: true,
   });
 
   if (loading) {
@@ -710,15 +742,9 @@ function ProductsPanel({
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, description, category, unit, image_url, is_active")
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      if (error) throw error;
-      return (data ?? []) as Product[];
-    },
+    queryFn: fetchAdminProductsList,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: true,
   });
 
   // initialEditId verilmişse veya URL'den gelmişse düzenleme modunu başlat
