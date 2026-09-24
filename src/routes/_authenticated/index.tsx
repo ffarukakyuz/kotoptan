@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
+import { getPublicProductImageUrl } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,40 +112,8 @@ function Index() {
         />
 
         <div className="relative mx-auto max-w-4xl">
-          {/* Circular Category Navigation (White circles with black icons from Mockup) */}
-          <div className="flex items-center justify-between gap-3 px-2 sm:justify-center sm:gap-8">
-            {CIRCULAR_CATEGORIES.map(({ value, label, Icon }) => {
-              const isActive = category === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setCategory(value)}
-                  className="group flex flex-col items-center focus:outline-none cursor-pointer"
-                >
-                  <div
-                    className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg transition-all duration-200 group-hover:scale-105 active:scale-95 ${
-                      isActive
-                        ? "scale-105 ring-4 ring-[#166534] ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
-                        : "opacity-95 hover:opacity-100"
-                    }`}
-                  >
-                    <Icon className="h-8 w-8 sm:h-10 sm:w-10 text-slate-800 transition-transform group-hover:scale-110" />
-                  </div>
-                  <span
-                    className={`mt-2 text-xs sm:text-sm font-semibold tracking-wide transition-colors ${
-                      isActive ? "text-[#22c55e] font-bold" : "text-white/80 group-hover:text-white"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
           {/* Hero Featured Showcase Card (Pure mockup style: image, arrows, title, unit, pill) */}
-          <div className="mt-6 sm:mt-8">
+          <div className="mt-2 sm:mt-4">
             <HeroProductCard
               products={allProducts}
               selectedCategory={category}
@@ -182,11 +151,43 @@ function Index() {
 
       {/* CATALOG GRID SECTION */}
       <section id="urunler" className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        {/* Circular Category Navigation (Tümü, Gıda, Bakliyat, Temizlik) - Tüm Ürünler yazısının hemen üstünde */}
+        <div className="mb-8 flex items-center justify-center gap-3 sm:gap-8 overflow-x-auto py-2">
+          {CIRCULAR_CATEGORIES.map(({ value, label, Icon }) => {
+            const isActive = category === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setCategory(value)}
+                className="group flex flex-col items-center focus:outline-none cursor-pointer shrink-0"
+              >
+                <div
+                  className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg transition-all duration-200 group-hover:scale-105 active:scale-95 ${
+                    isActive
+                      ? "scale-105 ring-4 ring-[#166534] ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
+                      : "opacity-95 hover:opacity-100"
+                  }`}
+                >
+                  <Icon className="h-8 w-8 sm:h-10 sm:w-10 text-slate-800 transition-transform group-hover:scale-110" />
+                </div>
+                <span
+                  className={`mt-2 text-xs sm:text-sm font-semibold tracking-wide transition-colors ${
+                    isActive ? "text-[#22c55e] font-bold" : "text-white/80 group-hover:text-white"
+                  }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Search & Filter Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-white/10 pb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              {categoryLabel(category)} Ürünleri
+              {category === "tumu" ? "Tüm Ürünler" : `${categoryLabel(category)} Ürünleri`}
             </h2>
             <p className="mt-1 text-sm text-white/60">
               {filteredProducts.length} adet ürün listeleniyor
@@ -385,10 +386,10 @@ function HeroProductCard({
           params={{ id: current.id }}
           className="flex h-full w-full items-center justify-center transition-transform hover:scale-105"
         >
-          {current.image_url ? (
+          {getPublicProductImageUrl(current.image_url, current.name) ? (
             <img
               key={current.id}
-              src={current.image_url}
+              src={getPublicProductImageUrl(current.image_url, current.name)!}
               alt={current.name}
               className="h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95"
             />
@@ -502,9 +503,9 @@ function CatalogProductCard({ product }: { product: Product }) {
           params={{ id: product.id }}
           className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
         >
-          {product.image_url ? (
+          {getPublicProductImageUrl(product.image_url, product.name) ? (
             <img
-              src={product.image_url}
+              src={getPublicProductImageUrl(product.image_url, product.name)!}
               alt={product.name}
               loading="lazy"
               className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"

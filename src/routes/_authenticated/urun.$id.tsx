@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Minus, Plus, PackageSearch, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Minus, Plus, PackageSearch, ShoppingCart, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
+import { getPublicProductImageUrl } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
 
 function ProductDetail() {
   const { id } = Route.useParams();
+  const { isAdmin } = useAuth();
   const { add } = useCart();
   const [qty, setQty] = useState(1);
 
@@ -89,6 +92,32 @@ function ProductDetail() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
+      {/* Yönetici İşlem Bannerı */}
+      {isAdmin && (
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:px-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+              <Pencil className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">Yönetici Paneli Kısayolu</p>
+              <p className="text-xs text-muted-foreground">
+                Bu ürünü doğrudan yönetim panelindeki ürün düzenleme formunda açın.
+              </p>
+            </div>
+          </div>
+          <Button
+            asChild
+            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
+          >
+            <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Ürünü Düzenle
+            </Link>
+          </Button>
+        </div>
+      )}
+
       <Link
         to="/"
         className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -100,11 +129,11 @@ function ProductDetail() {
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card">
           <div className="aspect-square w-full">
-            {product.image_url ? (
+            {getPublicProductImageUrl(product.image_url, product.name) ? (
               <img
-                src={product.image_url}
+                src={getPublicProductImageUrl(product.image_url, product.name)!}
                 alt={product.name}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain p-4 bg-white"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -115,9 +144,21 @@ function ProductDetail() {
         </div>
 
         <div>
-          <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-            {categoryLabel(product.category)}
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+              {categoryLabel(product.category)}
+            </span>
+            {isAdmin && (
+              <Link
+                to="/yonetim"
+                search={{ tab: "products", edit: product.id }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+              >
+                <Pencil className="h-3 w-3" />
+                <span>Düzenle</span>
+              </Link>
+            )}
+          </div>
           <h1 className="mt-2 text-3xl font-extrabold leading-tight text-foreground">
             {product.name}
           </h1>
@@ -159,6 +200,19 @@ function ProductDetail() {
             <Button asChild size="lg" variant="outline">
               <Link to="/sepet">Sepete git</Link>
             </Button>
+            {isAdmin && (
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 font-semibold"
+              >
+                <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
+                  <Pencil className="h-4 w-4" />
+                  Yönetim Paneline Git
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>

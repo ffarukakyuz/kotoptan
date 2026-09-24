@@ -49,8 +49,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const prof = (profileRow as Profile | null) ?? null;
     setProfile(prof);
 
-    // Kesin kural: Yalnızca belirlenen 5 numara/hesap yönetici olabilir, başka hiç kimse olamaz.
-    const adminStatus = isUserAdmin(currentUser ?? { id: userId }, prof);
+    // Veritabanı rolü ve yönetici listesi kontrolü
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const isDbAdmin = roleRow?.role === "admin";
+    const adminStatus = isDbAdmin || isUserAdmin(currentUser ?? { id: userId }, prof);
     setIsAdmin(adminStatus);
   }, []);
 

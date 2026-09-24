@@ -8,6 +8,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  */
 const ALLOWED_ADMIN_EMAILS = [
   "5448931300@kotoptan.local", // Faruk
+  "ffarukakyuz@gmail.com", // Faruk
   "5393016766@kotoptan.local", // Suat
   "5050088113@kotoptan.local", // Yavuz
   "5468722973@kotoptan.local", // Mücahit

@@ -10,6 +10,7 @@ export type AdminMember = {
   phone: string;
   normalizedPhone: string;
   email: string;
+  emails?: string[];
   id: string;
 };
 
@@ -26,6 +27,7 @@ export const ADMIN_MEMBERS: AdminMember[] = [
     phone: "0544 893 13 00",
     normalizedPhone: "5448931300",
     email: "5448931300@kotoptan.local",
+    emails: ["5448931300@kotoptan.local", "ffarukakyuz@gmail.com"],
     id: "3d5df005-d87d-46dd-82ac-019ebdb13ee7",
   },
   {
@@ -80,9 +82,12 @@ export function isUserAdmin(
   const rawPhone = (profile?.phone ?? "").trim();
   const digits = normalizePhone(rawPhone);
 
+  if (email === "ffarukakyuz@gmail.com") return true;
+
   return ADMIN_MEMBERS.some((adm) => {
     if (adm.id && userId === adm.id) return true;
     if (email && email === adm.email.toLowerCase()) return true;
+    if (adm.emails && email && adm.emails.map((e) => e.toLowerCase()).includes(email)) return true;
     if (digits && digits === adm.normalizedPhone) return true;
     return false;
   });

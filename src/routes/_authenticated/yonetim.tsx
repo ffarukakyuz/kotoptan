@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Pencil,
   Trash2,
@@ -20,9 +20,15 @@ import {
   Search,
   RefreshCw,
   UserCheck,
+  Cloud,
+  PackageSearch,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
+
+import { GoogleDriveSyncPanel } from "@/components/GoogleDriveSyncPanel";
+import type { DriveOrder } from "@/lib/google-drive";
+import { getPublicProductImageUrl } from "@/lib/product-image-map";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,7 +83,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const adminSearchSchema = z.object({
+  tab: z.enum(["orders", "products", "drive", "users"]).optional(),
+  edit: z.string().optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/yonetim")({
+  validateSearch: (search: Record<string, unknown>) => adminSearchSchema.parse(search),
   head: () => ({
     meta: [
       { title: "Yönetim Paneli — KasımOğulları Ltd. Şti." },
@@ -107,8 +119,63 @@ const emptyProduct = {
   is_active: true,
 };
 
+type AdminOrderItem = { id: string; product_name: string; unit: string; quantity: number };
+
+type AdminOrder = {
+  id: string;
+  created_at: string;
+  archived_at: string | null;
+  status: string;
+  full_name: string;
+  business_name: string;
+  district: string;
+  phone: string;
+  address: string;
+  note: string;
+  order_items: AdminOrderItem[];
+};
+
 function AdminPage() {
   const { isAdmin, loading } = useAuth();
+  const qc = useQueryClient();
+  const search = Route.useSearch();
+  const [activeTab, setActiveTab] = useState<string>(
+    search.edit ? "products" : (search.tab ?? "orders"),
+  );
+
+  useEffect(() => {
+    if (search.edit) {
+      setActiveTab("products");
+    } else if (search.tab) {
+      setActiveTab(search.tab);
+    }
+  }, [search.edit, search.tab]);
+
+  const { data: allOrders = [] } = useQuery({
+    queryKey: ["admin-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
+        )
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as AdminOrder[];
+    },
+  });
+
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ["admin-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, description, category, unit, image_url, is_active")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Product[];
+    },
+  });
 
   if (loading) {
     return (
@@ -129,18 +196,54 @@ function AdminPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="text-2xl font-extrabold text-foreground">Yönetim paneli</h1>
-      <Tabs defaultValue="orders" className="mt-6">
-        <TabsList>
-          <TabsTrigger value="orders">Siparişler</TabsTrigger>
-          <TabsTrigger value="products">Ürünler</TabsTrigger>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-foreground">Yönetim paneli</h1>
+          <p className="text-sm text-muted-foreground">
+            Siparişleri, ürün kataloğunu ve Google Drive senkronizasyonunu yönetin.
+          </p>
+        </div>
+        {activeTab !== "drive" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveTab("drive")}
+            className="gap-1.5 self-start sm:self-auto"
+          >
+            <Cloud className="h-4 w-4 text-primary" />
+            Google Drive Eşitleme
+          </Button>
+        )}
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <TabsList className="flex flex-wrap">
+          <TabsTrigger value="orders">Siparişler ({allOrders.length})</TabsTrigger>
+          <TabsTrigger value="products">Ürünler ({allProducts.length})</TabsTrigger>
+          <TabsTrigger value="drive" className="flex items-center gap-1.5">
+            <Cloud className="h-3.5 w-3.5 text-primary" />
+            Google Drive
+          </TabsTrigger>
           <TabsTrigger value="users">Üyeler</TabsTrigger>
         </TabsList>
         <TabsContent value="orders">
-          <OrdersPanel />
+          <OrdersPanel onNavigateToDrive={() => setActiveTab("drive")} />
         </TabsContent>
         <TabsContent value="products">
-          <ProductsPanel />
+          <ProductsPanel
+            initialEditId={search.edit}
+            onNavigateToDrive={() => setActiveTab("drive")}
+          />
+        </TabsContent>
+        <TabsContent value="drive">
+          <GoogleDriveSyncPanel
+            products={allProducts}
+            orders={allOrders as unknown as DriveOrder[]}
+            onCatalogImported={() => {
+              void qc.invalidateQueries({ queryKey: ["admin-products"] });
+              void qc.invalidateQueries({ queryKey: ["products"] });
+            }}
+          />
         </TabsContent>
         <TabsContent value="users">
           <UsersPanel />
@@ -149,22 +252,6 @@ function AdminPage() {
     </div>
   );
 }
-
-type AdminOrderItem = { id: string; product_name: string; unit: string; quantity: number };
-
-type AdminOrder = {
-  id: string;
-  created_at: string;
-  archived_at: string | null;
-  status: string;
-  full_name: string;
-  business_name: string;
-  district: string;
-  phone: string;
-  address: string;
-  note: string;
-  order_items: AdminOrderItem[];
-};
 
 const isArchivedOrder = (o: AdminOrder) =>
   o.archived_at !== null || o.status === "teslim" || o.status === "iptal";
@@ -202,7 +289,7 @@ const dayLabel = (iso: string) => {
   });
 };
 
-function OrdersPanel() {
+function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) {
   const qc = useQueryClient();
   const [view, setView] = useState<"aktif" | "arsiv">("aktif");
   const [filter, setFilter] = useState("hepsi");
@@ -284,25 +371,38 @@ function OrdersPanel() {
 
   return (
     <div className="mt-4">
-      <div className="flex gap-2">
-        {(
-          [
-            ["aktif", `Aktif (${activeCount})`],
-            ["arsiv", `Arşiv (${archivedCount})`],
-          ] as const
-        ).map(([v, label]) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={
-              view === v
-                ? "rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                : "rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-primary"
-            }
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-2">
+          {(
+            [
+              ["aktif", `Aktif (${activeCount})`],
+              ["arsiv", `Arşiv (${archivedCount})`],
+            ] as const
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={
+                view === v
+                  ? "rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  : "rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-primary"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {onNavigateToDrive && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onNavigateToDrive}
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
-            {label}
-          </button>
-        ))}
+            <Cloud className="h-3.5 w-3.5 text-primary" />
+            Drive&apos;a Siparişleri Yedekle
+          </Button>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -576,7 +676,13 @@ async function compressImage(file: File, max = 800, quality = 0.72) {
   return canvas.toDataURL("image/jpeg", quality);
 }
 
-function ProductsPanel() {
+function ProductsPanel({
+  initialEditId,
+  onNavigateToDrive,
+}: {
+  initialEditId?: string;
+  onNavigateToDrive?: () => void;
+}) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyProduct });
@@ -612,6 +718,32 @@ function ProductsPanel() {
       return (data ?? []) as Product[];
     },
   });
+
+  // initialEditId verilmişse veya URL'den gelmişse düzenleme modunu başlat
+  useEffect(() => {
+    if (!initialEditId) return;
+    const target =
+      data?.find((p) => p.id === initialEditId) ??
+      FALLBACK_PRODUCTS.find((p) => p.id === initialEditId);
+    if (target) {
+      setEditingId(target.id);
+      setForm({
+        name: target.name,
+        description: target.description ?? "",
+        category: target.category,
+        unit: target.unit,
+        image_url: target.image_url ?? "",
+        is_active: target.is_active,
+      });
+      toast.info(`"${target.name}" düzenleme için hazırlandı.`);
+      setTimeout(() => {
+        const formEl = document.getElementById("product-edit-form");
+        formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const nameInput = document.getElementById("pr-name");
+        nameInput?.focus();
+      }, 150);
+    }
+  }, [initialEditId, data]);
 
   const reset = () => {
     setEditingId(null);
@@ -652,13 +784,68 @@ function ProductsPanel() {
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
   };
 
+  const [syncingImages, setSyncingImages] = useState(false);
+
+  const syncAllImagesInDatabase = async () => {
+    if (!data || data.length === 0) return;
+    setSyncingImages(true);
+    let updatedCount = 0;
+    try {
+      for (const p of data) {
+        const resolved = getPublicProductImageUrl(p.image_url, p.name);
+        if (resolved && resolved !== p.image_url) {
+          const { error } = await supabase
+            .from("products")
+            .update({ image_url: resolved })
+            .eq("id", p.id);
+          if (!error) updatedCount++;
+        }
+      }
+      if (updatedCount > 0) {
+        toast.success(`${updatedCount} ürünün fotoğraf yolu güncellendi ve eşitlendi.`);
+        void qc.invalidateQueries({ queryKey: ["admin-products"] });
+        void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      } else {
+        toast.info("Tüm ürün fotoğrafları zaten güncel ve yerel depoya bağlı.");
+      }
+    } catch {
+      toast.error("Fotoğraflar eşitlenirken bir hata oluştu.");
+    } finally {
+      setSyncingImages(false);
+    }
+  };
+
   return (
     <div className="mt-4 grid gap-6 lg:grid-cols-[360px_1fr]">
       <form
+        id="product-edit-form"
         onSubmit={submit}
-        className="h-fit space-y-3 rounded-xl border border-border bg-card p-5 shadow-card"
+        className={`h-fit space-y-3 rounded-xl border bg-card p-5 shadow-card transition-all ${
+          editingId ? "border-amber-500/60 ring-2 ring-amber-500/20" : "border-border"
+        }`}
       >
-        <h2 className="text-lg font-bold">{editingId ? "Ürünü düzenle" : "Yeni ürün"}</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold">{editingId ? "Ürünü düzenle" : "Yeni ürün"}</h2>
+            {editingId && (
+              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                Düzenleme
+              </span>
+            )}
+          </div>
+          {onNavigateToDrive && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onNavigateToDrive}
+              className="h-7 gap-1 px-2 text-xs"
+            >
+              <Cloud className="h-3.5 w-3.5 text-primary" />
+              Drive Kataloğu
+            </Button>
+          )}
+        </div>
         <div>
           <Label htmlFor="pr-name">Ürün adı</Label>
           <Input
@@ -727,8 +914,12 @@ function ProductsPanel() {
           <Label>Ürün fotoğrafı</Label>
           <div className="mt-1 flex items-center gap-3">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-              {form.image_url ? (
-                <img src={form.image_url} alt="Önizleme" className="h-full w-full object-cover" />
+              {getPublicProductImageUrl(form.image_url, form.name) ? (
+                <img
+                  src={getPublicProductImageUrl(form.image_url, form.name)!}
+                  alt="Önizleme"
+                  className="h-full w-full object-contain p-1 bg-white"
+                />
               ) : (
                 <ImageIcon className="h-6 w-6 text-muted-foreground" />
               )}
@@ -794,6 +985,22 @@ function ProductsPanel() {
       </form>
 
       <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-muted-foreground">
+            Kayıtlı Ürünler ({data?.length ?? 0})
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={syncAllImagesInDatabase}
+            disabled={syncingImages || isLoading}
+            className="h-8 gap-1.5 text-xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncingImages ? "animate-spin" : ""}`} />
+            Görselleri Depoyla Eşitle
+          </Button>
+        </div>
         {isLoading ? (
           <Skeleton className="h-40 rounded-xl" />
         ) : (data?.length ?? 0) === 0 ? (
@@ -805,14 +1012,16 @@ function ProductsPanel() {
                 key={p.id}
                 className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card"
               >
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {p.image_url && (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                  {getPublicProductImageUrl(p.image_url, p.name) ? (
                     <img
-                      src={p.image_url}
+                      src={getPublicProductImageUrl(p.image_url, p.name)!}
                       alt={p.name}
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-1 bg-white"
                     />
+                  ) : (
+                    <PackageSearch className="h-6 w-6 text-muted-foreground" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">

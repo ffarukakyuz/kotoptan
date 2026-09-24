@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -140,27 +141,47 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <div className="flex min-h-screen flex-col font-sans">
-            <PWAInstallBanner />
-            <SiteHeader />
-            <main className="flex-1">
-              {/* Required: nested routes render here. */}
-              <Outlet />
-            </main>
-            <footer className="mt-auto border-t border-white/10 bg-[#040806] py-8 text-white/60">
-              <div className="mx-auto max-w-6xl px-4 text-sm">
-                <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
-                <p className="mt-1">
-                  Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır,
-                  ödeme teslimat sırasında yapılır.
-                </p>
-              </div>
-            </footer>
-          </div>
-          <SupportChat />
-          <Toaster position="top-center" richColors />
+          <RootAppContent />
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function RootAppContent() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAuthPage = pathname === "/giris";
+
+  if (isAuthPage) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#060b08] font-sans text-white">
+        <main className="flex flex-1 items-center justify-center p-4">
+          <Outlet />
+        </main>
+        <Toaster position="top-center" richColors />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col font-sans">
+      <PWAInstallBanner />
+      <SiteHeader />
+      <main className="flex-1">
+        {/* Required: nested routes render here. */}
+        <Outlet />
+      </main>
+      <footer className="mt-auto border-t border-white/10 bg-[#040806] py-8 text-white/60">
+        <div className="mx-auto max-w-6xl px-4 text-sm">
+          <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
+          <p className="mt-1">
+            Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır, ödeme
+            teslimat sırasında yapılır.
+          </p>
+        </div>
+      </footer>
+      <SupportChat />
+      <Toaster position="top-center" richColors />
+    </div>
   );
 }

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-ro
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Box, Lock, ShieldCheck, UserPlus, LogIn, Store } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ADMIN_MEMBERS } from "@/lib/admin-config";
@@ -97,10 +98,13 @@ function AuthPage() {
       identifier.toLowerCase() === "misafir@kotoptan.local";
 
     let targetEmail = "";
-    const normalized = normalizePhone(identifier);
+    const isEmailInput = identifier.includes("@");
+    const normalized = isEmailInput ? "" : normalizePhone(identifier);
 
     if (isGuest) {
       targetEmail = "misafir@kotoptan.local";
+    } else if (isEmailInput) {
+      targetEmail = identifier.toLowerCase().trim();
     } else {
       // Rastgele veya geçersiz numaraları reddet (Türk cep numarası formatı: 05xx xxx xx xx)
       if (!/^5\d{9}$/.test(normalized)) {
@@ -126,9 +130,16 @@ function AuthPage() {
       }
 
       // Yönetici mi kontrolü
-      const isAdmin = ADMIN_MEMBERS.some((m) => m.normalizedPhone === normalized);
+      const isAdmin =
+        identifier.toLowerCase() === "ffarukakyuz@gmail.com" ||
+        ADMIN_MEMBERS.some(
+          (m) =>
+            (normalized && m.normalizedPhone === normalized) ||
+            m.email.toLowerCase() === targetEmail ||
+            m.emails?.map((e) => e.toLowerCase()).includes(targetEmail),
+        );
 
-      // Numara kayıtlı mı kontrolü
+      // Numara / e-posta kayıtlı mı kontrolü
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(targetEmail);
       const isAccountRegistered =
         isAdmin ||
@@ -136,8 +147,10 @@ function AuthPage() {
         resetErr?.message?.includes("not allowed");
 
       if (!isAccountRegistered) {
-        toast.error("Bu telefon numarası kayıtlı değil. Lütfen önce hesap oluşturun.");
-        setRegisterPhone(normalized.startsWith("0") ? normalized : `0${normalized}`);
+        toast.error("Bu hesap kayıtlı değil. Lütfen önce hesap oluşturun.");
+        if (normalized) {
+          setRegisterPhone(normalized.startsWith("0") ? normalized : `0${normalized}`);
+        }
         setMode("register");
         return;
       }
@@ -209,127 +222,203 @@ function AuthPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-12">
-      <h1 className="text-2xl font-extrabold text-foreground">Hesabınıza girin</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Telefon numaranız ve şifrenizle giriş yapın. Market/bakkal bilgilerinizi bir kez kaydetmeniz
-        yeterli.
-      </p>
+    <div className="mx-auto w-full max-w-md px-4 py-8">
+      {/* Brand Header */}
+      <div className="mb-6 text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#166534] text-white shadow-lg shadow-emerald-950/60 ring-4 ring-emerald-500/20">
+          <Box className="h-7 w-7 stroke-[2.2]" />
+        </div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">
+          Kasım<span className="text-[#22c55e]">Oğulları</span> Ltd. Şti.
+        </h1>
+        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+          Toptan Satış & Bayi Girişi
+        </p>
+      </div>
 
-      {mode === "login" ? (
-        <>
-          <form className="space-y-4" onSubmit={onSignIn}>
-            <div>
-              <Label htmlFor="si-phone">Telefon Numarası</Label>
-              <Input
-                id="si-phone"
-                name="phone"
-                type="text"
-                placeholder="05xx xxx xx xx"
-                value={loginPhone}
-                onChange={(e) => setLoginPhone(e.target.value)}
-                required
-                maxLength={40}
-                autoComplete="username"
-              />
-            </div>
-            <div>
-              <Label htmlFor="si-password">Şifre</Label>
-              <Input
-                id="si-password"
-                name="password"
-                type="password"
-                required
-                maxLength={72}
-                autoComplete="current-password"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full bg-[#166534] hover:bg-[#14532d] text-white"
-              disabled={busy}
-            >
-              {busy ? "Giriş yapılıyor..." : "Giriş yap"}
-            </Button>
-          </form>
+      {/* Mandatory Auth Notice */}
+      <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 text-center text-xs text-emerald-200 backdrop-blur-sm shadow-inner">
+        <div className="flex items-center justify-center gap-1.5 font-bold text-emerald-300">
+          <Lock className="h-4 w-4" />
+          <span>Giriş Yapılması Zorunludur</span>
+        </div>
+        <p className="mt-1 text-[11px] text-emerald-200/80 leading-relaxed">
+          Toptan ürün kataloğumuzu incelemek ve sipariş oluşturmak için lütfen telefon numaranızla
+          giriş yapın veya işletme hesabı açın.
+        </p>
+      </div>
 
-          <button
-            type="button"
-            className="mt-4 w-full text-sm font-medium text-primary underline-offset-4 hover:underline"
-            onClick={() => setMode("register")}
-          >
-            Hesabınız yok mu? Hesap oluşturun
-          </button>
-        </>
-      ) : (
-        <>
-          <form className="space-y-4" onSubmit={onSignUp}>
-            <div>
-              <Label htmlFor="su-name">Ad soyad</Label>
-              <Input
-                id="su-name"
-                name="full_name"
-                placeholder="Adınız ve Soyadınız"
-                required
-                maxLength={100}
-              />
-            </div>
-            <div>
-              <Label htmlFor="su-business">Market / bakkal adı</Label>
-              <Input
-                id="su-business"
-                name="business_name"
-                placeholder="Örn: Güven Market"
-                required
-                maxLength={120}
-              />
-            </div>
-            <div>
-              <Label htmlFor="su-phone">Telefon numarası</Label>
-              <Input
-                id="su-phone"
-                name="phone"
-                type="tel"
-                inputMode="tel"
-                placeholder="05xx xxx xx xx"
-                value={registerPhone}
-                onChange={(e) => setRegisterPhone(e.target.value)}
-                required
-                maxLength={20}
-              />
-            </div>
-            <div>
-              <Label htmlFor="su-address">Teslimat adresi</Label>
-              <Textarea
-                id="su-address"
-                name="address"
-                placeholder="İl, ilçe, mahalle ve cadde bilgisi..."
-                required
-                maxLength={500}
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="su-password">Şifre (En az 6 karakter)</Label>
-              <Input id="su-password" name="password" type="password" required maxLength={72} />
-            </div>
-            <Button
-              type="submit"
-              className="w-full bg-[#166534] hover:bg-[#14532d] text-white"
-              disabled={busy}
+      {/* Mode Switcher Tabs */}
+      <div className="mb-6 grid grid-cols-2 rounded-xl bg-white/5 p-1 border border-white/10">
+        <button
+          type="button"
+          onClick={() => setMode("login")}
+          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all cursor-pointer ${
+            mode === "login"
+              ? "bg-[#166534] text-white shadow-md shadow-black/40"
+              : "text-white/60 hover:text-white"
+          }`}
+        >
+          <LogIn className="h-4 w-4" />
+          Giriş Yap
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("register")}
+          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all cursor-pointer ${
+            mode === "register"
+              ? "bg-[#166534] text-white shadow-md shadow-black/40"
+              : "text-white/60 hover:text-white"
+          }`}
+        >
+          <UserPlus className="h-4 w-4" />
+          Hesap Oluştur
+        </button>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-md">
+        {mode === "login" ? (
+          <>
+            <form className="space-y-4" onSubmit={onSignIn}>
+              <div>
+                <Label htmlFor="si-phone" className="text-white/80 text-xs">
+                  Telefon Numarası
+                </Label>
+                <Input
+                  id="si-phone"
+                  name="phone"
+                  type="text"
+                  placeholder="05xx xxx xx xx"
+                  value={loginPhone}
+                  onChange={(e) => setLoginPhone(e.target.value)}
+                  required
+                  maxLength={40}
+                  autoComplete="username"
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="si-password" className="text-white/80 text-xs">
+                  Şifre
+                </Label>
+                <Input
+                  id="si-password"
+                  name="password"
+                  type="password"
+                  required
+                  maxLength={72}
+                  autoComplete="current-password"
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-[#166534] hover:bg-[#14532d] text-white font-semibold shadow-md cursor-pointer"
+                disabled={busy}
+              >
+                {busy ? "Giriş yapılıyor..." : "Giriş Yap"}
+              </Button>
+            </form>
+
+            <button
+              type="button"
+              className="mt-5 w-full text-center text-xs font-medium text-emerald-400 hover:text-emerald-300 underline underline-offset-4 cursor-pointer"
+              onClick={() => setMode("register")}
             >
-              {busy ? "Kayıt yapılıyor..." : "Hesap oluştur"}
-            </Button>
-          </form>
-          <button
-            type="button"
-            className="mt-4 w-full text-sm font-medium text-primary underline-offset-4 hover:underline"
-            onClick={() => setMode("login")}
-          >
-            Zaten hesabınız var mı? Giriş yapın
-          </button>
-        </>
-      )}
+              Henüz işletme hesabınız yok mu? Hesap oluşturun
+            </button>
+          </>
+        ) : (
+          <>
+            <form className="space-y-4" onSubmit={onSignUp}>
+              <div>
+                <Label htmlFor="su-name" className="text-white/80 text-xs">
+                  Yetkili Adı Soyadı
+                </Label>
+                <Input
+                  id="su-name"
+                  name="full_name"
+                  placeholder="Adınız ve Soyadınız"
+                  required
+                  maxLength={100}
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="su-business" className="text-white/80 text-xs">
+                  Market / Bakkal / İşletme Adı
+                </Label>
+                <Input
+                  id="su-business"
+                  name="business_name"
+                  placeholder="Örn: Güven Market"
+                  required
+                  maxLength={120}
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="su-phone" className="text-white/80 text-xs">
+                  Cep Telefonu Numarası
+                </Label>
+                <Input
+                  id="su-phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="05xx xxx xx xx"
+                  value={registerPhone}
+                  onChange={(e) => setRegisterPhone(e.target.value)}
+                  required
+                  maxLength={20}
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="su-address" className="text-white/80 text-xs">
+                  Teslimat Adresi
+                </Label>
+                <Textarea
+                  id="su-address"
+                  name="address"
+                  placeholder="İl, ilçe, mahalle ve dükkan adresi..."
+                  required
+                  maxLength={500}
+                  rows={3}
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="su-password" className="text-white/80 text-xs">
+                  Şifre (En az 6 karakter)
+                </Label>
+                <Input
+                  id="su-password"
+                  name="password"
+                  type="password"
+                  required
+                  maxLength={72}
+                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-[#166534] hover:bg-[#14532d] text-white font-semibold shadow-md cursor-pointer"
+                disabled={busy}
+              >
+                {busy ? "Hesap açılıyor..." : "İşletme Hesabı Oluştur"}
+              </Button>
+            </form>
+            <button
+              type="button"
+              className="mt-5 w-full text-center text-xs font-medium text-emerald-400 hover:text-emerald-300 underline underline-offset-4 cursor-pointer"
+              onClick={() => setMode("login")}
+            >
+              Zaten hesabınız var mı? Giriş yapın
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

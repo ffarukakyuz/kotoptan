@@ -60,7 +60,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Doğal bitkisel gliserinli kalıp sabun. Koli içi 24 paket.",
     category: "temizlik",
     unit: "4x150 Gr",
-    image_url: "/src/assets/images/dalan_gliserinli_sabun_1790110969698.jpg",
+    image_url: "/products/dalan_gliserinli_sabun_1790110969698.jpg",
     is_active: true,
   },
   {
@@ -69,7 +69,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Saf ayçiçek yağı, koli içi 4 adet 5 litrelik pet.",
     category: "gida",
     unit: "koli (4 adet)",
-    image_url: null,
+    image_url: "/products/aycicek-yagi.jpg",
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Yerli üretim, temizlenmiş birinci kalite kırmızı mercimek.",
     category: "bakliyat",
     unit: "çuval",
-    image_url: null,
+    image_url: "/products/kirmizi-mercimek.jpg",
     is_active: true,
   },
   {
@@ -87,7 +87,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Gönen yöresi baldo pirinç, 25 kg toptan çuval.",
     category: "bakliyat",
     unit: "çuval",
-    image_url: null,
+    image_url: "/products/akel-pirinc-5kg.png",
     is_active: true,
   },
   {
@@ -96,7 +96,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Yoğun kıvamlı klorlu hijyenik çamaşır suyu, koli içi 4 adet.",
     category: "temizlik",
     unit: "koli (4 adet)",
-    image_url: null,
+    image_url: "/products/doa-camasir-suyu-35kg.png",
     is_active: true,
   },
   {
@@ -105,7 +105,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Çift konsantre domates salçası, koli içi 12 teneke kutu.",
     category: "gida",
     unit: "koli (12 adet)",
-    image_url: null,
+    image_url: "/products/domates-salcasi.jpg",
     is_active: true,
   },
   {
@@ -114,7 +114,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Hızlı pişen iri taneli dermason kuru fasulye.",
     category: "bakliyat",
     unit: "çuval",
-    image_url: null,
+    image_url: "/products/fasulye.jpg",
     is_active: true,
   },
   {
@@ -123,7 +123,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Pancar şekeri, 50 kg polipropilen çuval.",
     category: "gida",
     unit: "çuval",
-    image_url: null,
+    image_url: "/products/toz-seker.jpg",
     is_active: true,
   },
   {
@@ -132,7 +132,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "9mm boylu yerli koçbaşı nohut.",
     category: "bakliyat",
     unit: "çuval",
-    image_url: null,
+    image_url: "/products/nohut.jpg",
     is_active: true,
   },
   {
@@ -141,7 +141,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Kalıcı parfümlü genel zemin ve yüzey temizleyici.",
     category: "temizlik",
     unit: "koli (4 adet)",
-    image_url: null,
+    image_url: "/products/doa-yuzey-temizleyici-25l.jpg",
     is_active: true,
   },
   {
@@ -150,7 +150,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "%100 durum buğdayı irmiğinden, koli içi 20 paket.",
     category: "gida",
     unit: "koli (20 adet)",
-    image_url: null,
+    image_url: "/products/burgu.jpg",
     is_active: true,
   },
   {
@@ -159,7 +159,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Çift katlı yumuşak dokulu tuvalet kağıdı, 32 rulo paket.",
     category: "temizlik",
     unit: "paket (32 rulo)",
-    image_url: null,
+    image_url: "/products/teno-tuvalet-kagidi-32li.jpg",
     is_active: true,
   },
 ];
