@@ -1,11 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://placeholder-project.supabase.co";
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL || "https://fgobmapryccuqcmbotkj.supabase.co";
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ??
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  "placeholder-key";
+  "sb_publishable_12XuaSyp-u5xs3aK6LLtMA_z4SLAgdB";
 
 if (
   !import.meta.env.VITE_SUPABASE_URL ||

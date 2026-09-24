@@ -40,11 +40,14 @@ try {
     console.log("Copied .output/public into dist/");
   }
 
-  // 1.5 Ensure public/ folder assets (products, icons, etc.) are directly copied to dist/
+  // 1.5 Ensure public/ folder assets (products, icons, _redirects, etc.) are directly copied to dist/ and .output/public
   const staticPublicDir = path.join(rootDir, "public");
   if (fs.existsSync(staticPublicDir)) {
     copyDirRecursive(staticPublicDir, distDir);
-    console.log("Copied public/ assets directly into dist/");
+    if (fs.existsSync(outputPublicDir)) {
+      copyDirRecursive(staticPublicDir, outputPublicDir);
+    }
+    console.log("Copied public/ assets directly into dist/ and .output/public");
   }
 
   // 2. Also keep a copy of .output inside dist/.output
