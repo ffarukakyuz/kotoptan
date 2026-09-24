@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 import { GoogleDriveSyncPanel } from "@/components/GoogleDriveSyncPanel";
 import type { DriveOrder } from "@/lib/google-drive";
-import { getPublicProductImageUrl } from "@/lib/product-image-map";
+import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -171,7 +171,8 @@ function AdminPage() {
       const { data, error } = await supabase
         .from("products")
         .select("id, name, description, category, unit, image_url, is_active")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(1000);
       if (error) throw error;
       return (data ?? []) as Product[];
     },
@@ -713,7 +714,8 @@ function ProductsPanel({
       const { data, error } = await supabase
         .from("products")
         .select("id, name, description, category, unit, image_url, is_active")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(1000);
       if (error) throw error;
       return (data ?? []) as Product[];
     },
@@ -914,15 +916,12 @@ function ProductsPanel({
           <Label>Ürün fotoğrafı</Label>
           <div className="mt-1 flex items-center gap-3">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-              {getPublicProductImageUrl(form.image_url, form.name) ? (
-                <img
-                  src={getPublicProductImageUrl(form.image_url, form.name)!}
-                  alt="Önizleme"
-                  className="h-full w-full object-contain p-1 bg-white"
-                />
-              ) : (
-                <ImageIcon className="h-6 w-6 text-muted-foreground" />
-              )}
+              <img
+                src={getPublicProductImageUrl(form.image_url, form.name, form.category)}
+                alt="Önizleme"
+                onError={(e) => handleProductImageError(e, form.name, form.category)}
+                className="h-full w-full object-contain p-1 bg-white"
+              />
             </div>
             <div className="flex flex-1 flex-col gap-2">
               <input
@@ -1013,16 +1012,13 @@ function ProductsPanel({
                 className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card"
               >
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-                  {getPublicProductImageUrl(p.image_url, p.name) ? (
-                    <img
-                      src={getPublicProductImageUrl(p.image_url, p.name)!}
-                      alt={p.name}
-                      loading="lazy"
-                      className="h-full w-full object-contain p-1 bg-white"
-                    />
-                  ) : (
-                    <PackageSearch className="h-6 w-6 text-muted-foreground" />
-                  )}
+                  <img
+                    src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
+                    alt={p.name}
+                    loading="lazy"
+                    onError={(e) => handleProductImageError(e, p.name, p.category)}
+                    className="h-full w-full object-contain p-1 bg-white"
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{p.name}</p>

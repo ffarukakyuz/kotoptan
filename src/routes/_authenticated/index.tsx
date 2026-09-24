@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
-import { getPublicProductImageUrl } from "@/lib/product-image-map";
+import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,7 +68,8 @@ function Index() {
           .from("products")
           .select("id, name, description, category, unit, image_url, is_active")
           .eq("is_active", true)
-          .order("name");
+          .order("name")
+          .limit(1000);
         if (error) throw error;
         return (data ?? []) as Product[];
       } catch (err) {
@@ -386,19 +387,13 @@ function HeroProductCard({
           params={{ id: current.id }}
           className="flex h-full w-full items-center justify-center transition-transform hover:scale-105"
         >
-          {getPublicProductImageUrl(current.image_url, current.name) ? (
-            <img
-              key={current.id}
-              src={getPublicProductImageUrl(current.image_url, current.name)!}
-              alt={current.name}
-              className="h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-slate-400">
-              <PackageSearch className="h-16 w-16 stroke-[1.5]" />
-              <span className="mt-2 text-xs font-medium text-slate-500">Ürün Görseli</span>
-            </div>
-          )}
+          <img
+            key={current.id}
+            src={getPublicProductImageUrl(current.image_url, current.name, current.category)}
+            alt={current.name}
+            onError={(e) => handleProductImageError(e, current.name, current.category)}
+            className="h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95"
+          />
         </Link>
 
         {/* Left Arrow Button */}
@@ -503,18 +498,13 @@ function CatalogProductCard({ product }: { product: Product }) {
           params={{ id: product.id }}
           className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
         >
-          {getPublicProductImageUrl(product.image_url, product.name) ? (
-            <img
-              src={getPublicProductImageUrl(product.image_url, product.name)!}
-              alt={product.name}
-              loading="lazy"
-              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-slate-300">
-              <PackageSearch className="h-10 w-10" />
-            </div>
-          )}
+          <img
+            src={getPublicProductImageUrl(product.image_url, product.name, product.category)}
+            alt={product.name}
+            loading="lazy"
+            onError={(e) => handleProductImageError(e, product.name, product.category)}
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          />
         </Link>
 
         <div className="mt-3 flex flex-col">

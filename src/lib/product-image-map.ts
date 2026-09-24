@@ -289,14 +289,90 @@ const PRODUCT_KEYWORD_MAP: Array<{ keywords: string[]; path: string }> = [
   { keywords: ["vişne reçeli", "visne receli"], path: "/products/visne-receli.jpg" },
   { keywords: ["kayısı reçeli", "kayisi receli"], path: "/products/kayisi-receli.jpg" },
   { keywords: ["incir reçeli", "incir receli"], path: "/products/incir-receli.jpg" },
-  { keywords: ["reçel", "receli"], path: "/products/cilek-receli.jpg" },
+  { keywords: ["reçel", "receli", "recel"], path: "/products/cilek-receli.jpg" },
   { keywords: ["çamaşır", "camasir"], path: "/products/camasir-suyu.jpg" },
+  { keywords: ["bingo", "matik"], path: "/products/matik.jpg" },
+  { keywords: ["bingo", "tablet"], path: "/products/bulasik-tablet.jpg" },
+  { keywords: ["bingo", "yüzey", "yuzey"], path: "/products/yuzey-temizleyici.jpg" },
+  { keywords: ["bingo", "yumuşatıcı", "yumusatici"], path: "/products/yumusatici.jpg" },
+  { keywords: ["bingo", "yağ", "yag"], path: "/products/yag-cozucu.jpg" },
+  { keywords: ["cif", "krem"], path: "/products/temizlik-kremi.jpg" },
+  { keywords: ["cif", "sprey"], path: "/products/yag-cozucu.jpg" },
+  { keywords: ["cif"], path: "/products/temizlik-kremi.jpg" },
+  { keywords: ["dalan", "roxy"], path: "/products/toz-deterjan.jpg" },
+  { keywords: ["dalan", "sabun"], path: "/products/dalan_gliserinli_sabun_1790110969698.jpg" },
+  { keywords: ["canbebe"], path: "/products/bebek-bezi.jpg" },
+  { keywords: ["canped"], path: "/products/bebek-bezi.jpg" },
+  { keywords: ["burcu", "salça", "salca"], path: "/products/domates-salcasi.jpg" },
+  { keywords: ["burcu", "mısır", "misir"], path: "/products/misir-konserve.jpg" },
+  { keywords: ["burcu", "mayonez"], path: "/products/mayonez.jpg" },
+  { keywords: ["burcu", "ketçap", "ketcap"], path: "/products/ketcap.jpg" },
+  { keywords: ["burcu", "fasulye"], path: "/products/fasulye-konserve.jpg" },
+  { keywords: ["demko"], path: "/products/domates-salcasi.jpg" },
+  { keywords: ["tukaş", "tukas", "salça", "salca"], path: "/products/biber-salcasi.jpg" },
+  { keywords: ["tukaş", "tukas", "garnitür", "garnitur"], path: "/products/garnitur.jpg" },
+  { keywords: ["tukaş", "tukas", "mısır", "misir"], path: "/products/misir-konserve.jpg" },
+  { keywords: ["finish", "tuz"], path: "/products/bulasik-tablet.jpg" },
+  { keywords: ["finish", "parlatıcı", "parlatici"], path: "/products/makine-parlatici.jpg" },
+  { keywords: ["pril", "parlatıcı", "parlatici"], path: "/products/makine-parlatici.jpg" },
+  { keywords: ["filiz", "makarna"], path: "/products/burgu.jpg" },
+  { keywords: ["filiz", "reçel", "recel"], path: "/products/cilek-receli.jpg" },
+  { keywords: ["hemas", "reçel", "recel"], path: "/products/cilek-receli.jpg" },
+  { keywords: ["paşabahçe", "pasabahce", "bardak"], path: "/products/su-bardagi.jpg" },
+  { keywords: ["çay bardağı", "cay bardagi"], path: "/products/cay-bardagi.jpg" },
+  { keywords: ["su bardağı", "su bardagi"], path: "/products/su-bardagi.jpg" },
+  { keywords: ["omo", "matik"], path: "/products/matik.jpg" },
+  { keywords: ["hobby", "sabun"], path: "/products/sivi-sabun.jpg" },
+  { keywords: ["hacı şakir", "haci sakir"], path: "/products/kalip-sabun.jpg" },
+  { keywords: ["duru", "sabun"], path: "/products/kalip-sabun.jpg" },
+  { keywords: ["duru", "kolonya"], path: "/products/kolonya.jpg" },
+  { keywords: ["duru", "şampuan", "sampuan"], path: "/products/sampuan.jpg" },
+  { keywords: ["clear", "şampuan", "sampuan"], path: "/products/sampuan.jpg" },
+  { keywords: ["head", "shoulders", "şampuan", "sampuan"], path: "/products/sampuan.jpg" },
+  { keywords: ["elidor", "şampuan", "sampuan"], path: "/products/sampuan.jpg" },
+  { keywords: ["pantene", "şampuan", "sampuan"], path: "/products/sampuan.jpg" },
+  { keywords: ["dalin", "şampuan", "sampuan"], path: "/products/sampuan.jpg" },
+  { keywords: ["çaykur", "caykur"], path: "/products/cay.jpg" },
+  { keywords: ["doğuş", "dogus"], path: "/products/cay.jpg" },
+  { keywords: ["lipton"], path: "/products/cay.jpg" },
+  { keywords: ["mahmood", "kahve"], path: "/products/kahve.jpg" },
+  { keywords: ["özlem", "ozlem", "zeytin"], path: "/products/zeytin.jpg" },
+  { keywords: ["ören", "oren", "helva"], path: "/products/helva.jpg" },
+  { keywords: ["şahaner", "sahaner", "lokum"], path: "/products/lokum.jpg" },
+  { keywords: ["şahaner", "sahaner", "sucuk"], path: "/products/cevizli-sucuk.jpg" },
+  { keywords: ["yağızefe", "yagizefe", "turşu", "tursu"], path: "/products/tursu.jpg" },
+  { keywords: ["porçöz", "por-coz", "por coz"], path: "/products/kirec-cozucu.jpg" },
+  { keywords: ["uni baby", "ıslak mendil", "islak mendil"], path: "/products/islak-mendil.jpg" },
+  { keywords: ["ipek", "orta", "midyat"], path: "/products/ince-midyat-pilavlik-bulgur.png" },
+  { keywords: ["ipek", "aşurelik", "asurelik"], path: "/products/asurelik-bugday-5kg.webp" },
+  { keywords: ["ipek", "şehriyeli", "sehriyeli"], path: "/products/sehriyeli-bulgur.png" },
+  { keywords: ["ipek", "iri", "bulgur"], path: "/products/iri-pilavlik-bulgur.png" },
+  { keywords: ["ipek", "köftelik", "koftelik"], path: "/products/koftelik-bulgur.png" },
+  { keywords: ["ipek", "pilavlık", "pilavlik"], path: "/products/pilavlik-bulgur.png" },
+  { keywords: ["bashan", "mercimek"], path: "/products/kirmizi-mercimek.jpg" },
+  { keywords: ["bashan", "bulgur"], path: "/products/pilavlik-bulgur.png" },
+  { keywords: ["yalçınkaya", "yalcinkaya", "biber"], path: "/products/pul-biber.jpg" },
 ];
+
+export function getCategoryFallbackImageUrl(category?: string | null): string {
+  switch (category) {
+    case "bakliyat":
+      return "/products/pirinc.jpg";
+    case "temizlik":
+      return "/products/camasir-suyu.jpg";
+    case "kisisel":
+      return "/products/sampuan.jpg";
+    case "gida":
+    default:
+      return "/products/aycicek-yagi.jpg";
+  }
+}
 
 export function getPublicProductImageUrl(
   url: string | null | undefined,
   productName?: string | null,
-): string | null {
+  category?: string | null,
+): string {
   // 1. Check if direct valid url provided
   if (url && typeof url === "string") {
     const trimmed = url.trim();
@@ -351,5 +427,22 @@ export function getPublicProductImageUrl(
     }
   }
 
-  return null;
+  // 3. Fallback to category default image
+  return getCategoryFallbackImageUrl(category);
+}
+
+/**
+ * Image error handler for standard <img /> tags:
+ * Gracefully swaps to category fallback on broken image link without infinite loops.
+ */
+export function handleProductImageError(
+  e: React.SyntheticEvent<HTMLImageElement>,
+  productName?: string | null,
+  category?: string | null,
+) {
+  const target = e.currentTarget;
+  const fallback = getCategoryFallbackImageUrl(category);
+  if (target.src !== fallback && !target.src.endsWith(fallback)) {
+    target.src = fallback;
+  }
 }

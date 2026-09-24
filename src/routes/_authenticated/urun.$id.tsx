@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
-import { getPublicProductImageUrl } from "@/lib/product-image-map";
+import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -129,17 +129,12 @@ function ProductDetail() {
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card">
           <div className="aspect-square w-full">
-            {getPublicProductImageUrl(product.image_url, product.name) ? (
-              <img
-                src={getPublicProductImageUrl(product.image_url, product.name)!}
-                alt={product.name}
-                className="h-full w-full object-contain p-4 bg-white"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                <PackageSearch className="h-14 w-14" />
-              </div>
-            )}
+            <img
+              src={getPublicProductImageUrl(product.image_url, product.name, product.category)}
+              alt={product.name}
+              onError={(e) => handleProductImageError(e, product.name, product.category)}
+              className="h-full w-full object-contain p-4 bg-white"
+            />
           </div>
         </div>
 
