@@ -138,3 +138,29 @@ export function BakliyatCategoryIcon(props: ComponentProps<"svg">) {
     </svg>
   );
 }
+
+export function KisiselCategoryIcon(props: ComponentProps<"svg">) {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {/* Lotion / shampoo pump dispenser bottle */}
+      <path d="M22 28 C22 25 24 23 27 23 L37 23 C40 23 42 25 42 28 L42 51 C42 53 40 55 37 55 L27 55 C24 55 22 53 22 51 Z" />
+      {/* Bottle neck */}
+      <path d="M29 23 L29 17 L35 17 L35 23" />
+      {/* Pump cap & nozzle */}
+      <path d="M27 17 L37 17" strokeWidth="2.4" />
+      <path d="M32 17 L32 11" strokeWidth="2.4" />
+      <path d="M32 11 L22 11 C20 11 19 12 19 14" strokeWidth="2.4" />
+      {/* Droplet / sparkle icon */}
+      <circle cx="32" cy="38" r="3.5" strokeWidth="2" />
+      <path d="M46 16 L49 13 M50 20 L53 21 M48 27 L51 29" strokeWidth="2" />
+    </svg>
+  );
+}

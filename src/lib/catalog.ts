@@ -50,6 +50,7 @@ export type Product = {
   category: string;
   unit: string;
   image_url: string | null;
+  image?: string | null;
   is_active: boolean;
 };
 

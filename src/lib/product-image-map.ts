@@ -632,11 +632,31 @@ export function getCategoryFallbackImageUrl(category?: string | null): string {
  * - Name matching for exact Turkish product names (Yumuşatıcı, Zeytin, Yüzey Temizleyici)
  */
 export function getPublicProductImageUrl(
-  url: string | null | undefined,
+  rawInput?:
+    | string
+    | null
+    | {
+        image_url?: string | null;
+        image?: string | null;
+        name?: string | null;
+        category?: string | null;
+      },
   productName?: string | null,
   category?: string | null,
 ): string {
-  // 1. Process provided image_url
+  let url: string | null | undefined;
+  let pName = productName;
+  let pCat = category;
+
+  if (rawInput && typeof rawInput === "object") {
+    url = rawInput.image_url || rawInput.image;
+    pName = pName || rawInput.name;
+    pCat = pCat || rawInput.category;
+  } else {
+    url = rawInput;
+  }
+
+  // 1. Process provided image_url or image
   if (url && typeof url === "string") {
     const trimmed = url.trim();
     if (trimmed) {
@@ -646,6 +666,22 @@ export function getPublicProductImageUrl(
       // Absolute external URLs
       if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
         return trimmed;
+      }
+
+      // Direct dictionary lookup first
+      if (PRODUCT_IMAGE_MAP[trimmed]) {
+        return PRODUCT_IMAGE_MAP[trimmed];
+      }
+
+      // Legacy /__l5e/assets-v1/...
+      if (trimmed.includes("/__l5e/assets-v1/")) {
+        const filename = trimmed.split("/").pop();
+        if (filename && PRODUCT_IMAGE_MAP[filename]) {
+          return PRODUCT_IMAGE_MAP[filename];
+        }
+        if (filename) {
+          return "/resimler/" + filename;
+        }
       }
 
       // Already in /resimler/
@@ -666,39 +702,26 @@ export function getPublicProductImageUrl(
         return "/resimler/" + trimmed.slice("products/".length);
       }
 
-      // Direct dictionary lookup
-      if (PRODUCT_IMAGE_MAP[trimmed]) {
-        return PRODUCT_IMAGE_MAP[trimmed];
-      }
-
-      // Legacy /__l5e/assets-v1/...
-      if (trimmed.includes("/__l5e/assets-v1/")) {
-        const filename = trimmed.split("/").pop();
-        if (filename && PRODUCT_IMAGE_MAP[filename]) {
-          return PRODUCT_IMAGE_MAP[filename];
-        }
-        if (filename) {
-          return "/resimler/" + filename;
-        }
-      }
-
       // Local asset path
       if (trimmed.includes("/src/assets/images/")) {
         const filename = trimmed.split("/").pop();
         return filename ? "/resimler/" + filename : trimmed;
       }
 
-      // If it is just a filename (e.g. "zeytin.jpg", "yumusatici.jpg", etc.)
+      // Plain filename (e.g. "yumusatici.jpg", "zeytin.jpg") or root filename (e.g. "/yumusatici.jpg")
       const cleanFilename = trimmed.startsWith("/") ? trimmed.slice(1) : trimmed;
       if (cleanFilename.includes(".")) {
+        if (PRODUCT_IMAGE_MAP[cleanFilename]) {
+          return PRODUCT_IMAGE_MAP[cleanFilename];
+        }
         return "/resimler/" + cleanFilename;
       }
     }
   }
 
   // 2. Name-based matching for product catalog
-  if (productName && typeof productName === "string") {
-    const lower = productName.toLocaleLowerCase("tr");
+  if (pName && typeof pName === "string") {
+    const lower = pName.toLocaleLowerCase("tr");
 
     for (const rule of PRODUCT_KEYWORD_RULES) {
       if (rule.all && rule.all.length > 0) {
@@ -715,21 +738,87 @@ export function getPublicProductImageUrl(
   }
 
   // 3. Fallback to category default image
-  return getCategoryFallbackImageUrl(category);
+  return getCategoryFallbackImageUrl(pCat);
 }
 
 /**
- * Image error handler for standard <img /> tags:
- * Gracefully swaps to category fallback in /resimler/ without infinite loops.
+ * Convenience helper to resolve image from a Product object
+ */
+export function resolveProductImage(
+  product?: {
+    image_url?: string | null;
+    image?: string | null;
+    name?: string | null;
+    category?: string | null;
+  } | null,
+): string {
+  if (!product) return "/resimler/aycicek-yagi.jpg";
+  return getPublicProductImageUrl(product, product.name, product.category);
+}
+
+/**
+ * Robust image error handler for <img /> components:
+ * 1. Checks alternate static asset path (/ vs /resimler/)
+ * 2. Checks keyword match based on product name
+ * 3. Falls back to category default
+ * Never drops or restricts products whose images fail to load.
  */
 export function handleProductImageError(
   e: React.SyntheticEvent<HTMLImageElement>,
-  _productName?: string | null,
+  productName?: string | null,
   category?: string | null,
 ) {
   const target = e.currentTarget;
-  const fallback = getCategoryFallbackImageUrl(category);
-  if (target.src !== fallback && !target.src.endsWith(fallback)) {
-    target.src = fallback;
+  const currentStage = parseInt(target.getAttribute("data-err-stage") || "0", 10);
+  const currentSrc = target.getAttribute("src") || target.src || "";
+
+  // Stage 0: Try switching between /resimler/<filename> and /<filename>
+  if (currentStage === 0) {
+    target.setAttribute("data-err-stage", "1");
+    if (currentSrc.includes("/resimler/")) {
+      const parts = currentSrc.split("/resimler/");
+      const filename = parts[parts.length - 1];
+      if (filename && filename.includes(".")) {
+        target.src = "/" + filename;
+        return;
+      }
+    } else if (!currentSrc.startsWith("data:") && !currentSrc.startsWith("http")) {
+      const filename = currentSrc.split("/").pop();
+      if (filename && filename.includes(".")) {
+        target.src = "/resimler/" + filename;
+        return;
+      }
+    }
   }
+
+  // Stage 1: Try keyword-based matching for product name
+  if (currentStage <= 1 && productName) {
+    target.setAttribute("data-err-stage", "2");
+    const lower = productName.toLocaleLowerCase("tr");
+    for (const rule of PRODUCT_KEYWORD_RULES) {
+      if (
+        (rule.all && rule.all.every((w) => lower.includes(w))) ||
+        (rule.any && rule.any.some((w) => lower.includes(w)))
+      ) {
+        if (target.src !== rule.path && !target.src.endsWith(rule.path)) {
+          target.src = rule.path;
+          return;
+        }
+      }
+    }
+  }
+
+  // Stage 2: Fallback to category default
+  if (currentStage <= 2) {
+    target.setAttribute("data-err-stage", "3");
+    const fallback = getCategoryFallbackImageUrl(category);
+    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+      target.src = fallback;
+      return;
+    }
+  }
+
+  // Stage 3: Global emergency fallback (ensure image element always displays)
+  target.setAttribute("data-err-stage", "4");
+  target.src = "/resimler/aycicek-yagi.jpg";
 }

@@ -34,11 +34,7 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
 
 async function fetchSingleProduct(id: string): Promise<Product | null> {
   try {
-    const { data, error } = await supabase
-      .from("products")
-      .select("id, name, description, category, unit, image_url, is_active")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
     if (!error && data) return data as Product;
   } catch (err) {
     console.warn("[ProductDetail] Supabase client fetch failed:", err);
@@ -47,7 +43,7 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
   // REST fallback
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=id,name,description,category,unit,image_url,is_active&limit=1`,
+      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -155,7 +151,7 @@ function ProductDetail() {
         <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card">
           <div className="aspect-square w-full">
             <img
-              src={getPublicProductImageUrl(product.image_url, product.name, product.category)}
+              src={getPublicProductImageUrl(product, product.name, product.category)}
               alt={product.name}
               onError={(e) => handleProductImageError(e, product.name, product.category)}
               className="h-full w-full object-contain p-4 bg-white"

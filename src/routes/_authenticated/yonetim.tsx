@@ -169,9 +169,9 @@ function AdminPage() {
     try {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, description, category, unit, image_url, is_active")
+        .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .range(0, 999);
       if (!error && data && data.length > 0) {
         return data as Product[];
       }
@@ -182,11 +182,12 @@ function AdminPage() {
     // REST fallback
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=id,name,description,category,unit,image_url,is_active&order=created_at.desc&limit=1000`,
+        `${SUPABASE_URL}/rest/v1/products?select=*&order=created_at.desc&limit=1000`,
         {
           headers: {
             apikey: SUPABASE_ANON_KEY,
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            Range: "0-999",
           },
         },
       );
@@ -1039,7 +1040,7 @@ function ProductsPanel({
               >
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
                   <img
-                    src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
+                    src={getPublicProductImageUrl(p, p.name, p.category)}
                     alt={p.name}
                     loading="lazy"
                     onError={(e) => handleProductImageError(e, p.name, p.category)}

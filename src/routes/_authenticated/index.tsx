@@ -28,36 +28,39 @@ import {
   TemizlikCategoryIcon,
   GidaCategoryIcon,
   BakliyatCategoryIcon,
+  KisiselCategoryIcon,
 } from "@/components/CategoryIcons";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
+  // 1. Primary: Supabase client SDK with range(0, 999) to fetch all products
   try {
-    const { data, error } = await supabase
-      .from("products")
-      .select("id, name, description, category, unit, image_url, is_active")
-      .eq("is_active", true)
-      .order("name")
-      .limit(1000);
+    const { data, error } = await supabase.from("products").select("*").range(0, 999).order("name");
 
-    if (!error && data && data.length > 0) {
+    if (!error && Array.isArray(data) && data.length > 0) {
+      console.log(`[Products] Supabase client fetched ${data.length} products`);
       return data as Product[];
+    }
+    if (error) {
+      console.warn("[Products] Supabase client query returned error:", error);
     }
   } catch (err) {
     console.warn("[Products] Supabase client query threw:", err);
   }
 
-  // Fallback to direct REST endpoint if client had any network/auth issue
+  // 2. Fallback to direct REST endpoint with range(0, 999) and limit=1000
   try {
-    const restEndpoint = `${SUPABASE_URL}/rest/v1/products?select=id,name,description,category,unit,image_url,is_active&is_active=eq.true&order=name&limit=1000`;
+    const restEndpoint = `${SUPABASE_URL}/rest/v1/products?select=*&order=name.asc&limit=1000`;
     const res = await fetch(restEndpoint, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Range: "0-999",
       },
     });
     if (res.ok) {
       const json = await res.json();
       if (Array.isArray(json) && json.length > 0) {
+        console.log(`[Products] Direct REST fetch returned ${json.length} products`);
         return json as Product[];
       }
     }
@@ -92,6 +95,7 @@ const CIRCULAR_CATEGORIES = [
   { value: "temizlik", label: "Temizlik", Icon: TemizlikCategoryIcon },
   { value: "gida", label: "Gıda", Icon: GidaCategoryIcon },
   { value: "bakliyat", label: "Bakliyat", Icon: BakliyatCategoryIcon },
+  { value: "kisisel", label: "Kişisel Bakım", Icon: KisiselCategoryIcon },
 ] as const;
 
 function Index() {
@@ -453,7 +457,7 @@ function HeroProductCard({
         >
           <img
             key={current.id}
-            src={getPublicProductImageUrl(current.image_url, current.name, current.category)}
+            src={getPublicProductImageUrl(current, current.name, current.category)}
             alt={current.name}
             onError={(e) => handleProductImageError(e, current.name, current.category)}
             className="h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95"
@@ -563,7 +567,7 @@ function CatalogProductCard({ product }: { product: Product }) {
           className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
         >
           <img
-            src={getPublicProductImageUrl(product.image_url, product.name, product.category)}
+            src={getPublicProductImageUrl(product, product.name, product.category)}
             alt={product.name}
             loading="lazy"
             onError={(e) => handleProductImageError(e, product.name, product.category)}
