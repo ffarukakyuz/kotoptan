@@ -820,7 +820,7 @@ function ProductsPanel({
     let updatedCount = 0;
     try {
       for (const p of data) {
-        const resolved = getPublicProductImageUrl(p.image_url, p.name);
+        const resolved = getPublicProductImageUrl(p.image_url, p.name, p.category);
         if (resolved && resolved !== p.image_url) {
           const { error } = await supabase
             .from("products")

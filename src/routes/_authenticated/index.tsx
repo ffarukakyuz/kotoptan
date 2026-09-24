@@ -142,11 +142,10 @@ function Index() {
     return [];
   }, [clientProducts, dbProducts]);
 
-  // Merge DB products with FALLBACK_PRODUCTS (ensuring Dalan soap and catalog items exist)
+  // Use loaded products from DB, fallback to FALLBACK_PRODUCTS if empty
   const allProducts = useMemo(() => {
     if (loadedProducts && loadedProducts.length > 0) {
-      const hasDalan = loadedProducts.some((p) => p.name.toLowerCase().includes("dalan"));
-      return hasDalan ? loadedProducts : [...FALLBACK_PRODUCTS.slice(0, 1), ...loadedProducts];
+      return loadedProducts;
     }
     return FALLBACK_PRODUCTS;
   }, [loadedProducts]);
