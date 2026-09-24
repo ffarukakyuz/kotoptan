@@ -76,13 +76,41 @@ async function fetchCurrentProductList(): Promise<string> {
   }
 }
 
+const CANDIDATE_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-flash-lite-latest",
+  "gemini-3.5-flash",
+  "gemini-3-flash-preview",
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function generateWithFallback(ai: GoogleGenAI, params: any) {
+  let lastError: unknown = null;
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        ...params,
+        model,
+      });
+      if (response) {
+        return response;
+      }
+    } catch (err) {
+      console.warn(`[Gemini] Model ${model} failed, attempting fallback...`, err);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Yapay zeka yanıt üretemedi.");
+}
+
 /**
  * Destek ve Sohbet Asistanı (Müşteri & Yönetici ayrımı ile)
  */
 export const askSupport = createServerFn({ method: "POST" })
   .inputValidator((data) => inputSchema.parse(data))
   .handler(async ({ data }) => {
-    const ai = new GoogleGenAI({});
+    const apiKey = process.env["GEMINI_API_KEY"] || process.env["API_KEY"];
+    const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
     const productList = await fetchCurrentProductList();
 
     let systemInstruction = "";
@@ -129,29 +157,12 @@ ${productList || "(Ürün listesi şu an yüklenemedi)"}`;
         parts: [{ text: m.content }],
       }));
 
-      // gemini-3.6-flash ile hızlı ve zengin yanıt alıyoruz
-      let response;
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents,
-          config: {
-            systemInstruction,
-          },
-        });
-      } catch (err) {
-        console.warn(
-          "[askSupport] gemini-3.6-flash error, falling back to gemini-3.1-flash-lite:",
-          err,
-        );
-        response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
-          contents,
-          config: {
-            systemInstruction,
-          },
-        });
-      }
+      const response = await generateWithFallback(ai, {
+        contents,
+        config: {
+          systemInstruction,
+        },
+      });
 
       const reply = response.text?.trim() || "Anlayamadım, lütfen tekrar sorabilir misiniz?";
       return { ok: true as const, reply };
@@ -170,7 +181,8 @@ ${productList || "(Ürün listesi şu an yüklenemedi)"}`;
 export const analyzeProductImage = createServerFn({ method: "POST" })
   .inputValidator((data) => imageAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
-    const ai = new GoogleGenAI({});
+    const apiKey = process.env["GEMINI_API_KEY"] || process.env["API_KEY"];
+    const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
 
     // Base64 veri başlığını (data:image/jpeg;base64,) temizle
     const cleanBase64 = data.imageBase64.includes(",")
@@ -189,62 +201,36 @@ ${data.note ? `Yöneticinin eklediği not: "${data.note}"` : ""}
 Sadece geçerli bir JSON nesnesi döndür, markdown veya başka metin ekleme.`;
 
     try {
-      let response;
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: data.mimeType || "image/jpeg",
-                    data: cleanBase64,
-                  },
+      const response = await generateWithFallback(ai, {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  mimeType: data.mimeType || "image/jpeg",
+                  data: cleanBase64,
                 },
-                {
-                  text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
+              },
+              {
+                text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
+              },
+            ],
           },
-        });
-      } catch (err) {
-        console.warn(
-          "[analyzeProductImage] gemini-3.6-flash error, falling back to gemini-3.1-flash-lite:",
-          err,
-        );
-        response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: data.mimeType || "image/jpeg",
-                    data: cleanBase64,
-                  },
-                },
-                {
-                  text: "Bu ürün fotoğrafını analiz et ve JSON nesnesini üret.",
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
-          },
-        });
+        ],
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+        },
+      });
+
+      let rawJson = response.text?.trim() || "{}";
+      if (rawJson.startsWith("```json")) {
+        rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (rawJson.startsWith("```")) {
+        rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
       }
 
-      const rawJson = response.text?.trim() || "{}";
       const parsed = JSON.parse(rawJson) as {
         name?: string;
         category?: string;

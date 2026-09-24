@@ -11,7 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { CartProvider } from "@/lib/cart";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Toaster } from "@/components/ui/sonner";
@@ -150,6 +150,7 @@ function RootComponent() {
 
 function RootAppContent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, loading } = useAuth();
   const isAuthPage = pathname === "/giris";
 
   if (isAuthPage) {
@@ -158,6 +159,16 @@ function RootAppContent() {
         <main className="flex flex-1 items-center justify-center p-4">
           <Outlet />
         </main>
+        <Toaster position="top-center" richColors />
+      </div>
+    );
+  }
+
+  // If still checking session or not authenticated, render outlet without main site header/footer/chat
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#060b08] font-sans text-white">
+        <Outlet />
         <Toaster position="top-center" richColors />
       </div>
     );
