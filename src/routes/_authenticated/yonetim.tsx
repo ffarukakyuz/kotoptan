@@ -751,9 +751,7 @@ function ProductsPanel({
   // initialEditId verilmişse veya URL'den gelmişse düzenleme modunu başlat
   useEffect(() => {
     if (!initialEditId) return;
-    const target =
-      data?.find((p) => p.id === initialEditId) ??
-      FALLBACK_PRODUCTS.find((p) => p.id === initialEditId);
+    const target = data?.find((p) => p.id === initialEditId) ?? null;
     if (target) {
       setEditingId(target.id);
       setForm({

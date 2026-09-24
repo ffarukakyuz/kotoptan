@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
-import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
+import { categoryLabel, type Product } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { Input } from "@/components/ui/input";
@@ -32,22 +32,26 @@ import {
 } from "@/components/CategoryIcons";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
-  // 1. Primary: Supabase client SDK with range(0, 999) to fetch all products
+  // 1. Direct explicit API call directly to the live Supabase products table using Supabase client
   try {
-    const { data, error } = await supabase.from("products").select("*").range(0, 999).order("name");
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .range(0, 999)
+      .order("name", { ascending: true });
 
     if (!error && Array.isArray(data) && data.length > 0) {
-      console.log(`[Products] Supabase client fetched ${data.length} products`);
+      console.log(`[Products] Live Supabase products table returned ${data.length} records`);
       return data as Product[];
     }
     if (error) {
-      console.warn("[Products] Supabase client query returned error:", error);
+      console.warn("[Products] Supabase client query error:", error);
     }
   } catch (err) {
     console.warn("[Products] Supabase client query threw:", err);
   }
 
-  // 2. Fallback to direct REST endpoint with range(0, 999) and limit=1000
+  // 2. Direct REST fallback to fetch all live products
   try {
     const restEndpoint = `${SUPABASE_URL}/rest/v1/products?select=*&order=name.asc&limit=1000`;
     const res = await fetch(restEndpoint, {
@@ -60,7 +64,7 @@ async function fetchProductsFromDatabase(): Promise<Product[]> {
     if (res.ok) {
       const json = await res.json();
       if (Array.isArray(json) && json.length > 0) {
-        console.log(`[Products] Direct REST fetch returned ${json.length} products`);
+        console.log(`[Products] Direct REST fetch returned ${json.length} live records`);
         return json as Product[];
       }
     }
@@ -102,15 +106,19 @@ function Index() {
   const [category, setCategory] = useState<string>("tumu");
   const [search, setSearch] = useState("");
 
-  // 1. TanStack Query for caching and server-rendering integration
-  const { data: dbProducts, isLoading: isQueryLoading } = useQuery({
-    queryKey: ["products", "active"],
+  // 1. TanStack Query for cache & live updates from live Supabase database
+  const {
+    data: dbProducts,
+    isLoading: isQueryLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["live-supabase-products"],
     queryFn: fetchProductsFromDatabase,
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
 
-  // 2. Direct client-side state guarantee: runs in browser on component mount
+  // 2. Direct client-side explicit Supabase call on initial mount
   const [clientProducts, setClientProducts] = useState<Product[]>([]);
   const [isClientLoading, setIsClientLoading] = useState(true);
 
@@ -139,22 +147,14 @@ function Index() {
     };
   }, []);
 
-  // Merge client state and query data (whichever is populated first / most up-to-date)
-  const loadedProducts = useMemo(() => {
+  // Strict live data: Strictly rows returned from Supabase, NO mock/dummy fallback array
+  const allProducts = useMemo(() => {
     if (clientProducts.length > 0) return clientProducts;
     if (dbProducts && dbProducts.length > 0) return dbProducts;
     return [];
   }, [clientProducts, dbProducts]);
 
-  // Use loaded products from DB, fallback to FALLBACK_PRODUCTS if empty
-  const allProducts = useMemo(() => {
-    if (loadedProducts && loadedProducts.length > 0) {
-      return loadedProducts;
-    }
-    return FALLBACK_PRODUCTS;
-  }, [loadedProducts]);
-
-  const isLoading = isQueryLoading && isClientLoading && loadedProducts.length === 0;
+  const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLocaleLowerCase("tr");
@@ -296,13 +296,25 @@ function Index() {
         ) : filteredProducts.length === 0 ? (
           <div className="my-16 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/60">
             <PackageSearch className="h-12 w-12 text-[#22c55e] mb-3" />
-            <p className="text-lg font-semibold text-white">Ürün bulunamadı</p>
-            <p className="mt-1 text-sm max-w-sm">
-              {search
-                ? `"${search}" aramasına uygun ürün bulunamadı. Lütfen farklı bir arama deneyin.`
-                : "Bu kategoride henüz ürün bulunmuyor."}
+            <p className="text-lg font-semibold text-white">
+              {allProducts.length === 0 ? "Ürünler Yüklenemedi" : "Ürün bulunamadı"}
             </p>
-            {search && (
+            <p className="mt-1 text-sm max-w-sm">
+              {allProducts.length === 0
+                ? "Canlı veritabanından ürünler alınamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin."
+                : search
+                  ? `"${search}" aramasına uygun ürün bulunamadı. Lütfen farklı bir arama deneyin.`
+                  : "Bu kategoride henüz ürün bulunmuyor."}
+            </p>
+            {allProducts.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-4 rounded-xl bg-[#166534] hover:bg-[#14532d] px-5 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-lg"
+              >
+                Tekrar Dene
+              </button>
+            ) : search ? (
               <button
                 type="button"
                 onClick={() => setSearch("")}
@@ -310,7 +322,7 @@ function Index() {
               >
                 Aramayı Temizle
               </button>
-            )}
+            ) : null}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3.5 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">

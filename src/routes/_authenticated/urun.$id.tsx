@@ -5,7 +5,7 @@ import { ArrowLeft, Minus, Plus, PackageSearch, ShoppingCart, Pencil } from "luc
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
-import { categoryLabel, FALLBACK_PRODUCTS, type Product } from "@/lib/catalog";
+import { categoryLabel, type Product } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,7 +61,7 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
     console.warn("[ProductDetail] REST fetch fallback failed:", restErr);
   }
 
-  return FALLBACK_PRODUCTS.find((p) => p.id === id) ?? null;
+  return null;
 }
 
 function ProductDetail() {
