@@ -159,9 +159,14 @@ function Index() {
 
   const allProducts = useMemo(() => {
     void stockTick;
-    if (clientProducts.length > 0) return clientProducts;
-    if (dbProducts && dbProducts.length > 0) return dbProducts;
-    return [];
+    const base =
+      clientProducts.length > 0
+        ? clientProducts
+        : dbProducts && dbProducts.length > 0
+          ? dbProducts
+          : [];
+    // Soft-deleted/archived products are completely hidden from customer catalog
+    return base.filter((p) => p.is_active !== false);
   }, [clientProducts, dbProducts, stockTick]);
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;

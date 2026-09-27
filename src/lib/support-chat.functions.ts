@@ -44,7 +44,7 @@ Site bölümleri:
 `;
 
 /**
- * Ürün listesini Supabase REST üzerinden çeker (Asistanın güncel depoyu bilmesi için)
+ * Ürün listesini Supabase REST üzerinden çeker (Asistanın güncel depoyu ve görselleri bilmesi için)
  */
 async function fetchCurrentProductList(): Promise<string> {
   const supabaseUrl = process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
@@ -55,7 +55,7 @@ async function fetchCurrentProductList(): Promise<string> {
 
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/products?select=name,description,category,unit&is_active=eq.true&order=name&limit=150`,
+      `${supabaseUrl}/rest/v1/products?select=name,description,category,unit,image_url&is_active=eq.true&order=name&limit=300`,
       { headers: { apikey: publishableKey } },
     );
     if (!res.ok) return "";
@@ -64,12 +64,15 @@ async function fetchCurrentProductList(): Promise<string> {
       description: string;
       category: string;
       unit: string;
+      image_url?: string | null;
     }>;
     return rows
-      .map(
-        (p) =>
-          `- ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} (${p.description || "Standart ambalaj"})`,
-      )
+      .map((p) => {
+        const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
+        const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
+        const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+        return `- ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Not: ${cleanDesc}` : ""}`;
+      })
       .join("\n");
   } catch {
     return "";

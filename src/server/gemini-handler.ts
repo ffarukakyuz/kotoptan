@@ -44,6 +44,42 @@ async function generateWithFallback(ai: GoogleGenAI, params: any) {
   throw lastError || new Error("Yapay zeka yanıt üretemedi.");
 }
 
+/**
+ * Ürün listesini Supabase REST üzerinden çeker (Asistanın güncel depoyu bilmesi için)
+ */
+async function fetchCurrentProductList(): Promise<string> {
+  const supabaseUrl = process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
+  const publishableKey =
+    process.env["SUPABASE_PUBLISHABLE_KEY"] ?? process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+
+  if (!supabaseUrl || !publishableKey) return "";
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/products?select=name,description,category,unit,image_url&is_active=eq.true&order=name&limit=300`,
+      { headers: { apikey: publishableKey } },
+    );
+    if (!res.ok) return "";
+    const rows = (await res.json()) as Array<{
+      name: string;
+      description: string;
+      category: string;
+      unit: string;
+      image_url?: string | null;
+    }>;
+    return rows
+      .map((p) => {
+        const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
+        const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
+        const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+        return `- ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Not: ${cleanDesc}` : ""}`;
+      })
+      .join("\n");
+  } catch {
+    return "";
+  }
+}
+
 export async function processChat(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   isAdmin: boolean = false,
@@ -52,6 +88,7 @@ export async function processChat(
   try {
     const apiKey = process.env["GEMINI_API_KEY"] || process.env["API_KEY"];
     const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
+    const productList = await fetchCurrentProductList();
 
     let systemInstruction = "";
 
@@ -63,7 +100,10 @@ Görevin:
 2. Yöneticinin yeni ürün taleplerini veya stok sorularını hızlıca yanıtlamak.
 3. Hitabın: Saygılı, net, operasyonel ve samimi ("Faruk Bey / Yönetici Bey / Değerli Yöneticimiz").
 
-${SITE_INFO}`;
+${SITE_INFO}
+
+Depodaki Mevcut Ürünler:
+${productList || "(Ürün listesi şu an yüklenemedi)"}`;
     } else {
       const customerInfo = userMeta?.businessName
         ? `Müşteri: ${userMeta.fullName || ""} (${userMeta.businessName}, Tel: ${userMeta.phone || ""})`
@@ -79,7 +119,10 @@ Görevin:
 4. Teslimat yapılan ilçeler: Ahlat, Adilcevaz, Bitlis Merkez, Güroymak, Hizan ve Tatvan.
 5. Hitabın: Esnaf dostu, güven veren, sıcak ve yardımsever ("Hayırlı işler, bol kazançlar dilerim").
 
-${SITE_INFO}`;
+${SITE_INFO}
+
+Depodaki Mevcut Ürünler:
+${productList || "(Ürün listesi şu an yüklenemedi)"}`;
     }
 
     const contents = messages.map((m) => ({

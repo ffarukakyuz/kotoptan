@@ -54,7 +54,20 @@ export type Product = {
   is_active: boolean;
 };
 
-export function isProductInStock(product: { id?: string; is_active?: boolean | null }): boolean {
+export function cleanProductDescription(desc?: string | null): string {
+  if (!desc) return "";
+  return desc.replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+}
+
+export function isProductArchived(product: { is_active?: boolean | null }): boolean {
+  return product.is_active === false;
+}
+
+export function isProductInStock(product: {
+  id?: string;
+  description?: string | null;
+  is_active?: boolean | null;
+}): boolean {
   if (typeof window !== "undefined" && product.id) {
     try {
       const overrides = JSON.parse(localStorage.getItem("custom_product_stock_status") || "{}");
@@ -65,7 +78,10 @@ export function isProductInStock(product: { id?: string; is_active?: boolean | n
       // ignore
     }
   }
-  return product.is_active ?? true;
+  if (product.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(product.description)) {
+    return false;
+  }
+  return true;
 }
 
 export function setProductStockStatusLocal(productId: string, inStock: boolean) {

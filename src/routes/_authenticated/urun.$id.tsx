@@ -21,6 +21,7 @@ import {
   type Product,
   isProductInStock,
   setProductStockStatusLocal,
+  cleanProductDescription,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -115,12 +116,12 @@ function ProductDetail() {
     );
   }
 
-  if (!data) {
+  if (!data || data.is_active === false) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-2xl font-extrabold">Ürün bulunamadı</h1>
+        <h1 className="text-2xl font-extrabold">Ürün Yayında Değil</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Bu ürün kaldırılmış veya katalogda görünmüyor olabilir.
+          Bu ürün arşivlenmiş veya satıştan kaldırılmıştır.
         </p>
         <Button asChild className="mt-5">
           <Link to="/">Kataloğa dön</Link>
@@ -137,21 +138,24 @@ function ProductDetail() {
     setTogglingStock(true);
     setProductStockStatusLocal(product.id, newStatus);
 
+    const baseDesc = cleanProductDescription(product.description);
+    const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
     qc.setQueryData<Product | null>(["product", id], (old) => {
       if (!old) return old;
-      return { ...old, is_active: newStatus };
+      return { ...old, description: newDescription };
     });
     qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
       if (!old) return old;
-      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+      return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
     });
     qc.setQueryData<Product[]>(["admin-products"], (old) => {
       if (!old) return old;
-      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+      return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
     });
 
     try {
-      await supabase.from("products").update({ is_active: newStatus }).eq("id", product.id);
+      await supabase.from("products").update({ description: newDescription }).eq("id", product.id);
     } catch (err) {
       console.warn("Supabase update error:", err);
     }
@@ -306,9 +310,9 @@ function ProductDetail() {
             </span>
           </div>
 
-          {product.description && (
+          {cleanProductDescription(product.description) && (
             <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-              {product.description}
+              {cleanProductDescription(product.description)}
             </p>
           )}
 

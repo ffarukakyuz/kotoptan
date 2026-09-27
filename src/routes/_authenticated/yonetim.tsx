@@ -52,6 +52,7 @@ import {
   type Product,
   isProductInStock,
   setProductStockStatusLocal,
+  cleanProductDescription,
 } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -796,7 +797,7 @@ function ProductsPanel({
       setEditingId(target.id);
       setForm({
         name: target.name || "",
-        description: target.description ?? "",
+        description: cleanProductDescription(target.description),
         category: target.category || "gida",
         unit: target.unit || "adet",
         image_url: target.image_url ?? "",
@@ -824,7 +825,16 @@ function ProductsPanel({
       toast.error(parsed.error.issues[0]?.message ?? "Bilgileri kontrol edin");
       return;
     }
-    const payload = { ...parsed.data, image_url: parsed.data.image_url || null };
+    const targetProduct = editingId ? data.find((p) => p.id === editingId) : null;
+    const inStock = targetProduct ? isProductInStock(targetProduct) : true;
+    const baseDesc = cleanProductDescription(parsed.data.description);
+    const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
+    const payload = {
+      ...parsed.data,
+      description: finalDesc,
+      image_url: parsed.data.image_url || null,
+    };
     setBusy(true);
     const { error } = editingId
       ? await supabase.from("products").update(payload).eq("id", editingId)
@@ -838,17 +848,68 @@ function ProductsPanel({
     reset();
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
-  const removeProduct = async (id: string) => {
-    const { error } = await supabase.from("products").delete().eq("id", id);
+  const [productView, setProductView] = useState<"aktif" | "arsiv">("aktif");
+  const [archivingProduct, setArchivingProduct] = useState<Product | null>(null);
+  const [restoringProduct, setRestoringProduct] = useState<Product | null>(null);
+  const [permanentDeletingProduct, setPermanentDeletingProduct] = useState<Product | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+
+  const archiveProduct = async (product: Product) => {
+    setActionBusy(true);
+    const { error } = await supabase
+      .from("products")
+      .update({ is_active: false })
+      .eq("id", product.id);
+    setActionBusy(false);
     if (error) {
-      toast.error("Silinemedi");
+      toast.error("Arşive kaldırılamadı: " + error.message);
       return;
     }
-    toast.success("Ürün silindi");
+    toast.success(
+      `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
+    );
+    setArchivingProduct(null);
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+  };
+
+  const restoreProduct = async (product: Product) => {
+    setActionBusy(true);
+    const { error } = await supabase
+      .from("products")
+      .update({ is_active: true })
+      .eq("id", product.id);
+    setActionBusy(false);
+    if (error) {
+      toast.error("Geri yüklenemedi: " + error.message);
+      return;
+    }
+    toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
+    setRestoringProduct(null);
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+  };
+
+  const permanentlyDeleteProduct = async (product: Product) => {
+    setActionBusy(true);
+    const { error } = await supabase.from("products").delete().eq("id", product.id);
+    setActionBusy(false);
+    if (error) {
+      toast.error(
+        "Kalıcı olarak silinemedi (Siparişlerde kullanılıyor olabilir): " + error.message,
+      );
+      return;
+    }
+    toast.success(`"${product.name}" veritabanından kalıcı olarak silindi.`);
+    setPermanentDeletingProduct(null);
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
@@ -861,25 +922,25 @@ function ProductsPanel({
     // 1. Local override anında güncellensin (sayfa yenilense de hatırlanır)
     setProductStockStatusLocal(product.id, newStatus);
 
-    // 2. Optimistic update query client cache
-    qc.setQueryData<Product[]>(["admin-products"], (old) => {
-      if (!old) return old;
-      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
-    });
-    qc.setQueryData<Product[]>(["products", "active"], (old) => {
-      if (!old) return old;
-      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
-    });
-    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
-      if (!old) return old;
-      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
-    });
+    const baseDesc = cleanProductDescription(product.description);
+    const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
-    // 3. Veritabanına da yazmayı dene
+    // 2. Optimistic update query client cache
+    const updateProductList = (old: Product[] | undefined) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
+    };
+    qc.setQueryData<Product[]>(["admin-products"], updateProductList);
+    qc.setQueryData<Product[]>(["products", "active"], updateProductList);
+    qc.setQueryData<Product[]>(["live-supabase-products"], (updateList) =>
+      updateProductList(updateList),
+    );
+
+    // 3. Veritabanına da yaz
     try {
       const { error } = await supabase
         .from("products")
-        .update({ is_active: newStatus })
+        .update({ description: newDescription })
         .eq("id", product.id);
       if (error) {
         console.warn("[toggleStockStatus] Supabase update note:", error.message);
@@ -899,8 +960,12 @@ function ProductsPanel({
     void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
+  const activeProducts = useMemo(() => data.filter((p) => p.is_active !== false), [data]);
+  const archivedProducts = useMemo(() => data.filter((p) => p.is_active === false), [data]);
+  const currentViewList = productView === "arsiv" ? archivedProducts : activeProducts;
+
   const filteredProducts = useMemo(() => {
-    return data.filter((p) => {
+    return currentViewList.filter((p) => {
       const matchSearch =
         !productSearch.trim() ||
         p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
@@ -908,7 +973,7 @@ function ProductsPanel({
       const matchCategory = categoryFilter === "hepsi" || p.category === categoryFilter;
       return matchSearch && matchCategory;
     });
-  }, [data, productSearch, categoryFilter]);
+  }, [currentViewList, productSearch, categoryFilter]);
 
   const [syncingImages, setSyncingImages] = useState(false);
 
@@ -1138,29 +1203,74 @@ function ProductsPanel({
       </form>
 
       <div>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-muted-foreground">
-            Kayıtlı Ürünler ({filteredProducts.length} / {data.length})
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={syncAllImagesInDatabase}
-            disabled={syncingImages || isLoading}
-            className="h-8 gap-1.5 text-xs"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${syncingImages ? "animate-spin" : ""}`} />
-            Görselleri Depoyla Eşitle
-          </Button>
+        {/* Görünüm Seçimi (Aktif Ürünler / Arşiv) */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-xl w-fit border border-border/60">
+            <button
+              type="button"
+              onClick={() => setProductView("aktif")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                productView === "aktif"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <PackageSearch className="h-3.5 w-3.5" />
+              Aktif Ürünler ({activeProducts.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setProductView("arsiv")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                productView === "arsiv"
+                  ? "bg-amber-600 text-white shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              Arşiv ({archivedProducts.length})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={syncAllImagesInDatabase}
+              disabled={syncingImages || isLoading}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${syncingImages ? "animate-spin" : ""}`} />
+              Görselleri Depoyla Eşitle
+            </Button>
+          </div>
         </div>
 
-        {/* Search & Category Filter for Admin Products */}
+        {/* Arşiv Bilgilendirme Kutusu */}
+        {productView === "arsiv" && (
+          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+            <Archive className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="space-y-1">
+              <p className="font-bold">📦 Ürün Arşivi (Silinmeyen Ürünler)</p>
+              <p className="leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+                Sildiğiniz veya geçici olarak satıştan kaldırdığınız ürünler burada güvenle
+                saklanır. Müşteriler katalogda bu ürünleri göremez. Ürünü tekrar yayına almak için{" "}
+                <strong>"Geri Yükle"</strong> butonuna tıklayabilir veya gerekirse{" "}
+                <strong>"Kalıcı Olarak Sil"</strong> butonunu kullanabilirsiniz.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Arama & Kategori Filtresi */}
         <div className="mb-4 flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Ürün adı ile ara..."
+              placeholder={
+                productView === "arsiv" ? "Arşivdeki ürünlerde ara..." : "Aktif ürünlerde ara..."
+              }
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
               className="pl-8 text-sm"
@@ -1184,122 +1294,256 @@ function ProductsPanel({
         {isLoading ? (
           <Skeleton className="h-40 rounded-xl" />
         ) : filteredProducts.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            {data.length === 0 ? "Henüz ürün yok." : "Aramaya uygun ürün bulunamadı."}
-          </p>
+          <div className="py-12 text-center text-sm text-muted-foreground border border-dashed border-border/80 rounded-2xl bg-card/40">
+            {productView === "arsiv" ? (
+              <div className="flex flex-col items-center gap-2">
+                <Archive className="h-8 w-8 text-muted-foreground/40" />
+                <p className="font-medium">Arşivde ürün bulunmuyor.</p>
+                <p className="text-xs text-muted-foreground/70">
+                  Aktif ürünler listesinden sildiğiniz ürünler burada saklanır.
+                </p>
+              </div>
+            ) : data.length === 0 ? (
+              "Henüz ürün bulunmuyor."
+            ) : (
+              "Aramaya uygun ürün bulunamadı."
+            )}
+          </div>
         ) : (
           <div className="space-y-2">
-            {filteredProducts.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-2 sm:p-3 shadow-card overflow-hidden"
-              >
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                  <div className="flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-                    <img
-                      src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
-                      alt={p.name}
-                      loading="lazy"
-                      onError={(e) => handleProductImageError(e, p.name, p.category)}
-                      className="h-full w-full object-contain p-1 bg-white"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs sm:text-sm font-semibold">{p.name}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
-                      <span>
-                        {categoryLabel(p.category)} · {p.unit}
-                      </span>
-                      {isProductInStock(p) ? (
-                        <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          ● Stokta
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
-                          ● Yok
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
+            {filteredProducts.map((p) => {
+              const inStock = isProductInStock(p);
+              const isBusy = togglingStockId === p.id;
+              const isArchived = p.is_active === false;
 
-                {/* Aksiyon Butonları Grubu (shrink-0 ve taşmayı engelleyen kompakt yapı) */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* STOKTA VAR / YOK BUTONU */}
-                  {(() => {
-                    const inStock = isProductInStock(p);
-                    const isBusy = togglingStockId === p.id;
-                    return (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isBusy}
-                        onClick={() => void toggleStockStatus(p)}
-                        className={`h-7 sm:h-8 px-1.5 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                          inStock
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
-                            : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
-                        }`}
-                        title={
-                          inStock
-                            ? "Stokta Var (Tıklayın: Yok yap)"
-                            : "Stokta Yok (Tıklayın: Var yap)"
-                        }
-                      >
-                        {isBusy ? (
-                          <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
-                        ) : inStock ? (
-                          <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-600 dark:text-rose-400" />
+              return (
+                <div
+                  key={p.id}
+                  className={`flex items-center justify-between gap-2 rounded-xl border p-2 sm:p-3 shadow-card overflow-hidden transition-all ${
+                    isArchived
+                      ? "border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/10"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                      <img
+                        src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
+                        alt={p.name}
+                        loading="lazy"
+                        onError={(e) => handleProductImageError(e, p.name, p.category)}
+                        className="h-full w-full object-contain p-1 bg-white"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs sm:text-sm font-semibold">{p.name}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                        <span>
+                          {categoryLabel(p.category)} · {p.unit}
+                        </span>
+                        {cleanProductDescription(p.description) && (
+                          <span className="text-muted-foreground/80 hidden sm:inline">
+                            · {cleanProductDescription(p.description)}
+                          </span>
                         )}
-                        <span className="ml-1 text-[10.5px] sm:text-xs">
-                          {inStock ? "Var" : "Yok"}
-                        </span>
-                      </Button>
-                    );
-                  })()}
+                        {isArchived ? (
+                          <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                            ● Arşivde (Gizli)
+                          </span>
+                        ) : inStock ? (
+                          <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            ● Stokta
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+                            ● Tükendi
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Düzenle"
-                    className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                    onClick={() => {
-                      setEditingId(p.id);
-                      setForm({
-                        name: p.name || "",
-                        description: p.description ?? "",
-                        category: p.category || "gida",
-                        unit: p.unit || "adet",
-                        image_url: p.image_url ?? "",
-                        is_active: p.is_active ?? true,
-                      });
-                      setTimeout(() => {
-                        const formEl = document.getElementById("product-edit-form");
-                        formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        const nameInput = document.getElementById("pr-name");
-                        nameInput?.focus();
-                      }, 50);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Sil"
-                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive"
-                    onClick={() => void removeProduct(p.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </Button>
+                  {/* Aksiyon Butonları Grubu */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isArchived ? (
+                      // ARŞİVDEKİ ÜRÜN İÇİN BUTONLAR: Geri Yükle & Kalıcı Sil
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={actionBusy}
+                          onClick={() => void restoreProduct(p)}
+                          className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 gap-1 cursor-pointer"
+                          title="Ürünü tekrar aktif kataloğa al"
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Geri Yükle</span>
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Kalıcı Sil"
+                          disabled={actionBusy}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setPermanentDeletingProduct(p)}
+                          title="Veritabanından tamamen sil"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      // AKTİF ÜRÜN İÇİN BUTONLAR: Stok Durumu, Düzenle, Arşive Kaldır (Sil)
+                      <>
+                        {/* STOKTA VAR / YOK BUTONU */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isBusy}
+                          onClick={() => void toggleStockStatus(p)}
+                          className={`h-7 sm:h-8 px-1.5 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                            inStock
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
+                              : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
+                          }`}
+                          title={
+                            inStock
+                              ? "Stokta Var (Tıklayın: Yok yap)"
+                              : "Stokta Yok (Tıklayın: Var yap)"
+                          }
+                        >
+                          {isBusy ? (
+                            <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                          ) : inStock ? (
+                            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-600 dark:text-rose-400" />
+                          )}
+                          <span className="ml-1 text-[10.5px] sm:text-xs">
+                            {inStock ? "Var" : "Yok"}
+                          </span>
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Düzenle"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                          onClick={() => {
+                            setEditingId(p.id);
+                            setForm({
+                              name: p.name || "",
+                              description: cleanProductDescription(p.description),
+                              category: p.category || "gida",
+                              unit: p.unit || "adet",
+                              image_url: p.image_url ?? "",
+                              is_active: p.is_active ?? true,
+                            });
+                            setTimeout(() => {
+                              const formEl = document.getElementById("product-edit-form");
+                              formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              const nameInput = document.getElementById("pr-name");
+                              nameInput?.focus();
+                            }, 50);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Sil / Arşive Kaldır"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
+                          onClick={() => setArchivingProduct(p)}
+                          title="Arşive Kaldır"
+                        >
+                          <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+
+        {/* ÜRÜNÜ ARŞİVE KALDIRMA ONAY DİYALOĞU */}
+        <AlertDialog
+          open={Boolean(archivingProduct)}
+          onOpenChange={(open) => !open && setArchivingProduct(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Archive className="h-5 w-5 text-amber-600" />
+                Ürünü Arşive Kaldır
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2 text-sm">
+                <span>
+                  <strong>"{archivingProduct?.name}"</strong> adlı ürünü arşive kaldırmak
+                  istediğinize emin misiniz?
+                </span>
+                <span className="block text-xs text-muted-foreground bg-muted/60 p-2.5 rounded-lg border border-border/50">
+                  ℹ️ <strong>Tamamen silinmez:</strong> Ürün veritabanında saklanmaya devam eder,
+                  yalnızca müşterilerin gördüğü katalogdan gizlenir. Dilediğiniz zaman "Arşiv"
+                  sekmesinden tek tıkla tekrar kataloğa geri yükleyebilirsiniz.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionBusy}>Vazgeç</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={actionBusy}
+                onClick={() => archivingProduct && void archiveProduct(archivingProduct)}
+                className="bg-amber-600 text-white hover:bg-amber-700"
+              >
+                {actionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Arşive Kaldır"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* KALICI SİLME ONAY DİYALOĞU (Yalnızca Arşivden) */}
+        <AlertDialog
+          open={Boolean(permanentDeletingProduct)}
+          onOpenChange={(open) => !open && setPermanentDeletingProduct(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" />
+                Ürünü Kalıcı Olarak Sil
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2 text-sm">
+                <span>
+                  <strong>"{permanentDeletingProduct?.name}"</strong> adlı ürünü veritabanından{" "}
+                  <strong>tamamen silmek</strong> üzeresiniz.
+                </span>
+                <span className="block text-xs text-destructive/90 bg-destructive/10 p-2.5 rounded-lg border border-destructive/20 font-medium">
+                  ⚠️ Bu işlem geri alınamaz. Eğer bu ürün geçmiş sipariş kayıtlarında yer alıyorsa,
+                  sipariş tutarlılığı için silme işlemi engellenecektir.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionBusy}>İptal</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={actionBusy}
+                onClick={() =>
+                  permanentDeletingProduct &&
+                  void permanentlyDeleteProduct(permanentDeletingProduct)
+                }
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {actionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kalıcı Olarak Sil"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
