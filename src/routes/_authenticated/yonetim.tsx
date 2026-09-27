@@ -257,14 +257,36 @@ function AdminPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="flex flex-wrap">
-          <TabsTrigger value="orders">Siparişler ({allOrders.length})</TabsTrigger>
-          <TabsTrigger value="products">Ürünler ({allProducts.length})</TabsTrigger>
-          <TabsTrigger value="drive" className="flex items-center gap-1.5">
-            <Cloud className="h-3.5 w-3.5 text-primary" />
-            Google Drive
+        <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-muted rounded-xl gap-0.5">
+          <TabsTrigger
+            value="orders"
+            className="px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate flex items-center justify-center gap-0.5"
+          >
+            <span>Siparişler</span>
+            <span className="opacity-70 text-[10px] sm:text-xs">({allOrders.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="users">Üyeler</TabsTrigger>
+          <TabsTrigger
+            value="products"
+            className="px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate flex items-center justify-center gap-0.5"
+          >
+            <span>Ürünler</span>
+            <span className="opacity-70 text-[10px] sm:text-xs">({allProducts.length})</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="drive"
+            className="flex items-center justify-center gap-1 px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate"
+          >
+            <Cloud className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Google </span>Drive
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="users"
+            className="px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate"
+          >
+            Üyeler
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="orders">
           <OrdersPanel onNavigateToDrive={() => setActiveTab("drive")} />

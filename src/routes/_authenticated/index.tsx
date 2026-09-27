@@ -229,8 +229,8 @@ function Index() {
 
       {/* CATALOG GRID SECTION */}
       <section id="urunler" className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        {/* Circular Category Navigation (Tümü, Gıda, Bakliyat, Temizlik, Kişisel Bakım) - Mobilde tam sığacak kompakt ve şık tasarım */}
-        <div className="mb-8 flex items-start justify-between sm:justify-center gap-1 xs:gap-2 sm:gap-6 md:gap-8 py-2 px-0.5 max-w-full overflow-x-auto scrollbar-none">
+        {/* Circular Category Navigation (Tümü, Gıda, Bakliyat, Temizlik, Kişisel Bakım) - Mobilde tam sığacak ideal büyüklükte ve şık tasarım */}
+        <div className="mb-8 flex items-start justify-between sm:justify-center gap-1 sm:gap-6 md:gap-8 py-2 px-1 max-w-full">
           {CIRCULAR_CATEGORIES.map(({ value, label, Icon }) => {
             const isActive = category === value;
             return (
@@ -238,19 +238,19 @@ function Index() {
                 key={value}
                 type="button"
                 onClick={() => setCategory(value)}
-                className="group flex flex-1 sm:flex-initial flex-col items-center focus:outline-none cursor-pointer min-w-0 max-w-[62px] xs:max-w-[70px] sm:max-w-none"
+                className="group flex flex-1 sm:flex-initial flex-col items-center focus:outline-none cursor-pointer min-w-0 max-w-[68px] sm:max-w-none"
               >
                 <div
-                  className={`flex h-10 w-10 xs:h-11 xs:w-11 sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center rounded-full bg-white text-slate-800 shadow-md transition-all duration-200 group-hover:scale-105 active:scale-95 shrink-0 ${
+                  className={`flex h-11 w-11 xs:h-12 xs:w-12 sm:h-16 sm:w-16 md:h-18 md:w-18 items-center justify-center rounded-full bg-white text-slate-800 shadow-md transition-all duration-200 group-hover:scale-105 active:scale-95 shrink-0 ${
                     isActive
-                      ? "scale-105 ring-2 sm:ring-4 ring-[#166534] ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
+                      ? "scale-105 ring-[2.5px] sm:ring-4 ring-[#166534] ring-offset-1 sm:ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
                       : "opacity-90 hover:opacity-100"
                   }`}
                 >
-                  <Icon className="h-5 w-5 xs:h-5.5 xs:w-5.5 sm:h-7 sm:w-7 md:h-8 md:w-8 text-slate-800 transition-transform group-hover:scale-110" />
+                  <Icon className="h-5.5 w-5.5 xs:h-6 xs:w-6 sm:h-8 sm:w-8 md:h-9 md:w-9 text-slate-800 transition-transform group-hover:scale-110" />
                 </div>
                 <span
-                  className={`mt-1 sm:mt-1.5 text-[9.5px] xs:text-[10px] sm:text-xs md:text-sm font-semibold tracking-tight transition-colors text-center leading-[1.15] break-words line-clamp-2 max-w-full ${
+                  className={`mt-1.5 text-[10px] xs:text-[11px] sm:text-xs md:text-sm font-semibold tracking-tight transition-colors text-center leading-[1.15] break-words line-clamp-2 max-w-full ${
                     isActive ? "text-[#22c55e] font-bold" : "text-white/75 group-hover:text-white"
                   }`}
                 >
