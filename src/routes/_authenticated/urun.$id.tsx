@@ -19,7 +19,6 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supaba
 import {
   categoryLabel,
   type Product,
-  FALLBACK_PRODUCTS,
   isProductInStock,
   setProductStockStatusLocal,
 } from "@/lib/catalog";
@@ -78,7 +77,7 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
     console.warn("[ProductDetail] REST fetch fallback failed:", restErr);
   }
 
-  return FALLBACK_PRODUCTS.find((p) => p.id === id) || null;
+  return null;
 }
 
 function ProductDetail() {

@@ -50,7 +50,6 @@ import {
   DISTRICTS,
   districtLabel,
   type Product,
-  FALLBACK_PRODUCTS,
   isProductInStock,
   setProductStockStatusLocal,
 } from "@/lib/catalog";
@@ -177,7 +176,7 @@ async function fetchAdminProductsList(): Promise<Product[]> {
     console.warn("[Admin] REST fetch fallback failed:", restErr);
   }
 
-  return FALLBACK_PRODUCTS;
+  return [];
 }
 
 function AdminPage() {
@@ -1063,7 +1062,7 @@ function ProductsPanel({
             <div className="flex flex-1 flex-col gap-2 w-full">
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="/resimler/ornek.jpg veya /ornek.jpg"
+                  placeholder="Görsel URL veya cihazdan yükleyin"
                   value={
                     form.image_url.startsWith("data:")
                       ? "(Yüklenen dosya / base64)"
@@ -1111,8 +1110,7 @@ function ProductsPanel({
                       : "Cihazdan dosya yükle"}
                 </Button>
                 <span className="text-[11px] text-muted-foreground">
-                  Doğrudan <code>/ornek.jpg</code> veya <code>/resimler/ornek.jpg</code>{" "}
-                  yazabilirsiniz.
+                  Görsel URL girebilir veya cihazınızdan doğrudan fotoğraf yükleyebilirsiniz.
                 </span>
               </div>
             </div>

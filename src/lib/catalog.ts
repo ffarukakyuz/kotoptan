@@ -80,5 +80,3 @@ export function setProductStockStatusLocal(productId: string, inStock: boolean) 
     }
   }
 }
-
-export { PRODUCTS, FALLBACK_PRODUCTS } from "@/data/products";

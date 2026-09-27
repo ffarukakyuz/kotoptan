@@ -16,11 +16,12 @@ import {
   ShoppingCart,
   CheckCircle2,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
-import { categoryLabel, type Product, FALLBACK_PRODUCTS, isProductInStock } from "@/lib/catalog";
+import { categoryLabel, type Product, isProductInStock } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,7 @@ async function fetchProductsFromDatabase(): Promise<Product[]> {
     console.warn("[Products] Direct REST fetch query threw:", restErr);
   }
 
-  return FALLBACK_PRODUCTS;
+  return [];
 }
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -160,7 +161,7 @@ function Index() {
     void stockTick;
     if (clientProducts.length > 0) return clientProducts;
     if (dbProducts && dbProducts.length > 0) return dbProducts;
-    return FALLBACK_PRODUCTS;
+    return [];
   }, [clientProducts, dbProducts, stockTick]);
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
@@ -268,7 +269,9 @@ function Index() {
               {category === "tumu" ? "Tüm Ürünler" : `${categoryLabel(category)} Ürünleri`}
             </h2>
             <p className="mt-1 text-sm text-white/60">
-              {filteredProducts.length} adet ürün listeleniyor
+              {isLoading
+                ? "Canlı ürünler yükleniyor..."
+                : `${filteredProducts.length} adet ürün listeleniyor`}
             </p>
           </div>
 
@@ -299,7 +302,20 @@ function Index() {
         {isLoading ? (
           <div className="grid grid-cols-2 gap-3.5 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-72 rounded-2xl bg-white/10" />
+              <div
+                key={i}
+                className="flex flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 animate-pulse"
+              >
+                <div>
+                  <div className="aspect-square w-full rounded-xl bg-white/10 mb-3" />
+                  <div className="h-3 w-16 rounded bg-white/10 mb-2" />
+                  <div className="h-4 w-3/4 rounded bg-white/10 mb-2" />
+                  <div className="h-3 w-1/2 rounded bg-white/10" />
+                </div>
+                <div className="mt-4 pt-2.5 border-t border-white/5">
+                  <div className="h-8 w-full rounded-lg bg-white/10" />
+                </div>
+              </div>
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
@@ -405,13 +421,21 @@ function HeroProductCard({
     setTick((t) => t + 1);
   };
 
-  if (loading) {
+  if (loading || slides.length === 0) {
     return (
-      <div className="mx-auto max-w-[340px] sm:max-w-[390px] h-[400px] rounded-[32px] bg-white/10 animate-pulse" />
+      <div className="mx-auto max-w-[340px] sm:max-w-[390px] w-full rounded-[28px] sm:rounded-[32px] bg-white p-5 sm:p-6 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_45px_rgba(34,197,94,0.35)] border-2 border-emerald-500/40 animate-pulse">
+        <div className="aspect-square w-full rounded-2xl bg-slate-100 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-[#166534] animate-spin opacity-40" />
+        </div>
+        <div className="mt-4 flex flex-col items-center">
+          <div className="h-3 w-20 rounded bg-slate-200 mb-2" />
+          <div className="h-5 w-48 rounded-md bg-slate-200 mb-1.5" />
+          <div className="h-4 w-24 rounded bg-slate-100 mb-4" />
+          <div className="h-11 w-full rounded-xl bg-slate-200" />
+        </div>
+      </div>
     );
   }
-
-  if (slides.length === 0) return null;
 
   const current = slides[index] ?? slides[0]!;
   const inStock = isProductInStock(current);
