@@ -14,11 +14,13 @@ import {
   Pause,
   Zap,
   ShoppingCart,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
-import { categoryLabel, type Product } from "@/lib/catalog";
+import { categoryLabel, type Product, FALLBACK_PRODUCTS, isProductInStock } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { Input } from "@/components/ui/input";
@@ -72,7 +74,7 @@ async function fetchProductsFromDatabase(): Promise<Product[]> {
     console.warn("[Products] Direct REST fetch query threw:", restErr);
   }
 
-  return [];
+  return FALLBACK_PRODUCTS;
 }
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -105,6 +107,13 @@ const CIRCULAR_CATEGORIES = [
 function Index() {
   const [category, setCategory] = useState<string>("tumu");
   const [search, setSearch] = useState("");
+  const [stockTick, setStockTick] = useState(0);
+
+  useEffect(() => {
+    const handleStockChange = () => setStockTick((t) => t + 1);
+    window.addEventListener("product_stock_status_changed", handleStockChange);
+    return () => window.removeEventListener("product_stock_status_changed", handleStockChange);
+  }, []);
 
   // 1. TanStack Query for cache & live updates from live Supabase database
   const {
@@ -147,12 +156,12 @@ function Index() {
     };
   }, []);
 
-  // Strict live data: Strictly rows returned from Supabase, NO mock/dummy fallback array
   const allProducts = useMemo(() => {
+    void stockTick;
     if (clientProducts.length > 0) return clientProducts;
     if (dbProducts && dbProducts.length > 0) return dbProducts;
-    return [];
-  }, [clientProducts, dbProducts]);
+    return FALLBACK_PRODUCTS;
+  }, [clientProducts, dbProducts, stockTick]);
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
 
@@ -220,8 +229,8 @@ function Index() {
 
       {/* CATALOG GRID SECTION */}
       <section id="urunler" className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        {/* Circular Category Navigation (Tümü, Gıda, Bakliyat, Temizlik) - Tüm Ürünler yazısının hemen üstünde */}
-        <div className="mb-8 flex items-center justify-center gap-3 sm:gap-8 overflow-x-auto py-2">
+        {/* Circular Category Navigation (Tümü, Gıda, Bakliyat, Temizlik, Kişisel Bakım) - Mobilde tam sığacak kompakt ve şık tasarım */}
+        <div className="mb-8 flex items-start justify-between sm:justify-center gap-1 xs:gap-2 sm:gap-6 md:gap-8 py-2 px-0.5 max-w-full overflow-x-auto scrollbar-none">
           {CIRCULAR_CATEGORIES.map(({ value, label, Icon }) => {
             const isActive = category === value;
             return (
@@ -229,20 +238,20 @@ function Index() {
                 key={value}
                 type="button"
                 onClick={() => setCategory(value)}
-                className="group flex flex-col items-center focus:outline-none cursor-pointer shrink-0"
+                className="group flex flex-1 sm:flex-initial flex-col items-center focus:outline-none cursor-pointer min-w-0 max-w-[62px] xs:max-w-[70px] sm:max-w-none"
               >
                 <div
-                  className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg transition-all duration-200 group-hover:scale-105 active:scale-95 ${
+                  className={`flex h-10 w-10 xs:h-11 xs:w-11 sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center rounded-full bg-white text-slate-800 shadow-md transition-all duration-200 group-hover:scale-105 active:scale-95 shrink-0 ${
                     isActive
-                      ? "scale-105 ring-4 ring-[#166534] ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
-                      : "opacity-95 hover:opacity-100"
+                      ? "scale-105 ring-2 sm:ring-4 ring-[#166534] ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
+                      : "opacity-90 hover:opacity-100"
                   }`}
                 >
-                  <Icon className="h-8 w-8 sm:h-10 sm:w-10 text-slate-800 transition-transform group-hover:scale-110" />
+                  <Icon className="h-5 w-5 xs:h-5.5 xs:w-5.5 sm:h-7 sm:w-7 md:h-8 md:w-8 text-slate-800 transition-transform group-hover:scale-110" />
                 </div>
                 <span
-                  className={`mt-2 text-xs sm:text-sm font-semibold tracking-wide transition-colors ${
-                    isActive ? "text-[#22c55e] font-bold" : "text-white/80 group-hover:text-white"
+                  className={`mt-1 sm:mt-1.5 text-[9.5px] xs:text-[10px] sm:text-xs md:text-sm font-semibold tracking-tight transition-colors text-center leading-[1.15] break-words line-clamp-2 max-w-full ${
+                    isActive ? "text-[#22c55e] font-bold" : "text-white/75 group-hover:text-white"
                   }`}
                 >
                   {label}
@@ -327,7 +336,7 @@ function Index() {
         ) : (
           <div className="grid grid-cols-2 gap-3.5 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((p) => (
-              <CatalogProductCard key={p.id} product={p} />
+              <CatalogProductCard key={`${p.id}-${isProductInStock(p)}`} product={p} />
             ))}
           </div>
         )}
@@ -405,9 +414,22 @@ function HeroProductCard({
   if (slides.length === 0) return null;
 
   const current = slides[index] ?? slides[0]!;
+  const inStock = isProductInStock(current);
 
   const handleQuickAdd = () => {
-    add({ productId: current.id, name: current.name, unit: current.unit }, 1);
+    if (!inStock) {
+      toast.error("Bu ürün şu anda stokta bulunmamaktadır.");
+      return;
+    }
+    add(
+      {
+        productId: current.id,
+        name: current.name,
+        unit: current.unit,
+        image_url: current.image_url,
+      },
+      1,
+    );
     setJustAdded(true);
     toast.success(`1 ${current.unit} ${current.name} sepete eklendi`);
     setTimeout(() => setJustAdded(false), 900);
@@ -462,6 +484,21 @@ function HeroProductCard({
 
       {/* Product Image Area with Carousel Arrows */}
       <div className="relative aspect-square w-full rounded-2xl bg-gradient-to-b from-neutral-50 to-neutral-100/70 p-4 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
+        {/* Stok Durumu Rozeti */}
+        <div className="absolute top-3 left-3 z-10">
+          {inStock ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-700/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              <CheckCircle2 className="h-3 w-3" />
+              Stokta Var
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-600/95 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              <XCircle className="h-3 w-3" />
+              Stokta Yok
+            </span>
+          )}
+        </div>
+
         <Link
           to="/urun/$id"
           params={{ id: current.id }}
@@ -472,7 +509,9 @@ function HeroProductCard({
             src={getPublicProductImageUrl(current, current.name, current.category)}
             alt={current.name}
             onError={(e) => handleProductImageError(e, current.name, current.category)}
-            className="h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95"
+            className={`h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95 ${
+              !inStock ? "opacity-75 grayscale-[20%]" : "opacity-100"
+            }`}
           />
         </Link>
 
@@ -505,9 +544,19 @@ function HeroProductCard({
       <div className="mt-4 flex flex-col">
         {/* Category kicker in uppercase */}
         <div className="flex items-center justify-between">
-          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-700">
-            {categoryLabel(current.category)}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-700">
+              {categoryLabel(current.category)}
+            </span>
+            <span className="text-slate-300">•</span>
+            <span
+              className={`text-[11px] font-semibold ${
+                inStock ? "text-emerald-600" : "text-rose-600 font-bold"
+              }`}
+            >
+              {inStock ? "Stokta Var" : "Stokta Yok"}
+            </span>
+          </div>
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600 border border-slate-200/60">
             {index + 1} / {slides.length}
           </span>
@@ -529,14 +578,22 @@ function HeroProductCard({
 
           <button
             type="button"
+            disabled={!inStock}
             onClick={handleQuickAdd}
             className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
-              justAdded
-                ? "bg-emerald-600 text-white scale-105"
-                : "bg-[#166534] hover:bg-[#14532d] text-white"
+              !inStock
+                ? "bg-slate-200 text-slate-500 cursor-not-allowed opacity-80"
+                : justAdded
+                  ? "bg-emerald-600 text-white scale-105"
+                  : "bg-[#166534] hover:bg-[#14532d] text-white"
             }`}
           >
-            {justAdded ? (
+            {!inStock ? (
+              <>
+                <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                Stokta Yok
+              </>
+            ) : justAdded ? (
               <>
                 <Check className="h-3.5 w-3.5" />
                 Eklendi!
@@ -562,9 +619,22 @@ function CatalogProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
+  const inStock = isProductInStock(product);
 
   const handleAdd = () => {
-    add({ productId: product.id, name: product.name, unit: product.unit }, qty);
+    if (!inStock) {
+      toast.error("Bu ürün şu anda stokta bulunmamaktadır.");
+      return;
+    }
+    add(
+      {
+        productId: product.id,
+        name: product.name,
+        unit: product.unit,
+        image_url: product.image_url,
+      },
+      qty,
+    );
     setAdded(true);
     toast.success(`${qty} ${product.unit} ${product.name} sepete eklendi`);
     setTimeout(() => setAdded(false), 1200);
@@ -578,19 +648,45 @@ function CatalogProductCard({ product }: { product: Product }) {
           params={{ id: product.id }}
           className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
         >
+          {/* Stok Rozeti */}
+          <div className="absolute top-2 left-2 z-10">
+            {inStock ? (
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-700/90 backdrop-blur-sm px-1.5 py-0.5 text-[9.5px] font-bold text-white shadow-sm">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                Stokta
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-rose-600/95 backdrop-blur-sm px-1.5 py-0.5 text-[9.5px] font-bold text-white shadow-sm">
+                <XCircle className="h-2.5 w-2.5" />
+                Tükendi
+              </span>
+            )}
+          </div>
+
           <img
             src={getPublicProductImageUrl(product, product.name, product.category)}
             alt={product.name}
             loading="lazy"
             onError={(e) => handleProductImageError(e, product.name, product.category)}
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            className={`h-full w-full object-contain transition-transform duration-300 ${
+              !inStock ? "opacity-75 grayscale-[20%]" : "group-hover:scale-105"
+            }`}
           />
         </Link>
 
         <div className="mt-3 flex flex-col">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#166534]">
-            {categoryLabel(product.category)}
-          </span>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#166534]">
+              {categoryLabel(product.category)}
+            </span>
+            <span
+              className={`text-[10px] font-semibold ${
+                inStock ? "text-emerald-600" : "text-rose-600"
+              }`}
+            >
+              {inStock ? "● Stokta" : "● Tükendi"}
+            </span>
+          </div>
           <Link to="/urun/$id" params={{ id: product.id }}>
             <h3 className="mt-0.5 line-clamp-2 text-sm sm:text-base font-bold text-slate-900 group-hover:text-[#166534] transition-colors leading-snug">
               {product.name}
@@ -607,7 +703,7 @@ function CatalogProductCard({ product }: { product: Product }) {
             <button
               type="button"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
-              disabled={qty <= 1}
+              disabled={!inStock || qty <= 1}
               className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
             >
               <Minus className="h-3 w-3" />
@@ -618,7 +714,8 @@ function CatalogProductCard({ product }: { product: Product }) {
             <button
               type="button"
               onClick={() => setQty((q) => q + 1)}
-              className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white cursor-pointer"
+              disabled={!inStock}
+              className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
             >
               <Plus className="h-3 w-3" />
             </button>
@@ -627,13 +724,29 @@ function CatalogProductCard({ product }: { product: Product }) {
           {/* Add to Cart button */}
           <button
             type="button"
+            disabled={!inStock}
             onClick={handleAdd}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-bold text-white transition-all active:scale-95 cursor-pointer ${
-              added ? "bg-[#14532d]" : "bg-[#166534] hover:bg-[#14532d] shadow-sm"
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 px-2 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+              !inStock
+                ? "bg-slate-200 text-slate-500 hover:bg-slate-200 cursor-not-allowed"
+                : added
+                  ? "bg-[#14532d] text-white"
+                  : "bg-[#166534] hover:bg-[#14532d] text-white shadow-sm"
             }`}
           >
-            {added ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            <span>{added ? "Eklendi" : "Ekle"}</span>
+            {!inStock ? (
+              <span>Tükendi</span>
+            ) : added ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                <span>Eklendi</span>
+              </>
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5" />
+                <span>Ekle</span>
+              </>
+            )}
           </button>
         </div>
       </div>

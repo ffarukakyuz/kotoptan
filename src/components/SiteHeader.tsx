@@ -55,7 +55,13 @@ export function SiteHeader() {
       <Link
         to="/"
         className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-        onClick={() => setOpen(false)}
+        onClick={() => {
+          setOpen(false);
+          if (typeof window !== "undefined" && window.location.pathname === "/") {
+            const el = document.getElementById("urunler");
+            el?.scrollIntoView({ behavior: "smooth" });
+          }
+        }}
       >
         Ürünler
       </Link>

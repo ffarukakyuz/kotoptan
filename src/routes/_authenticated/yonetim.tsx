@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pencil,
   Trash2,
@@ -22,6 +22,7 @@ import {
   UserCheck,
   Cloud,
   PackageSearch,
+  Loader2,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -49,6 +50,9 @@ import {
   DISTRICTS,
   districtLabel,
   type Product,
+  FALLBACK_PRODUCTS,
+  isProductInStock,
+  setProductStockStatusLocal,
 } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,10 +87,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const adminSearchSchema = z.object({
-  tab: z.enum(["orders", "products", "drive", "users"]).optional(),
-  edit: z.string().optional(),
-});
+const adminSearchSchema = z
+  .object({
+    tab: z.enum(["orders", "products", "drive", "users"]).optional(),
+    edit: z.string().optional(),
+  })
+  .passthrough();
 
 export const Route = createFileRoute("/_authenticated/yonetim")({
   validateSearch: (search: Record<string, unknown>) => adminSearchSchema.parse(search),
@@ -135,6 +141,45 @@ type AdminOrder = {
   order_items: AdminOrderItem[];
 };
 
+async function fetchAdminProductsList(): Promise<Product[]> {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(0, 999);
+    if (!error && data && data.length > 0) {
+      return data as Product[];
+    }
+  } catch (err) {
+    console.warn("[Admin] Supabase products fetch failed:", err);
+  }
+
+  // REST fallback
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/products?select=*&order=created_at.desc&limit=1000`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Range: "0-999",
+        },
+      },
+    );
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json) && json.length > 0) {
+        return json as Product[];
+      }
+    }
+  } catch (restErr) {
+    console.warn("[Admin] REST fetch fallback failed:", restErr);
+  }
+
+  return FALLBACK_PRODUCTS;
+}
+
 function AdminPage() {
   const { isAdmin, loading } = useAuth();
   const qc = useQueryClient();
@@ -165,46 +210,7 @@ function AdminPage() {
     },
   });
 
-  async function fetchAdminProductsList(): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .range(0, 999);
-      if (!error && data && data.length > 0) {
-        return data as Product[];
-      }
-    } catch (err) {
-      console.warn("[Admin] Supabase products fetch failed:", err);
-    }
-
-    // REST fallback
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=*&order=created_at.desc&limit=1000`,
-        {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            Range: "0-999",
-          },
-        },
-      );
-      if (res.ok) {
-        const json = await res.json();
-        if (Array.isArray(json) && json.length > 0) {
-          return json as Product[];
-        }
-      }
-    } catch (restErr) {
-      console.warn("[Admin] REST fetch fallback failed:", restErr);
-    }
-
-    return [];
-  }
-
-  const { data: allProducts = [] } = useQuery({
+  const { data: allProducts = [], isLoading: isProductsLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
     staleTime: 1000 * 60 * 5,
@@ -267,6 +273,8 @@ function AdminPage() {
           <ProductsPanel
             initialEditId={search.edit}
             onNavigateToDrive={() => setActiveTab("drive")}
+            initialProducts={allProducts}
+            isLoadingProducts={isProductsLoading}
           />
         </TabsContent>
         <TabsContent value="drive">
@@ -713,9 +721,13 @@ async function compressImage(file: File, max = 800, quality = 0.72) {
 function ProductsPanel({
   initialEditId,
   onNavigateToDrive,
+  initialProducts,
+  isLoadingProducts,
 }: {
   initialEditId?: string;
   onNavigateToDrive?: () => void;
+  initialProducts?: Product[];
+  isLoadingProducts?: boolean;
 }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -723,6 +735,8 @@ function ProductsPanel({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("hepsi");
 
   const pickImage = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -741,12 +755,19 @@ function ProductsPanel({
     }
   };
 
-  const { data, isLoading } = useQuery({
+  const { data: queriedData, isLoading: isQueryLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
+
+  const data = useMemo(
+    () => (queriedData && queriedData.length > 0 ? queriedData : (initialProducts ?? [])),
+    [queriedData, initialProducts],
+  );
+  const isLoading =
+    (isLoadingProducts ?? false) && data.length === 0 ? true : isQueryLoading && data.length === 0;
 
   // initialEditId verilmişse veya URL'den gelmişse düzenleme modunu başlat
   useEffect(() => {
@@ -755,12 +776,12 @@ function ProductsPanel({
     if (target) {
       setEditingId(target.id);
       setForm({
-        name: target.name,
+        name: target.name || "",
         description: target.description ?? "",
-        category: target.category,
-        unit: target.unit,
+        category: target.category || "gida",
+        unit: target.unit || "adet",
         image_url: target.image_url ?? "",
-        is_active: target.is_active,
+        is_active: target.is_active ?? true,
       });
       toast.info(`"${target.name}" düzenleme için hazırlandı.`);
       setTimeout(() => {
@@ -811,6 +832,65 @@ function ProductsPanel({
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
   };
 
+  const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
+
+  const toggleStockStatus = async (product: Product) => {
+    const currentInStock = isProductInStock(product);
+    const newStatus = !currentInStock;
+    setTogglingStockId(product.id);
+
+    // 1. Local override anında güncellensin (sayfa yenilense de hatırlanır)
+    setProductStockStatusLocal(product.id, newStatus);
+
+    // 2. Optimistic update query client cache
+    qc.setQueryData<Product[]>(["admin-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+    });
+    qc.setQueryData<Product[]>(["products", "active"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+    });
+    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+    });
+
+    // 3. Veritabanına da yazmayı dene
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ is_active: newStatus })
+        .eq("id", product.id);
+      if (error) {
+        console.warn("[toggleStockStatus] Supabase update note:", error.message);
+      }
+    } catch (err) {
+      console.warn("[toggleStockStatus] err:", err);
+    }
+
+    toast.success(
+      newStatus
+        ? `"${product.name}" stokta olarak işaretlendi.`
+        : `"${product.name}" stokta yok olarak işaretlendi.`,
+    );
+    setTogglingStockId(null);
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+  };
+
+  const filteredProducts = useMemo(() => {
+    return data.filter((p) => {
+      const matchSearch =
+        !productSearch.trim() ||
+        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()));
+      const matchCategory = categoryFilter === "hepsi" || p.category === categoryFilter;
+      return matchSearch && matchCategory;
+    });
+  }, [data, productSearch, categoryFilter]);
+
   const [syncingImages, setSyncingImages] = useState(false);
 
   const syncAllImagesInDatabase = async () => {
@@ -819,6 +899,13 @@ function ProductsPanel({
     let updatedCount = 0;
     try {
       for (const p of data) {
+        const currentUrl = p.image_url?.trim() || "";
+        const isCleanPublicPath =
+          currentUrl.startsWith("/") && !currentUrl.includes("/src/assets/");
+        if (isCleanPublicPath) {
+          continue;
+        }
+
         const resolved = getPublicProductImageUrl(p.image_url, p.name, p.category);
         if (resolved && resolved !== p.image_url) {
           const { error } = await supabase
@@ -895,7 +982,12 @@ function ProductsPanel({
         </div>
         <div>
           <Label>Kategori</Label>
-          <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+          <Select
+            value={
+              PRODUCT_CATEGORIES.some((c) => c.value === form.category) ? form.category : "gida"
+            }
+            onValueChange={(v) => setForm({ ...form, category: v })}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -938,8 +1030,8 @@ function ProductsPanel({
           </div>
         </div>
         <div>
-          <Label>Ürün fotoğrafı</Label>
-          <div className="mt-1 flex items-center gap-3">
+          <Label>Ürün fotoğrafı (public/ dosya yolu veya dosya yükleme)</Label>
+          <div className="mt-1 flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
               <img
                 src={getPublicProductImageUrl(form.image_url, form.name, form.category)}
@@ -948,42 +1040,61 @@ function ProductsPanel({
                 className="h-full w-full object-contain p-1 bg-white"
               />
             </div>
-            <div className="flex flex-1 flex-col gap-2">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void pickImage(file);
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={uploading}
-                onClick={() => fileRef.current?.click()}
-              >
-                <Upload className="h-4 w-4" />
-                {uploading
-                  ? "Yükleniyor..."
-                  : form.image_url
-                    ? "Fotoğrafı değiştir"
-                    : "Fotoğraf seç"}
-              </Button>
-              {form.image_url && (
+            <div className="flex flex-1 flex-col gap-2 w-full">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="/resimler/ornek.jpg veya /ornek.jpg"
+                  value={
+                    form.image_url.startsWith("data:")
+                      ? "(Yüklenen dosya / base64)"
+                      : form.image_url
+                  }
+                  onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                  className="text-xs"
+                />
+                {form.image_url && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, image_url: "" })}
+                  >
+                    Kaldır
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void pickImage(file);
+                  }}
+                />
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => setForm({ ...form, image_url: "" })}
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                  className="text-xs"
                 >
-                  Kaldır
+                  <Upload className="h-3.5 w-3.5" />
+                  {uploading
+                    ? "Yükleniyor..."
+                    : form.image_url
+                      ? "Cihazdan değiştir"
+                      : "Cihazdan dosya yükle"}
                 </Button>
-              )}
+                <span className="text-[11px] text-muted-foreground">
+                  Doğrudan <code>/ornek.jpg</code> veya <code>/resimler/ornek.jpg</code>{" "}
+                  yazabilirsiniz.
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1009,9 +1120,9 @@ function ProductsPanel({
       </form>
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
-            Kayıtlı Ürünler ({data?.length ?? 0})
+            Kayıtlı Ürünler ({filteredProducts.length} / {data.length})
           </p>
           <Button
             type="button"
@@ -1025,20 +1136,49 @@ function ProductsPanel({
             Görselleri Depoyla Eşitle
           </Button>
         </div>
+
+        {/* Search & Category Filter for Admin Products */}
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Ürün adı ile ara..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="pl-8 text-sm"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hepsi">Tüm Kategoriler</SelectItem>
+              {PRODUCT_CATEGORIES.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {isLoading ? (
           <Skeleton className="h-40 rounded-xl" />
-        ) : (data?.length ?? 0) === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Henüz ürün yok.</p>
+        ) : filteredProducts.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {data.length === 0 ? "Henüz ürün yok." : "Aramaya uygun ürün bulunamadı."}
+          </p>
         ) : (
           <div className="space-y-2">
-            {data!.map((p) => (
+            {filteredProducts.map((p) => (
               <div
                 key={p.id}
                 className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card"
               >
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
                   <img
-                    src={getPublicProductImageUrl(p, p.name, p.category)}
+                    src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
                     alt={p.name}
                     loading="lazy"
                     onError={(e) => handleProductImageError(e, p.name, p.category)}
@@ -1047,11 +1187,54 @@ function ProductsPanel({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {categoryLabel(p.category)} · {p.unit}
-                    {!p.is_active && " · gizli"}
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                    <span>
+                      {categoryLabel(p.category)} · {p.unit}
+                    </span>
+                    {isProductInStock(p) ? (
+                      <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        ● Stokta
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+                        ● Tükendi / Stokta Yok
+                      </span>
+                    )}
                   </p>
                 </div>
+
+                {/* STOKTA VAR / YOK BUTONU (Düzenle Kalem Butonunun Hemen Solunda) */}
+                {(() => {
+                  const inStock = isProductInStock(p);
+                  const isBusy = togglingStockId === p.id;
+                  return (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isBusy}
+                      onClick={() => void toggleStockStatus(p)}
+                      className={`h-8 px-2 sm:px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                        inStock
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
+                          : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
+                      }`}
+                      title={inStock ? "Tıklayın: Stokta Yok yap" : "Tıklayın: Stokta Var yap"}
+                    >
+                      {isBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : inStock ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                      )}
+                      <span className="ml-1 hidden xs:inline sm:inline">
+                        {inStock ? "Stokta Var" : "Stokta Yok"}
+                      </span>
+                    </Button>
+                  );
+                })()}
+
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1059,13 +1242,19 @@ function ProductsPanel({
                   onClick={() => {
                     setEditingId(p.id);
                     setForm({
-                      name: p.name,
-                      description: p.description,
-                      category: p.category,
-                      unit: p.unit,
+                      name: p.name || "",
+                      description: p.description ?? "",
+                      category: p.category || "gida",
+                      unit: p.unit || "adet",
                       image_url: p.image_url ?? "",
-                      is_active: p.is_active,
+                      is_active: p.is_active ?? true,
                     });
+                    setTimeout(() => {
+                      const formEl = document.getElementById("product-edit-form");
+                      formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      const nameInput = document.getElementById("pr-name");
+                      nameInput?.focus();
+                    }, 50);
                   }}
                 >
                   <Pencil className="h-4 w-4" />

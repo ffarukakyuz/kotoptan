@@ -54,4 +54,31 @@ export type Product = {
   is_active: boolean;
 };
 
-export const FALLBACK_PRODUCTS: Product[] = [];
+export function isProductInStock(product: { id?: string; is_active?: boolean | null }): boolean {
+  if (typeof window !== "undefined" && product.id) {
+    try {
+      const overrides = JSON.parse(localStorage.getItem("custom_product_stock_status") || "{}");
+      if (overrides[product.id] !== undefined) {
+        return Boolean(overrides[product.id]);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return product.is_active ?? true;
+}
+
+export function setProductStockStatusLocal(productId: string, inStock: boolean) {
+  if (typeof window !== "undefined") {
+    try {
+      const overrides = JSON.parse(localStorage.getItem("custom_product_stock_status") || "{}");
+      overrides[productId] = inStock;
+      localStorage.setItem("custom_product_stock_status", JSON.stringify(overrides));
+      window.dispatchEvent(new Event("product_stock_status_changed"));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export { PRODUCTS, FALLBACK_PRODUCTS } from "@/data/products";

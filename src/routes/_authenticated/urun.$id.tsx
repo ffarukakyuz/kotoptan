@@ -1,11 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { ArrowLeft, Minus, Plus, PackageSearch, ShoppingCart, Pencil } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import {
+  ArrowLeft,
+  Minus,
+  Plus,
+  PackageSearch,
+  ShoppingCart,
+  Pencil,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
-import { categoryLabel, type Product } from "@/lib/catalog";
+import {
+  categoryLabel,
+  type Product,
+  FALLBACK_PRODUCTS,
+  isProductInStock,
+  setProductStockStatusLocal,
+} from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,14 +78,23 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
     console.warn("[ProductDetail] REST fetch fallback failed:", restErr);
   }
 
-  return null;
+  return FALLBACK_PRODUCTS.find((p) => p.id === id) || null;
 }
 
 function ProductDetail() {
   const { id } = Route.useParams();
   const { isAdmin } = useAuth();
   const { add } = useCart();
+  const qc = useQueryClient();
   const [qty, setQty] = useState(1);
+  const [stockTick, setStockTick] = useState(0);
+  const [togglingStock, setTogglingStock] = useState(false);
+
+  useEffect(() => {
+    const handleStockChange = () => setStockTick((t) => t + 1);
+    window.addEventListener("product_stock_status_changed", handleStockChange);
+    return () => window.removeEventListener("product_stock_status_changed", handleStockChange);
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -105,9 +131,57 @@ function ProductDetail() {
   }
 
   const product = data;
+  const inStock = isProductInStock(product);
+
+  const toggleStock = async () => {
+    const newStatus = !inStock;
+    setTogglingStock(true);
+    setProductStockStatusLocal(product.id, newStatus);
+
+    qc.setQueryData<Product | null>(["product", id], (old) => {
+      if (!old) return old;
+      return { ...old, is_active: newStatus };
+    });
+    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+    });
+    qc.setQueryData<Product[]>(["admin-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: newStatus } : p));
+    });
+
+    try {
+      await supabase.from("products").update({ is_active: newStatus }).eq("id", product.id);
+    } catch (err) {
+      console.warn("Supabase update error:", err);
+    }
+
+    toast.success(
+      newStatus
+        ? `"${product.name}" stokta olarak işaretlendi.`
+        : `"${product.name}" stokta yok olarak işaretlendi.`,
+    );
+    setTogglingStock(false);
+    void qc.invalidateQueries({ queryKey: ["product", id] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+  };
 
   const onAdd = () => {
-    add({ productId: product.id, name: product.name, unit: product.unit }, qty);
+    if (!inStock) {
+      toast.error("Bu ürün şu anda stokta bulunmamaktadır.");
+      return;
+    }
+    add(
+      {
+        productId: product.id,
+        name: product.name,
+        unit: product.unit,
+        image_url: product.image_url,
+      },
+      qty,
+    );
     toast.success(`${product.name} sepete eklendi (${qty} ${product.unit})`);
   };
 
@@ -123,19 +197,41 @@ function ProductDetail() {
             <div>
               <p className="text-sm font-bold text-foreground">Yönetici Paneli Kısayolu</p>
               <p className="text-xs text-muted-foreground">
-                Bu ürünü doğrudan yönetim panelindeki ürün düzenleme formunda açın.
+                Stok durumunu hızlıca değiştirebilir veya ürün düzenleme formunu açabilirsiniz.
               </p>
             </div>
           </div>
-          <Button
-            asChild
-            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
-          >
-            <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Ürünü Düzenle
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={togglingStock}
+              onClick={() => void toggleStock()}
+              className={`flex-1 sm:flex-initial text-xs font-semibold ${
+                inStock
+                  ? "border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
+                  : "border-rose-500 text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300"
+              }`}
+            >
+              {togglingStock ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : inStock ? (
+                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+              ) : (
+                <XCircle className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {inStock ? "Stokta Var (Yok Yap)" : "Stokta Yok (Var Yap)"}
+            </Button>
+            <Button
+              asChild
+              className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
+            >
+              <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Ürünü Düzenle
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -148,22 +244,52 @@ function ProductDetail() {
       </Link>
 
       <div className="mt-5 grid gap-8 md:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card">
-          <div className="aspect-square w-full">
+        <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card relative group">
+          <div className="aspect-square w-full relative">
             <img
               src={getPublicProductImageUrl(product, product.name, product.category)}
               alt={product.name}
               onError={(e) => handleProductImageError(e, product.name, product.category)}
-              className="h-full w-full object-contain p-4 bg-white"
+              className={`h-full w-full object-contain p-4 bg-white transition-opacity ${
+                !inStock ? "opacity-70" : "opacity-100"
+              }`}
             />
+            {/* Fotoğraf Üzeri Stok Rozeti */}
+            <div className="absolute top-3 left-3">
+              {inStock ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-md">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Stokta Var
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/95 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-md">
+                  <XCircle className="h-3.5 w-3.5" />
+                  Stokta Yok
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         <div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              {categoryLabel(product.category)}
-            </span>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+                {categoryLabel(product.category)}
+              </span>
+              <span className="text-muted-foreground">•</span>
+              {inStock ? (
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Stokta Var
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400">
+                  <XCircle className="h-3.5 w-3.5" />
+                  Stokta Yok / Tükendi
+                </span>
+              )}
+            </div>
             {isAdmin && (
               <Link
                 to="/yonetim"
@@ -175,43 +301,74 @@ function ProductDetail() {
               </Link>
             )}
           </div>
+
           <h1 className="mt-2 text-3xl font-extrabold leading-tight text-foreground">
             {product.name}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">Birim: {product.unit}</p>
+
+          <div className="mt-3 flex items-center gap-3">
+            <span className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+              Birim: <strong>{product.unit}</strong>
+            </span>
+            <span
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                inStock
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
+              }`}
+            >
+              {inStock ? "Sipariş verilebilir" : "Geçici olarak temin edilemiyor"}
+            </span>
+          </div>
+
           {product.description && (
             <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
               {product.description}
             </p>
           )}
 
-          <div className="mt-6 flex items-center gap-3">
-            <div className="flex items-center rounded-lg border border-border">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Azalt"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-12 text-center font-semibold">{qty}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Artır"
-                onClick={() => setQty((q) => Math.min(999, q + 1))}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          {inStock ? (
+            <div className="mt-6 flex items-center gap-3">
+              <div className="flex items-center rounded-lg border border-border">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Azalt"
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="w-12 text-center font-semibold">{qty}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Artır"
+                  onClick={() => setQty((q) => Math.min(999, q + 1))}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <span className="text-sm text-muted-foreground">{product.unit}</span>
             </div>
-            <span className="text-sm text-muted-foreground">{product.unit}</span>
-          </div>
+          ) : (
+            <div className="mt-6 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-800 dark:text-rose-300 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>
+                Bu ürün şu anda depomuzda tükenmiştir. Yeni sevkiyat geldiğinde stok durumu
+                güncellenecektir.
+              </span>
+            </div>
+          )}
 
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Button size="lg" onClick={onAdd}>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              size="lg"
+              disabled={!inStock}
+              onClick={onAdd}
+              className={!inStock ? "opacity-60 cursor-not-allowed" : ""}
+            >
               <ShoppingCart className="h-4 w-4" />
-              Sepete ekle
+              {inStock ? "Sepete ekle" : "Stokta Yok"}
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link to="/sepet">Sepete git</Link>

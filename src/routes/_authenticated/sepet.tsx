@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DISTRICTS } from "@/lib/catalog";
+import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 
 export const Route = createFileRoute("/_authenticated/sepet")({
   head: () => ({
@@ -138,8 +139,22 @@ function CartPage() {
               key={item.productId}
               className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-card"
             >
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1">
+                <img
+                  src={getPublicProductImageUrl(item.image_url, item.name)}
+                  alt={item.name}
+                  onError={(e) => handleProductImageError(e, item.name)}
+                  className="h-full w-full object-contain"
+                />
+              </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-foreground">{item.name}</p>
+                <Link
+                  to="/urun/$id"
+                  params={{ id: item.productId }}
+                  className="truncate font-semibold text-foreground hover:text-primary transition-colors block"
+                >
+                  {item.name}
+                </Link>
                 <p className="text-xs text-muted-foreground">Birim: {item.unit}</p>
               </div>
               <div className="flex items-center gap-1 rounded-lg border border-border">
