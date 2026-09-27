@@ -245,7 +245,7 @@ function ProductDetail() {
 
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card relative group">
-          <div className="aspect-square w-full relative">
+          <div className="aspect-square w-full">
             <img
               src={getPublicProductImageUrl(product, product.name, product.category)}
               alt={product.name}
@@ -254,20 +254,6 @@ function ProductDetail() {
                 !inStock ? "opacity-70" : "opacity-100"
               }`}
             />
-            {/* Fotoğraf Üzeri Stok Rozeti */}
-            <div className="absolute top-3 left-3">
-              {inStock ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-md">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Stokta Var
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/95 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-md">
-                  <XCircle className="h-3.5 w-3.5" />
-                  Stokta Yok
-                </span>
-              )}
-            </div>
           </div>
         </div>
 

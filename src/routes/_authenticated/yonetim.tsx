@@ -257,33 +257,31 @@ function AdminPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-muted rounded-xl gap-0.5">
+        <TabsList className="grid w-full grid-cols-4 h-10 p-1 bg-muted rounded-xl gap-0.5 sm:gap-1">
           <TabsTrigger
             value="orders"
-            className="px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate flex items-center justify-center gap-0.5"
+            className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center gap-0.5 sm:gap-1"
           >
-            <span>Siparişler</span>
-            <span className="opacity-70 text-[10px] sm:text-xs">({allOrders.length})</span>
+            <span>Sipariş</span>
+            <span className="hidden sm:inline">ler ({allOrders.length})</span>
           </TabsTrigger>
           <TabsTrigger
             value="products"
-            className="px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate flex items-center justify-center gap-0.5"
+            className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center gap-0.5 sm:gap-1"
           >
             <span>Ürünler</span>
-            <span className="opacity-70 text-[10px] sm:text-xs">({allProducts.length})</span>
+            <span className="hidden sm:inline"> ({allProducts.length})</span>
           </TabsTrigger>
           <TabsTrigger
             value="drive"
-            className="flex items-center justify-center gap-1 px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate"
+            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate"
           >
             <Cloud className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span>
-              <span className="hidden sm:inline">Google </span>Drive
-            </span>
+            <span>Drive</span>
           </TabsTrigger>
           <TabsTrigger
             value="users"
-            className="px-1 py-2 sm:px-3 text-[11px] xs:text-xs sm:text-sm font-semibold truncate"
+            className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center"
           >
             Üyeler
           </TabsTrigger>
@@ -1196,99 +1194,110 @@ function ProductsPanel({
             {filteredProducts.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card"
+                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-2 sm:p-3 shadow-card overflow-hidden"
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-                  <img
-                    src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
-                    alt={p.name}
-                    loading="lazy"
-                    onError={(e) => handleProductImageError(e, p.name, p.category)}
-                    className="h-full w-full object-contain p-1 bg-white"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{p.name}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
-                    <span>
-                      {categoryLabel(p.category)} · {p.unit}
-                    </span>
-                    {isProductInStock(p) ? (
-                      <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        ● Stokta
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                    <img
+                      src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
+                      alt={p.name}
+                      loading="lazy"
+                      onError={(e) => handleProductImageError(e, p.name, p.category)}
+                      className="h-full w-full object-contain p-1 bg-white"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs sm:text-sm font-semibold">{p.name}</p>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                      <span>
+                        {categoryLabel(p.category)} · {p.unit}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
-                        ● Tükendi / Stokta Yok
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                {/* STOKTA VAR / YOK BUTONU (Düzenle Kalem Butonunun Hemen Solunda) */}
-                {(() => {
-                  const inStock = isProductInStock(p);
-                  const isBusy = togglingStockId === p.id;
-                  return (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isBusy}
-                      onClick={() => void toggleStockStatus(p)}
-                      className={`h-8 px-2 sm:px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                        inStock
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
-                          : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
-                      }`}
-                      title={inStock ? "Tıklayın: Stokta Yok yap" : "Tıklayın: Stokta Var yap"}
-                    >
-                      {isBusy ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : inStock ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      {isProductInStock(p) ? (
+                        <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          ● Stokta
+                        </span>
                       ) : (
-                        <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+                          ● Yok
+                        </span>
                       )}
-                      <span className="ml-1 hidden xs:inline sm:inline">
-                        {inStock ? "Stokta Var" : "Stokta Yok"}
-                      </span>
-                    </Button>
-                  );
-                })()}
+                    </p>
+                  </div>
+                </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Düzenle"
-                  onClick={() => {
-                    setEditingId(p.id);
-                    setForm({
-                      name: p.name || "",
-                      description: p.description ?? "",
-                      category: p.category || "gida",
-                      unit: p.unit || "adet",
-                      image_url: p.image_url ?? "",
-                      is_active: p.is_active ?? true,
-                    });
-                    setTimeout(() => {
-                      const formEl = document.getElementById("product-edit-form");
-                      formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      const nameInput = document.getElementById("pr-name");
-                      nameInput?.focus();
-                    }, 50);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Sil"
-                  onClick={() => void removeProduct(p.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                {/* Aksiyon Butonları Grubu (shrink-0 ve taşmayı engelleyen kompakt yapı) */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* STOKTA VAR / YOK BUTONU */}
+                  {(() => {
+                    const inStock = isProductInStock(p);
+                    const isBusy = togglingStockId === p.id;
+                    return (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => void toggleStockStatus(p)}
+                        className={`h-7 sm:h-8 px-1.5 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                          inStock
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
+                            : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
+                        }`}
+                        title={
+                          inStock
+                            ? "Stokta Var (Tıklayın: Yok yap)"
+                            : "Stokta Yok (Tıklayın: Var yap)"
+                        }
+                      >
+                        {isBusy ? (
+                          <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                        ) : inStock ? (
+                          <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-600 dark:text-rose-400" />
+                        )}
+                        <span className="ml-1 text-[10.5px] sm:text-xs">
+                          {inStock ? "Var" : "Yok"}
+                        </span>
+                      </Button>
+                    );
+                  })()}
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Düzenle"
+                    className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                    onClick={() => {
+                      setEditingId(p.id);
+                      setForm({
+                        name: p.name || "",
+                        description: p.description ?? "",
+                        category: p.category || "gida",
+                        unit: p.unit || "adet",
+                        image_url: p.image_url ?? "",
+                        is_active: p.is_active ?? true,
+                      });
+                      setTimeout(() => {
+                        const formEl = document.getElementById("product-edit-form");
+                        formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        const nameInput = document.getElementById("pr-name");
+                        nameInput?.focus();
+                      }, 50);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Sil"
+                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive"
+                    onClick={() => void removeProduct(p.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

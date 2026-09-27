@@ -484,21 +484,6 @@ function HeroProductCard({
 
       {/* Product Image Area with Carousel Arrows */}
       <div className="relative aspect-square w-full rounded-2xl bg-gradient-to-b from-neutral-50 to-neutral-100/70 p-4 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
-        {/* Stok Durumu Rozeti */}
-        <div className="absolute top-3 left-3 z-10">
-          {inStock ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-700/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
-              <CheckCircle2 className="h-3 w-3" />
-              Stokta Var
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-600/95 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
-              <XCircle className="h-3 w-3" />
-              Stokta Yok
-            </span>
-          )}
-        </div>
-
         <Link
           to="/urun/$id"
           params={{ id: current.id }}
@@ -648,21 +633,6 @@ function CatalogProductCard({ product }: { product: Product }) {
           params={{ id: product.id }}
           className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
         >
-          {/* Stok Rozeti */}
-          <div className="absolute top-2 left-2 z-10">
-            {inStock ? (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-700/90 backdrop-blur-sm px-1.5 py-0.5 text-[9.5px] font-bold text-white shadow-sm">
-                <CheckCircle2 className="h-2.5 w-2.5" />
-                Stokta
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-rose-600/95 backdrop-blur-sm px-1.5 py-0.5 text-[9.5px] font-bold text-white shadow-sm">
-                <XCircle className="h-2.5 w-2.5" />
-                Tükendi
-              </span>
-            )}
-          </div>
-
           <img
             src={getPublicProductImageUrl(product, product.name, product.category)}
             alt={product.name}
