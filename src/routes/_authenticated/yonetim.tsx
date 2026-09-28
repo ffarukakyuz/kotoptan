@@ -834,10 +834,14 @@ function ProductsPanel({
     const baseDesc = cleanProductDescription(parsed.data.description);
     const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
+    const normalizedImageUrl = parsed.data.image_url?.trim()
+      ? getPublicProductImageUrl(parsed.data.image_url)
+      : null;
+
     const payload = {
       ...parsed.data,
       description: finalDesc,
-      image_url: parsed.data.image_url || null,
+      image_url: normalizedImageUrl || null,
     };
     setBusy(true);
     const { error } = editingId

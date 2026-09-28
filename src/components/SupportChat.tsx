@@ -215,14 +215,16 @@ export function SupportChat() {
       });
 
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch {
+    } catch (chatError) {
+      console.error("[SupportChat] Chat error:", chatError);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Şu an sunucuyla bağlantı kurulamadı, lütfen kısa süre sonra tekrar deneyin.",
+          content: "Şu an yapay zeka servisine bağlanırken bir aksaklık oluştu. Lütfen sorunuzu bir süre sonra tekrar iletin veya doğrudan depo yöneticilerimizle iletişime geçin.",
         },
       ]);
+      toast.error("Yapay zeka yanıtı alınamadı, lütfen tekrar deneyin.");
     } finally {
       setLoading(false);
     }

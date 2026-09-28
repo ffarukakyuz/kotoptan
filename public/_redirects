@@ -1,1 +1,19 @@
+# Static assets - let Cloudflare Pages serve files directly without rewriting to index.html
+/*.jpg /:splat 200
+/*.jpeg /:splat 200
+/*.png /:splat 200
+/*.webp /:splat 200
+/*.gif /:splat 200
+/*.svg /:splat 200
+/*.ico /:splat 200
+/*.json /:splat 200
+/*.webmanifest /:splat 200
+/*.txt /:splat 200
+/*.css /:splat 200
+/*.js /:splat 200
+/assets/* /assets/:splat 200
+/icons/* /icons/:splat 200
+
+# SPA fallback rule for HTML navigation
 /* /index.html 200
+

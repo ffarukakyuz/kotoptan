@@ -55,7 +55,7 @@ async function fetchCurrentProductList(): Promise<string> {
 
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/products?select=name,description,category,unit,image_url&is_active=eq.true&order=name&limit=300`,
+      `${supabaseUrl}/rest/v1/products?select=name,description,category,unit,image_url&is_active=eq.true&order=name&limit=999`,
       { headers: { apikey: publishableKey } },
     );
     if (!res.ok) return "";
@@ -67,11 +67,11 @@ async function fetchCurrentProductList(): Promise<string> {
       image_url?: string | null;
     }>;
     return rows
-      .map((p) => {
+      .map((p, idx) => {
         const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
         const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
         const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
-        return `- ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Not: ${cleanDesc}` : ""}`;
+        return `${idx + 1}. ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Not: ${cleanDesc}` : ""}`;
       })
       .join("\n");
   } catch {
@@ -112,7 +112,10 @@ async function generateWithFallback(ai: GoogleGenAI, params: any) {
 export const askSupport = createServerFn({ method: "POST" })
   .inputValidator((data) => inputSchema.parse(data))
   .handler(async ({ data }) => {
-    const apiKey = process.env["GEMINI_API_KEY"] || process.env["API_KEY"];
+    const apiKey =
+      process.env["GEMINI_API_KEY"] ||
+      process.env["VITE_GEMINI_API_KEY"] ||
+      process.env["API_KEY"];
     const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
     const productList = await fetchCurrentProductList();
 
@@ -184,7 +187,10 @@ ${productList || "(Ürün listesi şu an yüklenemedi)"}`;
 export const analyzeProductImage = createServerFn({ method: "POST" })
   .inputValidator((data) => imageAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
-    const apiKey = process.env["GEMINI_API_KEY"] || process.env["API_KEY"];
+    const apiKey =
+      process.env["GEMINI_API_KEY"] ||
+      process.env["VITE_GEMINI_API_KEY"] ||
+      process.env["API_KEY"];
     const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
 
     // Base64 veri başlığını (data:image/jpeg;base64,) temizle

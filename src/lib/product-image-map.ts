@@ -34,16 +34,26 @@ export function getPublicProductImageUrl(
   }
 
   if (url && typeof url === "string") {
-    const trimmed = url.trim();
+    let trimmed = url.trim();
     if (trimmed.length > 0) {
       // Base64 data URLs work directly
       if (trimmed.startsWith("data:")) return trimmed;
-      // Absolute URLs
+      // Absolute http/https URLs
       if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-      // Root-relative asset paths (e.g. /__l5e/...)
+      
+      // Clean up accidental public/ prefix (e.g. "public/caykur.jpg" -> "/caykur.jpg")
+      if (trimmed.startsWith("public/")) {
+        trimmed = trimmed.replace(/^public\//, "/");
+      }
+      if (trimmed.startsWith("./public/")) {
+        trimmed = trimmed.replace(/^\.\/public\//, "/");
+      }
+
+      // Root-relative asset paths (e.g. /image_name.jpg)
       if (trimmed.startsWith("/")) return trimmed;
-      // Other direct paths
-      return trimmed;
+
+      // Relative filename without leading slash (e.g. "caykur.jpg") -> convert to root-relative "/caykur.jpg"
+      return `/${trimmed}`;
     }
   }
 

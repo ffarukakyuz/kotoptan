@@ -1,4 +1,5 @@
 import { askSupport, analyzeProductImage } from "./support-chat.functions";
+import { callGeminiAI, getGeminiApiKey } from "./gemini-client";
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -11,7 +12,17 @@ export async function askGemini(
   isAdmin: boolean = false,
   userMeta?: { fullName?: string; businessName?: string; phone?: string },
 ): Promise<string> {
-  // 1. Direct REST endpoint call to /api/chat
+  // 1. Primary: Direct Google Gemini SDK / REST client with dynamic Supabase products context and local search fallback
+  try {
+    const geminiResult = await callGeminiAI(messages, isAdmin, userMeta);
+    if (geminiResult.reply && geminiResult.reply.trim().length > 0) {
+      return geminiResult.reply;
+    }
+  } catch (clientErr) {
+    console.warn("[askGemini] Direct Gemini client call failed, trying server routes:", clientErr);
+  }
+
+  // 2. Direct REST endpoint call to /api/chat (Node/Express or Dev server proxy)
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -26,7 +37,7 @@ export async function askGemini(
     });
 
     if (res.ok) {
-      const data = (await res.json()) as { ok?: boolean; reply?: string };
+      const data = (await res.json()) as { ok?: boolean; reply?: string; error?: string };
       if (data && typeof data.reply === "string" && data.reply.trim().length > 0) {
         return data.reply;
       }
@@ -35,7 +46,7 @@ export async function askGemini(
     console.warn("[askGemini] Direct /api/chat fetch error, falling back to serverFn:", apiErr);
   }
 
-  // 2. Server function fallback
+  // 3. Server function fallback (TanStack Start serverFn)
   try {
     const result = await askSupport({
       data: {
@@ -44,11 +55,15 @@ export async function askGemini(
         userMeta,
       },
     });
-    return result.reply;
+    if (result && result.reply && result.reply.trim().length > 0) {
+      return result.reply;
+    }
   } catch (fnErr) {
-    console.error("[askGemini] Both /api/chat and serverFn failed:", fnErr);
-    return "Şu an bağlantıda kısa bir yoğunluk var, lütfen bir saniye sonra tekrar deneyin.";
+    console.warn("[askGemini] serverFn fallback failed:", fnErr);
   }
+
+  // 4. Safe fallback message ensuring UI never freezes
+  return "Şu an Google Gemini servisiyle bağlantı kurulamadı veya kota sınırına ulaşıldı. Lütfen sorunuzu birazdan tekrar iletin ya da siparişleriniz için bizi doğrudan arayın.";
 }
 
 export async function analyzeProductPhoto(
