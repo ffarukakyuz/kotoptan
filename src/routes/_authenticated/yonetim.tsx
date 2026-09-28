@@ -23,6 +23,8 @@ import {
   Cloud,
   PackageSearch,
   Loader2,
+  Boxes,
+  Package,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -53,6 +55,8 @@ import {
   isProductInStock,
   setProductStockStatusLocal,
   cleanProductDescription,
+  extractPackageOrBoxInfo,
+  normalizeProductWithOverrides,
 } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,7 +153,7 @@ async function fetchAdminProductsList(): Promise<Product[]> {
       .order("created_at", { ascending: false })
       .range(0, 999);
     if (!error && data && data.length > 0) {
-      return data as Product[];
+      return (data as Product[]).map(normalizeProductWithOverrides);
     }
   } catch (err) {
     console.warn("[Admin] Supabase products fetch failed:", err);
@@ -170,7 +174,7 @@ async function fetchAdminProductsList(): Promise<Product[]> {
     if (res.ok) {
       const json = await res.json();
       if (Array.isArray(json) && json.length > 0) {
-        return json as Product[];
+        return (json as Product[]).map(normalizeProductWithOverrides);
       }
     }
   } catch (restErr) {
@@ -1054,11 +1058,11 @@ function ProductsPanel({
           />
         </div>
         <div>
-          <Label htmlFor="pr-desc">Koli içi bilgisi</Label>
+          <Label htmlFor="pr-desc">Paket / Koli içi bilgisi</Label>
           <Textarea
             id="pr-desc"
             rows={2}
-            placeholder="Örn: 1 kolide 12 adet"
+            placeholder="Örn: Paket içi 6 Adet veya Koli içi 12 Adet"
             value={form.description}
             maxLength={500}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -1341,6 +1345,24 @@ function ProductsPanel({
                         <span>
                           {categoryLabel(p.category)} · {p.unit}
                         </span>
+                        {extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id) && (() => {
+                          const info = extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id)!;
+                          const isPack = info.toLowerCase().startsWith("paket");
+                          return (
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              isPack
+                                ? "text-purple-700 bg-purple-500/10 border-purple-500/30"
+                                : "text-amber-700 bg-amber-500/10 border-amber-500/30"
+                            }`}>
+                              {isPack ? (
+                                <Package className="h-3 w-3 text-purple-600" />
+                              ) : (
+                                <Boxes className="h-3 w-3 text-amber-600" />
+                              )}
+                              {info}
+                            </span>
+                          );
+                        })()}
                         {cleanProductDescription(p.description) && (
                           <span className="text-muted-foreground/80 hidden sm:inline">
                             · {cleanProductDescription(p.description)}

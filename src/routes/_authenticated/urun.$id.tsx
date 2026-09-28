@@ -12,6 +12,8 @@ import {
   XCircle,
   AlertTriangle,
   Loader2,
+  Boxes,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +24,8 @@ import {
   isProductInStock,
   setProductStockStatusLocal,
   cleanProductDescription,
+  extractPackageOrBoxInfo,
+  normalizeProductWithOverrides,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -130,7 +134,7 @@ function ProductDetail() {
     );
   }
 
-  const product = data;
+  const product = normalizeProductWithOverrides(data);
   const inStock = isProductInStock(product);
 
   const toggleStock = async () => {
@@ -295,10 +299,28 @@ function ProductDetail() {
             {product.name}
           </h1>
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
             <span className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
               Birim: <strong>{product.unit}</strong>
             </span>
+            {extractPackageOrBoxInfo(product.description, product.unit, product.name, product.id) && (() => {
+              const info = extractPackageOrBoxInfo(product.description, product.unit, product.name, product.id)!;
+              const isPack = info.toLowerCase().startsWith("paket");
+              return (
+                <span className={`rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border ${
+                  isPack
+                    ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-400"
+                    : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                }`}>
+                  {isPack ? (
+                    <Package className="h-3.5 w-3.5 text-purple-600" />
+                  ) : (
+                    <Boxes className="h-3.5 w-3.5 text-amber-600" />
+                  )}
+                  <strong>{info}</strong>
+                </span>
+              );
+            })()}
             <span
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
                 inStock

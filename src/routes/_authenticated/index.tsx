@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import {
   Search,
@@ -17,13 +17,24 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Package,
+  Boxes,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
-import { categoryLabel, type Product, isProductInStock } from "@/lib/catalog";
+import {
+  categoryLabel,
+  type Product,
+  isProductInStock,
+  cleanProductDescription,
+  extractPackageOrBoxInfo,
+  setProductStockStatusLocal,
+  normalizeProductWithOverrides,
+} from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -166,7 +177,7 @@ function Index() {
           ? dbProducts
           : [];
     // Soft-deleted/archived products are completely hidden from customer catalog
-    return base.filter((p) => p.is_active !== false);
+    return base.filter((p) => p.is_active !== false).map(normalizeProductWithOverrides);
   }, [clientProducts, dbProducts, stockTick]);
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
@@ -205,14 +216,40 @@ function Index() {
             />
           </div>
 
-          {/* Hero Call-To-Action Copy & Buttons */}
+          {/* Hero Call-To-Action Copy & Badges */}
           <div className="mt-8 text-center sm:mt-10">
-            <p className="text-xs sm:text-sm font-bold tracking-[0.2em] text-[#22c55e] uppercase">
-              Toptan Depo Kataloğu
-            </p>
-            <h1 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight max-w-xl mx-auto text-balance">
-              Ürünleri görün, adetleri seçin, siparişi gönderin.
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#4ade80] shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-pulse" />
+              Toptan & Hızlı Tedarik
+            </div>
+
+            <h1 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight max-w-2xl mx-auto text-balance">
+              Her ürünü ambalajına göre sipariş verin.
             </h1>
+
+            {/* Sipariş Ambalaj/Birim Rehberi (Paket, Koli, Çuval, Adet) */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 max-w-2xl mx-auto text-xs sm:text-sm">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-purple-400 font-extrabold">🧴 Paket</span>
+                <span className="text-slate-400">bazlılar paketle,</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-amber-400 font-extrabold">📦 Koli</span>
+                <span className="text-slate-400">bazlılar koliyle,</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-emerald-400 font-extrabold">🌾 Çuval</span>
+                <span className="text-slate-400">bazlılar çuvalla,</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-sky-400 font-extrabold">🏷️ Adet</span>
+                <span className="text-slate-400">ürünler tekil adetle</span>
+              </div>
+            </div>
+
+            <p className="mt-2.5 text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+              İhtiyacınız olan miktarı belirleyin, sepetinizi oluşturup doğrudan siparişinizi tamamlayın.
+            </p>
 
             <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
               <button
@@ -444,6 +481,7 @@ function HeroProductCard({
 
   const current = slides[index] ?? slides[0]!;
   const inStock = isProductInStock(current);
+  const boxInfo = extractPackageOrBoxInfo(current.description, current.unit, current.name, current.id);
 
   const handleQuickAdd = () => {
     if (!inStock) {
@@ -556,7 +594,7 @@ function HeroProductCard({
 
       {/* Product Details matching Mockup */}
       <div className="mt-4 flex flex-col">
-        {/* Category kicker in uppercase */}
+        {/* Category kicker in uppercase and Interactive Stock Toggle Button (Only active for Admins) */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-700">
@@ -588,7 +626,21 @@ function HeroProductCard({
 
         {/* Package / Unit and Quick Add Row */}
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-base sm:text-lg font-bold text-slate-800">{current.unit}</p>
+          <div className="flex flex-col">
+            <p className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
+              {current.unit}
+            </p>
+            {boxInfo && (
+              <span className="text-xs font-semibold text-amber-700 flex items-center gap-1 mt-0.5">
+                {boxInfo.toLowerCase().startsWith("paket") ? (
+                  <Package className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                ) : (
+                  <Boxes className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                )}
+                {boxInfo}
+              </span>
+            )}
+          </div>
 
           <button
             type="button"
@@ -634,6 +686,7 @@ function CatalogProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
   const inStock = isProductInStock(product);
+  const boxInfo = extractPackageOrBoxInfo(product.description, product.unit, product.name, product.id);
 
   const handleAdd = () => {
     if (!inStock) {
@@ -655,7 +708,7 @@ function CatalogProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-3 sm:p-4 text-slate-900 shadow-md hover:shadow-xl transition-all duration-200 border border-slate-100">
+    <article className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-3 sm:p-4 text-slate-900 shadow-md hover:shadow-xl transition-all duration-200 border border-slate-100 relative">
       <div>
         <Link
           to="/urun/$id"
@@ -680,18 +733,36 @@ function CatalogProductCard({ product }: { product: Product }) {
             </span>
             <span
               className={`text-[10px] font-semibold ${
-                inStock ? "text-emerald-600" : "text-rose-600"
+                inStock ? "text-emerald-600" : "text-rose-600 font-bold"
               }`}
             >
               {inStock ? "● Stokta" : "● Tükendi"}
             </span>
           </div>
+
           <Link to="/urun/$id" params={{ id: product.id }}>
             <h3 className="mt-0.5 line-clamp-2 text-sm sm:text-base font-bold text-slate-900 group-hover:text-[#166534] transition-colors leading-snug">
               {product.name}
             </h3>
           </Link>
-          <p className="mt-1 text-xs text-slate-500 font-medium">Birim: {product.unit}</p>
+
+          <div className="mt-1 flex items-center justify-between gap-1 flex-wrap">
+            <p className="text-xs text-slate-500 font-medium">Birim: {product.unit}</p>
+            {boxInfo && (
+              <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                boxInfo.toLowerCase().startsWith("paket")
+                  ? "text-purple-700 bg-purple-50 border border-purple-200/80"
+                  : "text-amber-700 bg-amber-50 border border-amber-200/80"
+              }`}>
+                {boxInfo.toLowerCase().startsWith("paket") ? (
+                  <Package className="h-3 w-3 text-purple-600 shrink-0" />
+                ) : (
+                  <Boxes className="h-3 w-3 text-amber-600 shrink-0" />
+                )}
+                {boxInfo}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
