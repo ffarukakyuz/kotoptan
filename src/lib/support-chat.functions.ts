@@ -80,11 +80,25 @@ async function fetchCurrentProductList(): Promise<string> {
 }
 
 const CANDIDATE_MODELS = [
-  "gemini-flash-lite-latest",
-  "gemini-3.5-flash",
-  "gemini-3-flash-preview",
   "gemini-3.8-flash",
+  "gemini-2.5-pro",
+  "gemini-2.0-flash",
 ];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isOverloadOrUnavailable(err: unknown): boolean {
+  const msg = String(err || "").toLowerCase();
+  return (
+    msg.includes("503") ||
+    msg.includes("service unavailable") ||
+    msg.includes("overloaded") ||
+    msg.includes("429") ||
+    msg.includes("rate limit")
+  );
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function generateWithFallback(ai: GoogleGenAI, params: any) {
@@ -101,6 +115,9 @@ async function generateWithFallback(ai: GoogleGenAI, params: any) {
     } catch (err) {
       console.warn(`[Gemini] Model ${model} failed, attempting fallback...`, err);
       lastError = err;
+      if (isOverloadOrUnavailable(err)) {
+        await sleep(650);
+      }
     }
   }
   throw lastError || new Error("Yapay zeka yanıt üretemedi.");

@@ -2,14 +2,15 @@ import { GoogleGenAI } from "@google/genai";
 import { supabase } from "@/integrations/supabase/client";
 import { type ChatMessage } from "./gemini";
 
-// Primary fast response model gemini-1.5-flash followed by official aliases
+// Strictly configured model fallback chain per requirements:
+// Primary: gemini-3.8-flash
+// Secondary: gemini-2.5-pro
+// Tertiary: gemini-2.0-flash (with official alias fallback)
 const CANDIDATE_MODELS = [
-  "gemini-1.5-flash",
-  "gemini-2.5-flash",
-  "gemini-flash-latest",
-  "gemini-3-flash-preview",
   "gemini-3.8-flash",
-];
+  "gemini-2.5-pro",
+  "gemini-2.0-flash",
+] as const;
 
 const SITE_INFO = `
 Firma: KasımOğulları Ltd. Şti. — Bitlis ve ilçelerindeki bakkal ve marketlere toptan satış yapan ana depo.
@@ -164,6 +165,28 @@ export function searchLocalProducts(query: string, products: ProductRecord[]): s
 }
 
 /**
+ * Simple helper delay function for rate-limit buffer
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Checks if an error is a 503 Service Unavailable, 429 Rate Limit, or overload error
+ */
+function isOverloadOrUnavailable(err: unknown): boolean {
+  const msg = String(err || "").toLowerCase();
+  return (
+    msg.includes("503") ||
+    msg.includes("service unavailable") ||
+    msg.includes("overloaded") ||
+    msg.includes("429") ||
+    msg.includes("rate limit") ||
+    msg.includes("resource_exhausted")
+  );
+}
+
+/**
  * Direct Gemini REST endpoint fallback in case SDK fetch meets CSP or runtime limitations
  */
 async function callGeminiRest(
@@ -210,9 +233,12 @@ async function callGeminiRest(
 }
 
 /**
- * Orchestrates Google Gemini call using gemini-1.5-flash with official @google/genai SDK
- * and direct HTTP REST endpoint fallback.
- * Strictly wraps in try-catch without throwing blocking errors or freezing the UI.
+ * Orchestrates Google Gemini call using official @google/genai SDK
+ * Primary: gemini-3.8-flash
+ * Secondary: gemini-2.5-pro
+ * Tertiary: gemini-2.0-flash
+ *
+ * Includes rate-limit/503 retry buffer without rapid tight loops.
  */
 export async function callGeminiAI(
   messages: ChatMessage[],
@@ -277,11 +303,12 @@ ${dynamicProductsContext || "(Ürün listesi şu an yüklenemedi)"}`;
       parts: [{ text: m.content }],
     }));
 
-    // 3. Try primary model gemini-1.5-flash and fallbacks via @google/genai SDK
+    // 3. Try models in strict priority order with retry buffer
     let lastError: unknown = null;
+    const ai = new GoogleGenAI({ apiKey });
+
     for (const model of CANDIDATE_MODELS) {
       try {
-        const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.generateContent({
           model,
           contents,
@@ -296,12 +323,17 @@ ${dynamicProductsContext || "(Ürün listesi şu an yüklenemedi)"}`;
           return { ok: true, reply };
         }
       } catch (err: unknown) {
-        console.warn(`[Gemini SDK] Model ${model} failed, trying next fallback:`, err);
         lastError = err;
+        console.warn(`[Gemini SDK] Model ${model} failed:`, err);
+
+        // If rate limit or 503 overload, buffer before attempting next fallback model
+        if (isOverloadOrUnavailable(err)) {
+          await sleep(650);
+        }
       }
     }
 
-    // 4. Fallback to direct Gemini HTTP REST endpoint
+    // 4. Fallback to direct Gemini HTTP REST endpoint if SDK attempt had network/CSP issues
     for (const model of CANDIDATE_MODELS) {
       try {
         const reply = await callGeminiRest(apiKey, model, contents, systemInstruction);
@@ -309,18 +341,23 @@ ${dynamicProductsContext || "(Ürün listesi şu an yüklenemedi)"}`;
           return { ok: true, reply };
         }
       } catch (restErr: unknown) {
-        console.warn(`[Gemini REST] Model ${model} failed:`, restErr);
         lastError = restErr;
+        console.warn(`[Gemini REST] Model ${model} failed:`, restErr);
+        if (isOverloadOrUnavailable(restErr)) {
+          await sleep(650);
+        }
       }
     }
 
-    // 5. If all models fail (quota or network), provide local search answer or clear non-blocking message
+    // 5. If all models fail (quota, 503 or network), provide local search answer or clear non-blocking message
     const searchFallback = searchLocalProducts(lastUserQuery, products);
     const errString = String(lastError || "");
 
     let errorNotice = "";
     if (errString.includes("429") || errString.toLowerCase().includes("quota") || errString.toLowerCase().includes("rate limit")) {
       errorNotice = "⚠️ (Yapay zeka yanıt kotası dolduğu için canlı depo listesinden arama yapıldı)\n\n";
+    } else if (errString.includes("503") || errString.toLowerCase().includes("overloaded")) {
+      errorNotice = "⚠️ (Yapay zeka sunucuları şu an yoğun olduğundan canlı depo listesinden anlık arama yapıldı)\n\n";
     }
 
     return {
