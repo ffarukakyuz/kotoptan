@@ -12,17 +12,7 @@ export async function askGemini(
   isAdmin: boolean = false,
   userMeta?: { fullName?: string; businessName?: string; phone?: string },
 ): Promise<string> {
-  // 1. Primary: Direct Google Gemini SDK / REST client with dynamic Supabase products context and local search fallback
-  try {
-    const geminiResult = await callGeminiAI(messages, isAdmin, userMeta);
-    if (geminiResult.reply && geminiResult.reply.trim().length > 0) {
-      return geminiResult.reply;
-    }
-  } catch (clientErr) {
-    console.warn("[askGemini] Direct Gemini client call failed, trying server routes:", clientErr);
-  }
-
-  // 2. Direct REST endpoint call to /api/chat (Node/Express or Dev server proxy)
+  // 1. Primary: Server-side proxy route /api/chat (Node/Express or Dev server proxy with GEMINI_API_KEY)
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -46,7 +36,7 @@ export async function askGemini(
     console.warn("[askGemini] Direct /api/chat fetch error, falling back to serverFn:", apiErr);
   }
 
-  // 3. Server function fallback (TanStack Start serverFn)
+  // 2. Server function fallback (TanStack Start serverFn)
   try {
     const result = await askSupport({
       data: {
@@ -60,6 +50,16 @@ export async function askGemini(
     }
   } catch (fnErr) {
     console.warn("[askGemini] serverFn fallback failed:", fnErr);
+  }
+
+  // 3. Client-side fallback if available
+  try {
+    const geminiResult = await callGeminiAI(messages, isAdmin, userMeta);
+    if (geminiResult.reply && geminiResult.reply.trim().length > 0) {
+      return geminiResult.reply;
+    }
+  } catch (clientErr) {
+    console.warn("[askGemini] Client-side fallback failed:", clientErr);
   }
 
   // 4. Safe fallback message ensuring UI never freezes
