@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
+import { FALLBACK_PRODUCTS } from "@/data/products";
 import {
   categoryLabel,
   type Product,
@@ -80,6 +81,12 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
     }
   } catch (restErr) {
     console.warn("[ProductDetail] REST fetch fallback failed:", restErr);
+  }
+
+  // 3. Yerel ürün listesinden kontrol et
+  const localMatch = FALLBACK_PRODUCTS.find((p) => p.id === id);
+  if (localMatch) {
+    return localMatch;
   }
 
   return null;

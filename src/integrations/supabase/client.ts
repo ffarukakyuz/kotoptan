@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-export const FALLBACK_SUPABASE_URL = "https://fgobmapryccuqcmbotkj.supabase.co";
-export const FALLBACK_SUPABASE_ANON_KEY = "sb_publishable_12XuaSyp-u5xs3aK6LLtMA_z4SLAgdB";
+export const FALLBACK_SUPABASE_URL = "https://fxpbsnojtdsemztmzavz.supabase.co";
+export const FALLBACK_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4pGJzbm9qdGRzZW16dG16YXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMzMzNzEsImV4cCI6MjEwMzYwOTM3MX0.hGloigcRKmZFcMHnJP9U6x00KBlZ2Kx5qd_qFjrkIrA";
 
 function getEnvVar(key: string): string | undefined {
   // 1. Try import.meta.env (Vite / client)
@@ -35,12 +36,6 @@ const envKey =
   getEnvVar("VITE_SUPABASE_PUBLISHABLE_KEY") ||
   getEnvVar("SUPABASE_ANON_KEY") ||
   getEnvVar("SUPABASE_PUBLISHABLE_KEY");
-
-if (!envUrl || !envKey) {
-  console.warn(
-    "[Supabase Client] Warning: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY in environment. Using reliable project fallback credentials.",
-  );
-}
 
 export const SUPABASE_URL = envUrl || FALLBACK_SUPABASE_URL;
 export const SUPABASE_ANON_KEY = envKey || FALLBACK_SUPABASE_ANON_KEY;

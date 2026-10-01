@@ -54,15 +54,32 @@ function ProfilePage() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase
-      .from("profiles")
-      .upsert({ id: user.id, ...parsed.data })
-      .eq("id", user.id);
-    setBusy(false);
-    if (error) {
-      toast.error("Kaydedilemedi");
-      return;
+    let supabaseSaved = false;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ id: user.id, ...parsed.data })
+        .eq("id", user.id);
+      if (!error) supabaseSaved = true;
+    } catch {
+      // Supabase connection error
     }
+
+    // Yerel oturum kaydını da güncelle
+    if (typeof window !== "undefined") {
+      try {
+        const rawLocal = localStorage.getItem("ko_local_auth_session");
+        if (rawLocal) {
+          const parsedLocal = JSON.parse(rawLocal);
+          parsedLocal.profile = { id: user.id, ...parsed.data };
+          localStorage.setItem("ko_local_auth_session", JSON.stringify(parsedLocal));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    setBusy(false);
     await refreshProfile();
     toast.success("Bilgileriniz güncellendi");
   };

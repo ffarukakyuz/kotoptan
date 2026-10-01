@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { FALLBACK_PRODUCTS } from "../data/products";
 
 const CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
 
@@ -80,17 +81,27 @@ async function fetchCurrentProductList(): Promise<string> {
       unit: string;
       image_url?: string | null;
     }>;
-    return rows
-      .map((p, idx) => {
-        const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
-        const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
-        const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
-        return `${idx + 1}. ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Ambalaj/Açıklama: ${cleanDesc}` : ""}`;
-      })
-      .join("\n");
+    if (rows && rows.length > 0) {
+      return rows
+        .map((p, idx) => {
+          const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
+          const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
+          const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+          return `${idx + 1}. ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Ambalaj/Açıklama: ${cleanDesc}` : ""}`;
+        })
+        .join("\n");
+    }
   } catch {
-    return "";
+    // ignore
   }
+
+  // Yerel 197 ürünü asistan için bağlam olarak hazırla
+  return FALLBACK_PRODUCTS.map((p, idx) => {
+    const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
+    const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
+    const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+    return `${idx + 1}. ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Ambalaj/Açıklama: ${cleanDesc}` : ""}`;
+  }).join("\n");
 }
 
 export async function processChat(

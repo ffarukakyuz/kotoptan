@@ -89,13 +89,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "format-detection", content: "telephone=no" },
-      { title: "KasımOğulları Ltd. Şti. — Toptan Ürün Kataloğu" },
+      { title: "KasımOğulları Toptan" },
       {
         name: "description",
         content:
           "KasımOğulları depomuzun ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:title", content: "KasımOğulları Toptan" },
+      {
+        property: "og:description",
+        content:
+          "KasımOğulları depomuzun ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+      },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [

@@ -1,6 +1,8 @@
 // Product image resolver - strictly uses live Supabase image_url (base64 or direct asset paths)
 // No mock product image filenames, no keyword mappings, and no external placeholder services.
 
+import { FALLBACK_PRODUCTS } from "@/data/products";
+
 export const GENERIC_PRODUCT_ICON =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.5'><rect width='20' height='20' x='2' y='2' rx='4'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>";
 
@@ -29,8 +31,27 @@ export function getPublicProductImageUrl(
 
   if (rawInput && typeof rawInput === "object") {
     url = rawInput.image_url || rawInput.image;
+    if (!url) {
+      const match = FALLBACK_PRODUCTS.find(
+        (p) =>
+          (rawInput as { id?: string }).id === p.id ||
+          (rawInput.name && p.name.toLowerCase() === rawInput.name.toLowerCase()),
+      );
+      if (match?.image_url) {
+        url = match.image_url;
+      }
+    }
   } else if (typeof rawInput === "string") {
     url = rawInput;
+  }
+
+  if (!url && _productName) {
+    const match = FALLBACK_PRODUCTS.find(
+      (p) => p.name.toLowerCase() === _productName.toLowerCase(),
+    );
+    if (match?.image_url) {
+      url = match.image_url;
+    }
   }
 
   if (url && typeof url === "string") {

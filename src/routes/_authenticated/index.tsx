@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
+import { FALLBACK_PRODUCTS } from "@/data/products";
 import {
   categoryLabel,
   type Product,
@@ -86,7 +87,11 @@ async function fetchProductsFromDatabase(): Promise<Product[]> {
     console.warn("[Products] Direct REST fetch query threw:", restErr);
   }
 
-  return [];
+  // 3. Supabase yanıt vermezse veya bağlantı kopsa bile 197 ürünü yerel yedekten döndür
+  console.log(
+    `[Products] Supabase unavailable, serving ${FALLBACK_PRODUCTS.length} fallback products`,
+  );
+  return FALLBACK_PRODUCTS;
 }
 
 export const Route = createFileRoute("/_authenticated/")({

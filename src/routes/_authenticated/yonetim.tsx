@@ -34,6 +34,7 @@ import type { DriveOrder } from "@/lib/google-drive";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
+import { FALLBACK_PRODUCTS } from "@/data/products";
 import { useAuth } from "@/hooks/useAuth";
 import { ADMIN_MEMBERS, isUserAdmin, GUEST_ACCOUNT } from "@/lib/admin-config";
 import {
@@ -181,7 +182,7 @@ async function fetchAdminProductsList(): Promise<Product[]> {
     console.warn("[Admin] REST fetch fallback failed:", restErr);
   }
 
-  return [];
+  return FALLBACK_PRODUCTS.map(normalizeProductWithOverrides);
 }
 
 function AdminPage() {
