@@ -1349,24 +1349,32 @@ function ProductsPanel({
                         <span>
                           {categoryLabel(p.category)} · {p.unit}
                         </span>
-                        {extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id) && (() => {
-                          const info = extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id)!;
-                          const isPack = info.toLowerCase().startsWith("paket");
-                          return (
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                              isPack
-                                ? "text-purple-700 bg-purple-500/10 border-purple-500/30"
-                                : "text-amber-700 bg-amber-500/10 border-amber-500/30"
-                            }`}>
-                              {isPack ? (
-                                <Package className="h-3 w-3 text-purple-600" />
-                              ) : (
-                                <Boxes className="h-3 w-3 text-amber-600" />
-                              )}
-                              {info}
-                            </span>
-                          );
-                        })()}
+                        {extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id) &&
+                          (() => {
+                            const info = extractPackageOrBoxInfo(
+                              p.description,
+                              p.unit,
+                              p.name,
+                              p.id,
+                            )!;
+                            const isPack = info.toLowerCase().startsWith("paket");
+                            return (
+                              <span
+                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                  isPack
+                                    ? "text-purple-700 bg-purple-500/10 border-purple-500/30"
+                                    : "text-amber-700 bg-amber-500/10 border-amber-500/30"
+                                }`}
+                              >
+                                {isPack ? (
+                                  <Package className="h-3 w-3 text-purple-600" />
+                                ) : (
+                                  <Boxes className="h-3 w-3 text-amber-600" />
+                                )}
+                                {info}
+                              </span>
+                            );
+                          })()}
                         {cleanProductDescription(p.description) && (
                           <span className="text-muted-foreground/80 hidden sm:inline">
                             · {cleanProductDescription(p.description)}

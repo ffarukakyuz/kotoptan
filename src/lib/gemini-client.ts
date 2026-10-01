@@ -6,11 +6,7 @@ import { type ChatMessage } from "./gemini";
 // Primary: gemini-3.8-flash
 // Secondary: gemini-2.5-pro
 // Tertiary: gemini-2.0-flash (with official alias fallback)
-const CANDIDATE_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-2.5-pro",
-  "gemini-2.0-flash",
-] as const;
+const CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.0-flash"] as const;
 
 const SITE_INFO = `
 Firma: KasımOğulları Ltd. Şti. — Bitlis ve ilçelerindeki bakkal ve marketlere toptan satış yapan ana depo.
@@ -39,9 +35,7 @@ Site bölümleri:
 export function getGeminiApiKey(): string {
   try {
     if (typeof import.meta !== "undefined" && import.meta?.env) {
-      const viteKey =
-        import.meta.env["VITE_GEMINI_API_KEY"] ||
-        import.meta.env["GEMINI_API_KEY"];
+      const viteKey = import.meta.env["VITE_GEMINI_API_KEY"] || import.meta.env["GEMINI_API_KEY"];
       if (typeof viteKey === "string" && viteKey.trim().length > 0) {
         return viteKey.trim();
       }
@@ -354,10 +348,16 @@ ${dynamicProductsContext || "(Ürün listesi şu an yüklenemedi)"}`;
     const errString = String(lastError || "");
 
     let errorNotice = "";
-    if (errString.includes("429") || errString.toLowerCase().includes("quota") || errString.toLowerCase().includes("rate limit")) {
-      errorNotice = "⚠️ (Yapay zeka yanıt kotası dolduğu için canlı depo listesinden arama yapıldı)\n\n";
+    if (
+      errString.includes("429") ||
+      errString.toLowerCase().includes("quota") ||
+      errString.toLowerCase().includes("rate limit")
+    ) {
+      errorNotice =
+        "⚠️ (Yapay zeka yanıt kotası dolduğu için canlı depo listesinden arama yapıldı)\n\n";
     } else if (errString.includes("503") || errString.toLowerCase().includes("overloaded")) {
-      errorNotice = "⚠️ (Yapay zeka sunucuları şu an yoğun olduğundan canlı depo listesinden anlık arama yapıldı)\n\n";
+      errorNotice =
+        "⚠️ (Yapay zeka sunucuları şu an yoğun olduğundan canlı depo listesinden anlık arama yapıldı)\n\n";
     }
 
     return {
@@ -369,7 +369,8 @@ ${dynamicProductsContext || "(Ürün listesi şu an yüklenemedi)"}`;
     console.error("[callGeminiAI] Unexpected non-blocking error:", fatalErr);
     return {
       ok: false,
-      reply: "Şu an bağlantıda kısa bir yoğunluk var. Dilerseniz sorunuzu birkaç saniye sonra tekrar iletebilir ya da ürün adını doğrudan katalogdan aratabilirsiniz.",
+      reply:
+        "Şu an bağlantıda kısa bir yoğunluk var. Dilerseniz sorunuzu birkaç saniye sonra tekrar iletebilir ya da ürün adını doğrudan katalogdan aratabilirsiniz.",
       error: fatalErr instanceof Error ? fatalErr.message : "UNKNOWN_ERROR",
     };
   }

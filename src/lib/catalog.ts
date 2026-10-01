@@ -65,7 +65,10 @@ export function cleanProductDescription(desc?: string | null): string {
  * Shampoos (Clear, Dalin, Elidor, Blendax, Pantene, Head & Shoulders, etc.) are sold in packages (paket)
  * and display 'Paket İçi' count.
  */
-const PRODUCT_PACKAGING_CUSTOM_OVERRIDES: Record<string, { unit?: string; description?: string; badge?: string }> = {
+const PRODUCT_PACKAGING_CUSTOM_OVERRIDES: Record<
+  string,
+  { unit?: string; description?: string; badge?: string }
+> = {
   // Clear Şampuan 350 Ml
   "d2e9cf78-f14c-4873-bded-b2d981d1e944": {
     unit: "paket",
@@ -121,7 +124,7 @@ export function normalizeProductWithOverrides(product: Product): Product {
   // Name based shampoo fallback if new shampoo products are added
   if (
     /şampuan|sampuan/i.test(product.name) &&
-    (/clear|dalin|elidor|blendax|pantene|head.*shoulder/i.test(product.name))
+    /clear|dalin|elidor|blendax|pantene|head.*shoulder/i.test(product.name)
   ) {
     const isClear = /clear/i.test(product.name);
     const count = isClear ? 5 : 6;
@@ -166,7 +169,7 @@ export function extractPackageOrBoxInfo(
   }
 
   const text = cleanProductDescription(desc);
-  
+
   if (!text) {
     if (unit && /(?:koli|paket|kutu)/i.test(unit) && /\d+/.test(unit)) {
       return unit.trim();
@@ -177,7 +180,9 @@ export function extractPackageOrBoxInfo(
   // Eğer açıklama hem paket içi hem de koli içi bilgisini içeriyorsa (örn: "Paket İçi: 5 Adet · Koli İçi: 5 Paket (25 Adet)")
   // Öncelikle paket içi kısmını göster
   if (/(?:paket\s*içi|paket\s*ici)/i.test(text)) {
-    const packMatch = text.match(/(?:paket\s*içi|paket\s*ici)\s*[:=\-]?\s*([0-9]+\s*(?:adet|tane)?)/i);
+    const packMatch = text.match(
+      /(?:paket\s*içi|paket\s*ici)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane)?)/i,
+    );
     if (packMatch) {
       return packMatch[0].trim().replace(/^paket/i, "Paket");
     }
@@ -192,12 +197,12 @@ export function extractPackageOrBoxInfo(
   // "Koli: 24 Adet"
   // "24'lü Koli"
   const patterns = [
-    /(?:paket\s*içi|paket\s*ici)\s*[:=\-]?\s*([0-9]+\s*(?:adet|tane|gr|kg|ml|lt|l|paket)?)/i,
-    /(?:koli\s*içi|koli\s*ici|kutu\s*içi|koli\s*adedi)\s*[:=\-]?\s*([0-9]+\s*(?:adet|tane|gr|kg|ml|lt|l|paket)?)/i,
-    /(?:1\s*koli\s*(?:içi|içinde)?)\s*[:=\-]?\s*([0-9]+\s*(?:adet|tane|gr|kg|ml|lt|l)?)/i,
+    /(?:paket\s*içi|paket\s*ici)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane|gr|kg|ml|lt|l|paket)?)/i,
+    /(?:koli\s*içi|koli\s*ici|kutu\s*içi|koli\s*adedi)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane|gr|kg|ml|lt|l|paket)?)/i,
+    /(?:1\s*koli\s*(?:içi|içinde)?)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane|gr|kg|ml|lt|l)?)/i,
     /([0-9]+['’]?(?:li|lı|lu|lü)\s*(?:koli|paket))/i,
-    /(?:koli\s*miktarı|koli\s*miktari)\s*[:=\-]?\s*([0-9]+\s*(?:adet|tane)?)/i,
-    /(koli\s*[:=\-]\s*[0-9]+\s*(?:adet|tane)?)/i,
+    /(?:koli\s*miktarı|koli\s*miktari)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane)?)/i,
+    /(koli\s*[:=-]\s*[0-9]+\s*(?:adet|tane)?)/i,
   ];
 
   for (const regex of patterns) {

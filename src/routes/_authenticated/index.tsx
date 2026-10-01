@@ -248,7 +248,8 @@ function Index() {
             </div>
 
             <p className="mt-2.5 text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-              İhtiyacınız olan miktarı belirleyin, sepetinizi oluşturup doğrudan siparişinizi tamamlayın.
+              İhtiyacınız olan miktarı belirleyin, sepetinizi oluşturup doğrudan siparişinizi
+              tamamlayın.
             </p>
 
             <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
@@ -481,7 +482,12 @@ function HeroProductCard({
 
   const current = slides[index] ?? slides[0]!;
   const inStock = isProductInStock(current);
-  const boxInfo = extractPackageOrBoxInfo(current.description, current.unit, current.name, current.id);
+  const boxInfo = extractPackageOrBoxInfo(
+    current.description,
+    current.unit,
+    current.name,
+    current.id,
+  );
 
   const handleQuickAdd = () => {
     if (!inStock) {
@@ -686,7 +692,12 @@ function CatalogProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
   const inStock = isProductInStock(product);
-  const boxInfo = extractPackageOrBoxInfo(product.description, product.unit, product.name, product.id);
+  const boxInfo = extractPackageOrBoxInfo(
+    product.description,
+    product.unit,
+    product.name,
+    product.id,
+  );
 
   const handleAdd = () => {
     if (!inStock) {
@@ -749,11 +760,13 @@ function CatalogProductCard({ product }: { product: Product }) {
           <div className="mt-1 flex items-center justify-between gap-1 flex-wrap">
             <p className="text-xs text-slate-500 font-medium">Birim: {product.unit}</p>
             {boxInfo && (
-              <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
-                boxInfo.toLowerCase().startsWith("paket")
-                  ? "text-purple-700 bg-purple-50 border border-purple-200/80"
-                  : "text-amber-700 bg-amber-50 border border-amber-200/80"
-              }`}>
+              <span
+                className={`text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                  boxInfo.toLowerCase().startsWith("paket")
+                    ? "text-purple-700 bg-purple-50 border border-purple-200/80"
+                    : "text-amber-700 bg-amber-50 border border-amber-200/80"
+                }`}
+              >
                 {boxInfo.toLowerCase().startsWith("paket") ? (
                   <Package className="h-3 w-3 text-purple-600 shrink-0" />
                 ) : (

@@ -1,10 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const CANDIDATE_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-2.5-pro",
-  "gemini-2.0-flash",
-];
+const CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
 
 const SITE_INFO = `
 Firma: KasımOğulları Ltd. Şti. — Bitlis ve ilçelerindeki bakkal ve marketlere toptan satış yapan ana depo.
@@ -104,9 +100,7 @@ export async function processChat(
 ): Promise<{ ok: boolean; reply: string; error?: string }> {
   try {
     const apiKey =
-      process.env["GEMINI_API_KEY"] ||
-      process.env["VITE_GEMINI_API_KEY"] ||
-      process.env["API_KEY"];
+      process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"] || process.env["API_KEY"];
     const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
     const productList = await fetchCurrentProductList();
 

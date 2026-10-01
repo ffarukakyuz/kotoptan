@@ -40,7 +40,7 @@ export function getPublicProductImageUrl(
       if (trimmed.startsWith("data:")) return trimmed;
       // Absolute http/https URLs
       if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-      
+
       // Clean up accidental public/ prefix (e.g. "public/caykur.jpg" -> "/caykur.jpg")
       if (trimmed.startsWith("public/")) {
         trimmed = trimmed.replace(/^public\//, "/");

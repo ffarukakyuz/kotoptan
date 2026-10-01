@@ -79,11 +79,7 @@ async function fetchCurrentProductList(): Promise<string> {
   }
 }
 
-const CANDIDATE_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-2.5-pro",
-  "gemini-2.0-flash",
-];
+const CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -130,9 +126,7 @@ export const askSupport = createServerFn({ method: "POST" })
   .inputValidator((data) => inputSchema.parse(data))
   .handler(async ({ data }) => {
     const apiKey =
-      process.env["GEMINI_API_KEY"] ||
-      process.env["VITE_GEMINI_API_KEY"] ||
-      process.env["API_KEY"];
+      process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"] || process.env["API_KEY"];
     const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
     const productList = await fetchCurrentProductList();
 
@@ -205,9 +199,7 @@ export const analyzeProductImage = createServerFn({ method: "POST" })
   .inputValidator((data) => imageAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
     const apiKey =
-      process.env["GEMINI_API_KEY"] ||
-      process.env["VITE_GEMINI_API_KEY"] ||
-      process.env["API_KEY"];
+      process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"] || process.env["API_KEY"];
     const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
 
     // Base64 veri başlığını (data:image/jpeg;base64,) temizle

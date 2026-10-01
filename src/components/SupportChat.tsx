@@ -221,7 +221,8 @@ export function SupportChat() {
         ...prev,
         {
           role: "assistant",
-          content: "Şu an yapay zeka servisine bağlanırken bir aksaklık oluştu. Lütfen sorunuzu bir süre sonra tekrar iletin veya doğrudan depo yöneticilerimizle iletişime geçin.",
+          content:
+            "Şu an yapay zeka servisine bağlanırken bir aksaklık oluştu. Lütfen sorunuzu bir süre sonra tekrar iletin veya doğrudan depo yöneticilerimizle iletişime geçin.",
         },
       ]);
       toast.error("Yapay zeka yanıtı alınamadı, lütfen tekrar deneyin.");
