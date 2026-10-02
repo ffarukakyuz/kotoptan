@@ -47,50 +47,7 @@ import {
 } from "@/components/CategoryIcons";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
-  // 1. Direct explicit API call directly to the live Supabase products table using Supabase client
-  try {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .range(0, 999)
-      .order("name", { ascending: true });
-
-    if (!error && Array.isArray(data) && data.length > 0) {
-      console.log(`[Products] Live Supabase products table returned ${data.length} records`);
-      return data as Product[];
-    }
-    if (error) {
-      console.warn("[Products] Supabase client query error:", error);
-    }
-  } catch (err) {
-    console.warn("[Products] Supabase client query threw:", err);
-  }
-
-  // 2. Direct REST fallback to fetch all live products
-  try {
-    const restEndpoint = `${SUPABASE_URL}/rest/v1/products?select=*&order=name.asc&limit=1000`;
-    const res = await fetch(restEndpoint, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Range: "0-999",
-      },
-    });
-    if (res.ok) {
-      const json = await res.json();
-      if (Array.isArray(json) && json.length > 0) {
-        console.log(`[Products] Direct REST fetch returned ${json.length} live records`);
-        return json as Product[];
-      }
-    }
-  } catch (restErr) {
-    console.warn("[Products] Direct REST fetch query threw:", restErr);
-  }
-
-  // 3. Supabase yanıt vermezse veya bağlantı kopsa bile 197 ürünü yerel yedekten döndür
-  console.log(
-    `[Products] Supabase unavailable, serving ${FALLBACK_PRODUCTS.length} fallback products`,
-  );
+  // src/data/products.ts içerisindeki 197 adet fotoğraflı ürün listesi ana ve kesin veri kaynağıdır
   return FALLBACK_PRODUCTS;
 }
 
@@ -140,13 +97,14 @@ function Index() {
   } = useQuery({
     queryKey: ["live-supabase-products"],
     queryFn: fetchProductsFromDatabase,
+    initialData: FALLBACK_PRODUCTS,
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
 
   // 2. Direct client-side explicit Supabase call on initial mount
-  const [clientProducts, setClientProducts] = useState<Product[]>([]);
-  const [isClientLoading, setIsClientLoading] = useState(true);
+  const [clientProducts, setClientProducts] = useState<Product[]>(FALLBACK_PRODUCTS);
+  const [isClientLoading, setIsClientLoading] = useState(false);
 
   useEffect(() => {
     let active = true;

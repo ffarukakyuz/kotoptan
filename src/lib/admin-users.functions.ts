@@ -6,6 +6,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { isUserAdmin } from "@/lib/admin-config";
 
+export const SUPABASE_URL = "https://fxpbsnojtdsemztmzavz.supabase.co";
+export const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4cGJzbm9qdGRzZW16dG16YXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMzMzNzEsImV4cCI6MjEwMzYwOTM3MX0.hGloigcRKmZFcMHnJP9U6x00KBlZ2Kx5qd_qFjrkIrA";
+export const FALLBACK_SUPABASE_URL = SUPABASE_URL;
+export const FALLBACK_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+
 export type AppUser = {
   id: string;
   email: string | null;

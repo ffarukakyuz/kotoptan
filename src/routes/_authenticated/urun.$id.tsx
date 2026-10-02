@@ -55,38 +55,16 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
 });
 
 async function fetchSingleProduct(id: string): Promise<Product | null> {
+  const localMatch = FALLBACK_PRODUCTS.find((p) => p.id === id);
+  if (localMatch) {
+    return localMatch;
+  }
+
   try {
     const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
     if (!error && data) return data as Product;
   } catch (err) {
     console.warn("[ProductDetail] Supabase client fetch failed:", err);
-  }
-
-  // REST fallback
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      },
-    );
-    if (res.ok) {
-      const arr = await res.json();
-      if (Array.isArray(arr) && arr.length > 0) {
-        return arr[0] as Product;
-      }
-    }
-  } catch (restErr) {
-    console.warn("[ProductDetail] REST fetch fallback failed:", restErr);
-  }
-
-  // 3. Yerel ürün listesinden kontrol et
-  const localMatch = FALLBACK_PRODUCTS.find((p) => p.id === id);
-  if (localMatch) {
-    return localMatch;
   }
 
   return null;
@@ -110,6 +88,7 @@ function ProductDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: () => fetchSingleProduct(id),
+    initialData: () => FALLBACK_PRODUCTS.find((p) => p.id === id) ?? undefined,
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });

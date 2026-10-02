@@ -34,14 +34,20 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
+    const envUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
     const SUPABASE_URL =
-      process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"] || FALLBACK_SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY =
+      envUrl && !envUrl.includes("fgobmapryccuqcmbotkj") && !envUrl.includes("://fg")
+        ? envUrl
+        : FALLBACK_SUPABASE_URL;
+    const envKey =
       process.env["SUPABASE_PUBLISHABLE_KEY"] ||
       process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
       process.env["VITE_SUPABASE_ANON_KEY"] ||
-      process.env["SUPABASE_ANON_KEY"] ||
-      FALLBACK_SUPABASE_ANON_KEY;
+      process.env["SUPABASE_ANON_KEY"];
+    const SUPABASE_PUBLISHABLE_KEY =
+      envKey && !envKey.includes("12XuaSyp") && !envKey.startsWith("sb_publishable_")
+        ? envKey
+        : FALLBACK_SUPABASE_ANON_KEY;
 
     const request = getRequest();
 

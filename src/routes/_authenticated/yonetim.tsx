@@ -147,41 +147,6 @@ type AdminOrder = {
 };
 
 async function fetchAdminProductsList(): Promise<Product[]> {
-  try {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(0, 999);
-    if (!error && data && data.length > 0) {
-      return (data as Product[]).map(normalizeProductWithOverrides);
-    }
-  } catch (err) {
-    console.warn("[Admin] Supabase products fetch failed:", err);
-  }
-
-  // REST fallback
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?select=*&order=created_at.desc&limit=1000`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          Range: "0-999",
-        },
-      },
-    );
-    if (res.ok) {
-      const json = await res.json();
-      if (Array.isArray(json) && json.length > 0) {
-        return (json as Product[]).map(normalizeProductWithOverrides);
-      }
-    }
-  } catch (restErr) {
-    console.warn("[Admin] REST fetch fallback failed:", restErr);
-  }
-
   return FALLBACK_PRODUCTS.map(normalizeProductWithOverrides);
 }
 
@@ -218,6 +183,7 @@ function AdminPage() {
   const { data: allProducts = [], isLoading: isProductsLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
+    initialData: () => FALLBACK_PRODUCTS.map(normalizeProductWithOverrides),
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
@@ -783,6 +749,7 @@ function ProductsPanel({
   const { data: queriedData, isLoading: isQueryLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
+    initialData: () => FALLBACK_PRODUCTS.map(normalizeProductWithOverrides),
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
