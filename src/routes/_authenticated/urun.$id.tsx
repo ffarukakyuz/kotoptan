@@ -27,6 +27,7 @@ import {
   cleanProductDescription,
   extractPackageOrBoxInfo,
   normalizeProductWithOverrides,
+  fetchSingleCatalogProduct,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -55,19 +56,7 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
 });
 
 async function fetchSingleProduct(id: string): Promise<Product | null> {
-  const localMatch = FALLBACK_PRODUCTS.find((p) => p.id === id);
-  if (localMatch) {
-    return localMatch;
-  }
-
-  try {
-    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
-    if (!error && data) return data as Product;
-  } catch (err) {
-    console.warn("[ProductDetail] Supabase client fetch failed:", err);
-  }
-
-  return null;
+  return fetchSingleCatalogProduct(id);
 }
 
 function ProductDetail() {

@@ -32,6 +32,7 @@ import {
   extractPackageOrBoxInfo,
   setProductStockStatusLocal,
   normalizeProductWithOverrides,
+  fetchCatalogProducts,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -47,8 +48,7 @@ import {
 } from "@/components/CategoryIcons";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
-  // src/data/products.ts içerisindeki 197 adet fotoğraflı ürün listesi ana ve kesin veri kaynağıdır
-  return FALLBACK_PRODUCTS;
+  return fetchCatalogProducts();
 }
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -83,12 +83,6 @@ function Index() {
   const [search, setSearch] = useState("");
   const [stockTick, setStockTick] = useState(0);
 
-  useEffect(() => {
-    const handleStockChange = () => setStockTick((t) => t + 1);
-    window.addEventListener("product_stock_status_changed", handleStockChange);
-    return () => window.removeEventListener("product_stock_status_changed", handleStockChange);
-  }, []);
-
   // 1. TanStack Query for cache & live updates from live Supabase database
   const {
     data: dbProducts,
@@ -105,6 +99,23 @@ function Index() {
   // 2. Direct client-side explicit Supabase call on initial mount
   const [clientProducts, setClientProducts] = useState<Product[]>(FALLBACK_PRODUCTS);
   const [isClientLoading, setIsClientLoading] = useState(false);
+
+  useEffect(() => {
+    const handleStockChange = () => setStockTick((t) => t + 1);
+    const handleCatalogChange = () => {
+      void refetch();
+      void fetchProductsFromDatabase().then((items) => {
+        if (items.length > 0) setClientProducts(items);
+      });
+      setStockTick((t) => t + 1);
+    };
+    window.addEventListener("product_stock_status_changed", handleStockChange);
+    window.addEventListener("products_catalog_changed", handleCatalogChange);
+    return () => {
+      window.removeEventListener("product_stock_status_changed", handleStockChange);
+      window.removeEventListener("products_catalog_changed", handleCatalogChange);
+    };
+  }, [refetch]);
 
   useEffect(() => {
     let active = true;

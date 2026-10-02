@@ -58,6 +58,10 @@ import {
   cleanProductDescription,
   extractPackageOrBoxInfo,
   normalizeProductWithOverrides,
+  fetchCatalogProducts,
+  saveCatalogProduct,
+  archiveCatalogProduct,
+  deleteCatalogProductPermanently,
 } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,12 +117,12 @@ export const Route = createFileRoute("/_authenticated/yonetim")({
 });
 
 const productSchema = z.object({
-  name: z.string().trim().min(2, "Ürün adı gerekli").max(120),
-  description: z.string().trim().max(500),
-  category: z.string().trim().min(1),
-  unit: z.string().trim().min(1, "Birim gerekli").max(30),
-  image_url: z.string().trim().max(400000),
-  is_active: z.boolean(),
+  name: z.string().trim().min(2, "Ürün adı en az 2 karakter olmalı").max(200),
+  description: z.string().trim().max(2000).optional().default(""),
+  category: z.string().trim().min(1, "Kategori seçiniz"),
+  unit: z.string().trim().min(1, "Birim gerekli").max(50),
+  image_url: z.string().trim().optional().default(""),
+  is_active: z.boolean().default(true),
 });
 
 const emptyProduct = {
@@ -147,7 +151,7 @@ type AdminOrder = {
 };
 
 async function fetchAdminProductsList(): Promise<Product[]> {
-  return FALLBACK_PRODUCTS.map(normalizeProductWithOverrides);
+  return fetchCatalogProducts();
 }
 
 function AdminPage() {
@@ -165,6 +169,16 @@ function AdminPage() {
       setActiveTab(search.tab);
     }
   }, [search.edit, search.tab]);
+
+  useEffect(() => {
+    const handleCatalogChange = () => {
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    };
+    window.addEventListener("products_catalog_changed", handleCatalogChange);
+    return () => window.removeEventListener("products_catalog_changed", handleCatalogChange);
+  }, [qc]);
 
   const { data: allOrders = [] } = useQuery({
     queryKey: ["admin-orders"],
@@ -812,19 +826,18 @@ function ProductsPanel({
       image_url: normalizedImageUrl || null,
     };
     setBusy(true);
-    const { error } = editingId
-      ? await supabase.from("products").update(payload).eq("id", editingId)
-      : await supabase.from("products").insert(payload);
-    setBusy(false);
-    if (error) {
-      toast.error("Kaydedilemedi");
-      return;
+    try {
+      await saveCatalogProduct(payload, editingId);
+      setBusy(false);
+      toast.success(editingId ? "Ürün güncellendi" : "Ürün eklendi");
+      reset();
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    } catch (err) {
+      setBusy(false);
+      toast.error("Ürün kaydedilirken bir hata oluştu.");
     }
-    toast.success(editingId ? "Ürün güncellendi" : "Ürün eklendi");
-    reset();
-    void qc.invalidateQueries({ queryKey: ["admin-products"] });
-    void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const [productView, setProductView] = useState<"aktif" | "arsiv">("aktif");
@@ -835,57 +848,52 @@ function ProductsPanel({
 
   const archiveProduct = async (product: Product) => {
     setActionBusy(true);
-    const { error } = await supabase
-      .from("products")
-      .update({ is_active: false })
-      .eq("id", product.id);
-    setActionBusy(false);
-    if (error) {
-      toast.error("Arşive kaldırılamadı: " + error.message);
-      return;
+    try {
+      await archiveCatalogProduct(product.id, false);
+      toast.success(
+        `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
+      );
+    } catch {
+      toast.error("Arşive kaldırılamadı.");
+    } finally {
+      setActionBusy(false);
+      setArchivingProduct(null);
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
     }
-    toast.success(
-      `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
-    );
-    setArchivingProduct(null);
-    void qc.invalidateQueries({ queryKey: ["admin-products"] });
-    void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const restoreProduct = async (product: Product) => {
     setActionBusy(true);
-    const { error } = await supabase
-      .from("products")
-      .update({ is_active: true })
-      .eq("id", product.id);
-    setActionBusy(false);
-    if (error) {
-      toast.error("Geri yüklenemedi: " + error.message);
-      return;
+    try {
+      await archiveCatalogProduct(product.id, true);
+      toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
+    } catch {
+      toast.error("Geri yüklenemedi.");
+    } finally {
+      setActionBusy(false);
+      setRestoringProduct(null);
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
     }
-    toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
-    setRestoringProduct(null);
-    void qc.invalidateQueries({ queryKey: ["admin-products"] });
-    void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const permanentlyDeleteProduct = async (product: Product) => {
     setActionBusy(true);
-    const { error } = await supabase.from("products").delete().eq("id", product.id);
-    setActionBusy(false);
-    if (error) {
-      toast.error(
-        "Kalıcı olarak silinemedi (Siparişlerde kullanılıyor olabilir): " + error.message,
-      );
-      return;
+    try {
+      await deleteCatalogProductPermanently(product.id);
+      toast.success(`"${product.name}" kalıcı olarak silindi.`);
+    } catch {
+      toast.error("Silinemedi.");
+    } finally {
+      setActionBusy(false);
+      setPermanentDeletingProduct(null);
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
     }
-    toast.success(`"${product.name}" veritabanından kalıcı olarak silindi.`);
-    setPermanentDeletingProduct(null);
-    void qc.invalidateQueries({ queryKey: ["admin-products"] });
-    void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
@@ -1457,12 +1465,23 @@ function ProductsPanel({
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label="Sil / Arşive Kaldır"
+                          aria-label="Arşive Kaldır"
                           className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
                           onClick={() => setArchivingProduct(p)}
                           title="Arşive Kaldır"
                         >
                           <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Ürünü Sil"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setPermanentDeletingProduct(p)}
+                          title="Ürünü Sil"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </>
                     )}

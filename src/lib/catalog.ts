@@ -1,3 +1,6 @@
+import { FALLBACK_PRODUCTS } from "@/data/products";
+import { supabase } from "@/integrations/supabase/client";
+
 export const CATEGORIES = [
   { value: "tumu", label: "Tümü" },
   { value: "gida", label: "Gıda" },
@@ -257,5 +260,242 @@ export function setProductStockStatusLocal(productId: string, inStock: boolean) 
     } catch {
       // ignore
     }
+  }
+}
+
+export const CUSTOM_ADDED_PRODUCTS_KEY = "ko_custom_added_products";
+export const CUSTOM_PRODUCT_UPDATES_KEY = "ko_custom_product_updates";
+export const CUSTOM_DELETED_PRODUCT_IDS_KEY = "ko_custom_deleted_product_ids";
+
+export function getCustomAddedProducts(): Product[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_ADDED_PRODUCTS_KEY);
+    return raw ? (JSON.parse(raw) as Product[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getCustomProductUpdates(): Record<string, Partial<Product>> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(CUSTOM_PRODUCT_UPDATES_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, Partial<Product>>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function getCustomDeletedProductIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_DELETED_PRODUCT_IDS_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Loads all catalog products, seamlessly merging:
+ * 1. Static 197 fallback products
+ * 2. Supabase live database products
+ * 3. LocalStorage custom added & updated products
+ * 4. Filter out any permanently deleted products
+ */
+export async function fetchCatalogProducts(): Promise<Product[]> {
+  let dbProducts: Product[] = [];
+  try {
+    const { data, error } = await supabase.from("products").select("*");
+    if (!error && Array.isArray(data) && data.length > 0) {
+      dbProducts = data as Product[];
+    }
+  } catch (err) {
+    console.warn("[fetchCatalogProducts] Supabase fetch error:", err);
+  }
+
+  const map = new Map<string, Product>();
+
+  // 1. Base static products
+  for (const p of FALLBACK_PRODUCTS) {
+    map.set(p.id, { ...p });
+  }
+
+  // 2. Supabase products
+  for (const p of dbProducts) {
+    map.set(p.id, { ...p });
+  }
+
+  // 3. LocalStorage custom added products
+  const localAdded = getCustomAddedProducts();
+  for (const p of localAdded) {
+    map.set(p.id, { ...p });
+  }
+
+  // 4. LocalStorage custom edits (updates & archive status)
+  const localUpdates = getCustomProductUpdates();
+  for (const [id, updates] of Object.entries(localUpdates)) {
+    const existing = map.get(id);
+    if (existing) {
+      map.set(id, { ...existing, ...updates });
+    }
+  }
+
+  // 5. Filter out deleted products
+  const deletedIds = new Set(getCustomDeletedProductIds());
+  for (const id of deletedIds) {
+    map.delete(id);
+  }
+
+  const all = Array.from(map.values()).map(normalizeProductWithOverrides);
+
+  // Newly added local products come first
+  const localAddedIds = new Set(localAdded.map((p) => p.id));
+  return all.sort((a, b) => {
+    const aNew = localAddedIds.has(a.id);
+    const bNew = localAddedIds.has(b.id);
+    if (aNew && !bNew) return -1;
+    if (!aNew && bNew) return 1;
+    return 0;
+  });
+}
+
+/**
+ * Loads a single product by ID from catalog
+ */
+export async function fetchSingleCatalogProduct(id: string): Promise<Product | null> {
+  const all = await fetchCatalogProducts();
+  return all.find((p) => p.id === id) || null;
+}
+
+/**
+ * Saves (creates or updates) a product. Persists immediately in localStorage
+ * and syncs with Supabase if online.
+ */
+export async function saveCatalogProduct(
+  payload: {
+    name: string;
+    category: string;
+    unit: string;
+    description: string;
+    image_url?: string | null;
+    is_active?: boolean;
+  },
+  editingId?: string | null,
+): Promise<Product> {
+  const id = editingId || `ko-prod-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const product: Product = {
+    id,
+    name: payload.name.trim(),
+    category: payload.category.trim(),
+    unit: payload.unit.trim(),
+    description: payload.description.trim(),
+    image_url: payload.image_url || null,
+    is_active: payload.is_active !== undefined ? payload.is_active : true,
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      if (editingId) {
+        const updates = getCustomProductUpdates();
+        updates[editingId] = { ...product };
+        localStorage.setItem(CUSTOM_PRODUCT_UPDATES_KEY, JSON.stringify(updates));
+
+        const added = getCustomAddedProducts();
+        const idx = added.findIndex((p) => p.id === editingId);
+        if (idx !== -1) {
+          added[idx] = product;
+          localStorage.setItem(CUSTOM_ADDED_PRODUCTS_KEY, JSON.stringify(added));
+        }
+      } else {
+        const added = getCustomAddedProducts();
+        added.unshift(product);
+        localStorage.setItem(CUSTOM_ADDED_PRODUCTS_KEY, JSON.stringify(added));
+      }
+
+      // Ensure not marked deleted
+      const deleted = getCustomDeletedProductIds().filter((dId) => dId !== id);
+      localStorage.setItem(CUSTOM_DELETED_PRODUCT_IDS_KEY, JSON.stringify(deleted));
+
+      window.dispatchEvent(new Event("products_catalog_changed"));
+    } catch (storageErr) {
+      console.warn("[saveCatalogProduct] LocalStorage save error:", storageErr);
+    }
+  }
+
+  // Also attempt Supabase upsert in background
+  try {
+    if (editingId) {
+      await supabase.from("products").update(product).eq("id", editingId);
+    } else {
+      await supabase.from("products").insert(product);
+    }
+  } catch (sbErr) {
+    console.warn("[saveCatalogProduct] Supabase background save notice:", sbErr);
+  }
+
+  return product;
+}
+
+/**
+ * Archives or restores a product
+ */
+export async function archiveCatalogProduct(productId: string, is_active: boolean): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const updates = getCustomProductUpdates();
+      updates[productId] = { ...(updates[productId] || {}), is_active };
+      localStorage.setItem(CUSTOM_PRODUCT_UPDATES_KEY, JSON.stringify(updates));
+
+      const added = getCustomAddedProducts();
+      const idx = added.findIndex((p) => p.id === productId);
+      if (idx !== -1) {
+        added[idx]!.is_active = is_active;
+        localStorage.setItem(CUSTOM_ADDED_PRODUCTS_KEY, JSON.stringify(added));
+      }
+
+      window.dispatchEvent(new Event("products_catalog_changed"));
+    } catch (storageErr) {
+      console.warn("[archiveCatalogProduct] LocalStorage archive error:", storageErr);
+    }
+  }
+
+  try {
+    await supabase.from("products").update({ is_active }).eq("id", productId);
+  } catch (err) {
+    console.warn("[archiveCatalogProduct] Supabase archive notice:", err);
+  }
+}
+
+/**
+ * Permanently deletes a product
+ */
+export async function deleteCatalogProductPermanently(productId: string): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const added = getCustomAddedProducts().filter((p) => p.id !== productId);
+      localStorage.setItem(CUSTOM_ADDED_PRODUCTS_KEY, JSON.stringify(added));
+
+      const updates = getCustomProductUpdates();
+      delete updates[productId];
+      localStorage.setItem(CUSTOM_PRODUCT_UPDATES_KEY, JSON.stringify(updates));
+
+      const deleted = getCustomDeletedProductIds();
+      if (!deleted.includes(productId)) {
+        deleted.push(productId);
+        localStorage.setItem(CUSTOM_DELETED_PRODUCT_IDS_KEY, JSON.stringify(deleted));
+      }
+
+      window.dispatchEvent(new Event("products_catalog_changed"));
+    } catch (storageErr) {
+      console.warn("[deleteCatalogProductPermanently] LocalStorage delete error:", storageErr);
+    }
+  }
+
+  try {
+    await supabase.from("products").delete().eq("id", productId);
+  } catch (err) {
+    console.warn("[deleteCatalogProductPermanently] Supabase delete notice:", err);
   }
 }

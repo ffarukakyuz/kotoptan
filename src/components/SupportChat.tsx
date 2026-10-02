@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { askGemini, analyzeProductPhoto, type ChatMessage } from "@/lib/gemini";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { categoryLabel } from "@/lib/catalog";
+import { categoryLabel, saveCatalogProduct } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -132,8 +132,8 @@ export function SupportChat() {
 
     setMessages((prev) => [...prev, userMsg]);
 
-    // EĞER YÖNETİCİ FOTOĞRAF GÖNDERDİYSE: Gemini Vision ile Analiz Et ve Ürünü Depoya Ekle
-    if (isAdmin && hasImage && currentImg) {
+    // EĞER FOTOĞRAF GÖNDERİLDİYSE: Gemini Vision ile Analiz Et ve Ürünü Depoya Ekle
+    if (hasImage && currentImg) {
       setAnalyzingImage(true);
       try {
         const result = await analyzeProductPhoto(currentImg, "image/jpeg", text || undefined);
@@ -144,8 +144,8 @@ export function SupportChat() {
 
         const extracted = result.product;
 
-        // Ürünü doğrudan Supabase'e ekle
-        const { error: insertError } = await supabase.from("products").insert({
+        // Ürünü doğrudan kataloğa kaydet (yerel depolama + Supabase)
+        const saved = await saveCatalogProduct({
           name: extracted.name,
           category: extracted.category,
           unit: extracted.unit,
@@ -154,33 +154,23 @@ export function SupportChat() {
           is_active: true,
         });
 
-        if (insertError) {
-          console.error("Product insert error:", insertError);
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `⚠️ Ürünü analiz ettim ancak veritabanına eklenirken bir hata oluştu: ${insertError.message}\n\nTespit Edilen Bilgiler:\n📦 Ürün: ${extracted.name}\n📂 Kategori: ${categoryLabel(extracted.category)}\n⚖️ Birim: ${extracted.unit}\n📝 Açıklama: ${extracted.description}`,
-            },
-          ]);
-          return;
-        }
-
         // Başarılı ekleme: query cache'i güncelle ki ana sayfada ve yönetimde anında görünsün
         void qc.invalidateQueries({ queryKey: ["admin-products"] });
         void qc.invalidateQueries({ queryKey: ["products"] });
-        toast.success("Yeni ürün otomatik olarak depoya eklendi!");
+        void qc.invalidateQueries({ queryKey: ["products", "active"] });
+        void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+        toast.success("Yeni ürün depoya başarıyla eklendi!");
 
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `✅ Harika! Ürünü fotoğraftan tespit ettim ve otomatik olarak depoya ekledim:\n\n📦 **${extracted.name}**\n📂 Kategori: **${categoryLabel(extracted.category)}**\n⚖️ Birim: **${extracted.unit}**\n📝 Açıklama: ${extracted.description}\n\nÜrün şu anda katalogda ve yönetim panelinde yayında!`,
+            content: `✅ Harika! Fotoğraftaki ürünü tespit ettim ve depoya ekledim:\n\n📦 **${saved.name}**\n📂 Kategori: **${categoryLabel(saved.category)}**\n⚖️ Birim: **${saved.unit}**\n📝 Açıklama: ${saved.description}\n\nÜrün şu anda hem vitrinde hem de yönetim panelinde yayında!`,
             productPreview: {
-              name: extracted.name,
-              category: extracted.category,
-              unit: extracted.unit,
-              description: extracted.description,
+              name: saved.name,
+              category: saved.category,
+              unit: saved.unit,
+              description: saved.description,
               image_url: currentImg,
             },
           },

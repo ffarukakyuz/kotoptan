@@ -1,13 +1,21 @@
+import { GoogleGenAI } from "@google/genai";
 import { FALLBACK_PRODUCTS } from "../data/products";
 
 export const OPENROUTER_API_KEY =
-  process.env["OPENROUTER_API_KEY"] ||
-  process.env["VITE_OPENROUTER_API_KEY"] ||
-  "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";
+  process.env["OPENROUTER_API_KEY"] || process.env["VITE_OPENROUTER_API_KEY"] || "";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";
 export const FALLBACK_MODEL = "anthropic/claude-3.5-sonnet";
+
+function getGeminiClient(): GoogleGenAI {
+  const apiKey =
+    process.env["GEMINI_API_KEY"] ||
+    process.env["GOOGLE_API_KEY"] ||
+    process.env["VITE_GEMINI_API_KEY"] ||
+    "";
+  return apiKey ? new GoogleGenAI({ apiKey }) : new GoogleGenAI();
+}
 
 const SITE_INFO = `
 Firma: KasımOğulları Ltd. Şti. — Bitlis ve ilçelerindeki bakkal ve marketlere toptan satış yapan ana depo.
@@ -35,10 +43,108 @@ function getProductCatalogContext(): string {
   }).join("\n");
 }
 
+async function callGemini(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  systemInstruction: string,
+): Promise<{ ok: boolean; reply: string; error?: string }> {
+  try {
+    const ai = getGeminiClient();
+    const contents = messages.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      },
+    });
+
+    const reply = response.text?.trim();
+    if (reply) {
+      return { ok: true, reply };
+    }
+  } catch (err) {
+    console.warn("[callGemini] Error generating content with Gemini:", err);
+  }
+  return { ok: false, reply: "" };
+}
+
+async function callGeminiVision(
+  cleanBase64: string,
+  mimeType: string,
+  systemPrompt: string,
+  note?: string,
+): Promise<{
+  ok: boolean;
+  product?: { name: string; category: string; unit: string; description: string };
+  error?: string;
+}> {
+  try {
+    const ai = getGeminiClient();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: mimeType || "image/jpeg",
+                data: cleanBase64,
+              },
+            },
+            {
+              text: `Bu ürün fotoğrafını analiz et ve toptan kataloğa eklenmek üzere JSON formatında döndür. Sadece JSON döndür.${note ? ` Not: "${note}"` : ""}`,
+            },
+          ],
+        },
+      ],
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        temperature: 0.2,
+      },
+    });
+
+    const rawJson = response.text?.trim() || "{}";
+    let cleaned = rawJson;
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    } else if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+
+    const parsed = JSON.parse(cleaned);
+    const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(parsed.category)
+      ? parsed.category
+      : "gida";
+
+    return {
+      ok: true,
+      product: {
+        name: parsed.name || "Yeni Ürün",
+        category: validCategory,
+        unit: parsed.unit || "Koli",
+        description: parsed.description || "KasımOğulları toptan depo ürünü.",
+      },
+    };
+  } catch (err) {
+    console.warn("[callGeminiVision] Error analyzing image with Gemini:", err);
+  }
+  return { ok: false };
+}
+
 async function callOpenRouter(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   model: string = DEFAULT_MODEL,
 ): Promise<{ ok: boolean; reply: string; error?: string }> {
+  if (!OPENROUTER_API_KEY) {
+    return { ok: false, reply: "", error: "No OpenRouter key configured" };
+  }
   try {
     const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
@@ -143,14 +249,24 @@ Depodaki 197 Ürünün Tam Listesi:
 ${productCatalog}`;
     }
 
-    const openRouterMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: systemInstruction },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ];
+    // 1. Try Gemini API first (Native AI Studio Server-Side Integration)
+    const geminiResult = await callGemini(messages, systemInstruction);
+    if (geminiResult.ok && geminiResult.reply) {
+      return geminiResult;
+    }
 
-    const result = await callOpenRouter(openRouterMessages, DEFAULT_MODEL);
-    if (result.ok && result.reply) {
-      return result;
+    // 2. Try OpenRouter if configured
+    if (OPENROUTER_API_KEY) {
+      const openRouterMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> =
+        [
+          { role: "system", content: systemInstruction },
+          ...messages.map((m) => ({ role: m.role, content: m.content })),
+        ];
+
+      const result = await callOpenRouter(openRouterMessages, DEFAULT_MODEL);
+      if (result.ok && result.reply) {
+        return result;
+      }
     }
 
     // Akıllı yerel yedek yanıt (OpenRouter anahtarı beklerken veya yanıt gelmezse kullanıcıyı asla yanıtsız bırakmaz)
@@ -228,63 +344,74 @@ ${note ? `Yöneticinin eklediği not: "${note}"` : ""}
 
 Sadece geçerli bir JSON nesnesi döndür, markdown veya başka metin ekleme.`;
 
-    try {
-      const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://kasimogullari.com",
-          "X-Title": "KasimOgullari Toptan Depo",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: DEFAULT_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: dataUrl },
-                },
-              ],
-            },
-          ],
-          temperature: 0.2,
-        }),
-      });
+    // 1. Try Gemini Vision first (Native AI Studio Server-Side Integration)
+    const geminiVisionResult = await callGeminiVision(cleanBase64, mimeType, systemPrompt, note);
+    if (geminiVisionResult.ok && geminiVisionResult.product) {
+      return geminiVisionResult;
+    }
 
-      if (res.ok) {
-        const data = await res.json();
-        let rawJson = data.choices?.[0]?.message?.content?.trim() || "{}";
-        if (rawJson.startsWith("```json")) {
-          rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-        } else if (rawJson.startsWith("```")) {
-          rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
-        }
-
-        const parsed = JSON.parse(rawJson);
-        const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(parsed.category)
-          ? parsed.category
-          : "gida";
-
-        return {
-          ok: true,
-          product: {
-            name: parsed.name || "Yeni Ürün",
-            category: validCategory,
-            unit: parsed.unit || "Koli",
-            description: parsed.description || "KasımOğulları toptan depo ürünü.",
+    // 2. Try OpenRouter Vision if configured
+    if (OPENROUTER_API_KEY) {
+      try {
+        const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "https://kasimogullari.com",
+            "X-Title": "KasimOgullari Toptan Depo",
+            "Content-Type": "application/json",
           },
-        };
+          body: JSON.stringify({
+            model: DEFAULT_MODEL,
+            messages: [
+              { role: "system", content: systemPrompt },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
+                  },
+                  {
+                    type: "image_url",
+                    image_url: { url: dataUrl },
+                  },
+                ],
+              },
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          let rawJson = data.choices?.[0]?.message?.content?.trim() || "{}";
+          if (rawJson.startsWith("```json")) {
+            rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+          } else if (rawJson.startsWith("```")) {
+            rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
+          }
+
+          const parsed = JSON.parse(rawJson);
+          const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(
+            parsed.category,
+          )
+            ? parsed.category
+            : "gida";
+
+          return {
+            ok: true,
+            product: {
+              name: parsed.name || "Yeni Ürün",
+              category: validCategory,
+              unit: parsed.unit || "Koli",
+              description: parsed.description || "KasımOğulları toptan depo ürünü.",
+            },
+          };
+        }
+      } catch (visionErr) {
+        console.warn("[processVision] OpenRouter vision request error:", visionErr);
       }
-    } catch (visionErr) {
-      console.warn("[processVision] OpenRouter vision request error:", visionErr);
     }
 
     // Akıllı varsayılan ürün şablonu (yöneticinin formu kolayca tamamlaması için)
