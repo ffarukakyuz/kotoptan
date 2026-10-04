@@ -19,7 +19,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
   {
     id: "e5bb6479-9a32-4f1a-85ab-feee4bfe3b09",
     name: "Akel Yerli Pilavlık Pirinç 5 kg",
-    description: "Koli içi 5 Adet",
+    description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
     image_url:
@@ -1494,7 +1494,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
   {
     id: "25addb91-f444-41e8-b99b-870930246bae",
     name: "İpek Orta (Midyat) Pilavlık Bulgur 5 kg",
-    description: "",
+    description: "Koli içi 5 Adet",
     category: "gida",
     unit: "çuval",
     image_url:
