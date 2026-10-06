@@ -7,8 +7,10 @@ export function PWAInstallBanner() {
   const { isInstallable, isInstalled, isIOS, isMobile, install } = usePWAInstall();
   const [showGuide, setShowGuide] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window === "undefined") return;
     const isDismissed = sessionStorage.getItem("pwa_banner_dismissed") === "true";
     if (isDismissed) {
@@ -32,6 +34,10 @@ export function PWAInstallBanner() {
       setShowGuide(true);
     }
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   // If already installed as app, or dismissed in this session, do not show banner
   if (isInstalled || dismissed) {

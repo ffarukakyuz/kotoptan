@@ -34,16 +34,31 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const envUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = typeof globalThis !== "undefined" ? (globalThis as any) : undefined;
+    const envUrl =
+      (typeof process !== "undefined" && process.env
+        ? process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"]
+        : "") ||
+      g?.__env__?.SUPABASE_URL ||
+      g?.__env__?.VITE_SUPABASE_URL ||
+      FALLBACK_SUPABASE_URL;
     const SUPABASE_URL =
       envUrl && !envUrl.includes("fgobmapryccuqcmbotkj") && !envUrl.includes("://fg")
         ? envUrl
         : FALLBACK_SUPABASE_URL;
     const envKey =
-      process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-      process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-      process.env["VITE_SUPABASE_ANON_KEY"] ||
-      process.env["SUPABASE_ANON_KEY"];
+      (typeof process !== "undefined" && process.env
+        ? process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+          process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+          process.env["VITE_SUPABASE_ANON_KEY"] ||
+          process.env["SUPABASE_ANON_KEY"]
+        : "") ||
+      g?.__env__?.SUPABASE_PUBLISHABLE_KEY ||
+      g?.__env__?.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      g?.__env__?.SUPABASE_ANON_KEY ||
+      g?.__env__?.VITE_SUPABASE_ANON_KEY ||
+      FALLBACK_SUPABASE_ANON_KEY;
     const SUPABASE_PUBLISHABLE_KEY =
       envKey && !envKey.includes("12XuaSyp") && !envKey.startsWith("sb_publishable_")
         ? envKey

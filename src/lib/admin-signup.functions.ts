@@ -14,7 +14,10 @@ export const claimAdminRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ code: z.string().min(1).max(200) }).parse(data))
   .handler(async ({ data, context }) => {
-    const expected = process.env["ADMIN_SIGNUP_CODE"];
+    const g = globalThis as unknown as { __env__?: Record<string, string | undefined> };
+    const expected =
+      (typeof process !== "undefined" && process.env && process.env["ADMIN_SIGNUP_CODE"]) ||
+      g.__env__?.ADMIN_SIGNUP_CODE;
     if (!expected || data.code.trim() !== expected) {
       return { ok: false as const, reason: "invalid_code" as const };
     }

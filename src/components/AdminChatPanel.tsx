@@ -56,6 +56,7 @@ export function AdminChatPanel() {
   // Bildirim Ayarları
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [browserNotifEnabled, setBrowserNotifEnabled] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const prevSessionsRef = useRef<
     Record<string, { updatedAt: string; lastMessage: string; status: string }>
@@ -63,10 +64,18 @@ export function AdminChatPanel() {
   const isFirstAdminLoadRef = useRef(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Tarayıcı bildirim izni durumunu kontrol et
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setBrowserNotifEnabled(Notification.permission === "granted");
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      if (w.Notification && typeof w.Notification === "function") {
+        setBrowserNotifEnabled(w.Notification.permission === "granted");
+      }
     }
   }, []);
 
@@ -241,6 +250,14 @@ export function AdminChatPanel() {
   });
 
   const transferredCount = sessions.filter((s) => s.status === "transferred").length;
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-white/10 bg-[#0d1418] p-8 text-white/50 text-sm">
+        Canlı Destek Paneli yükleniyor...
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

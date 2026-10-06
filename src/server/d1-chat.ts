@@ -1,6 +1,3 @@
-import fs from "fs";
-import path from "path";
-
 export interface ChatSession {
   id: string;
   user_id: string | null;
@@ -36,44 +33,122 @@ export interface D1Database {
   exec(query: string): Promise<unknown>;
 }
 
-function getD1(env: unknown): D1Database | null {
-  if (
-    env &&
-    typeof env === "object" &&
-    "DB" in env &&
-    Boolean(env.DB) &&
-    typeof (env.DB as D1Database).prepare === "function"
-  ) {
-    return env.DB as D1Database;
+export function getD1(env: unknown): D1Database | null {
+  try {
+    if (env && typeof env === "object") {
+      const e = env as Record<string, unknown>;
+      // Direct env.DB binding
+      if (e.DB && typeof (e.DB as D1Database).prepare === "function") {
+        return e.DB as D1Database;
+      }
+      // Nested env.env.DB
+      const nested = e.env as Record<string, unknown> | undefined;
+      if (nested?.DB && typeof (nested.DB as D1Database).prepare === "function") {
+        return nested.DB as D1Database;
+      }
+      // Cloudflare Pages context: env.context.env.DB or env.context.DB
+      const ctx = e.context as Record<string, unknown> | undefined;
+      if (ctx?.DB && typeof (ctx.DB as D1Database).prepare === "function") {
+        return ctx.DB as D1Database;
+      }
+      if (ctx?.env && typeof (ctx.env as Record<string, unknown>).DB === "object") {
+        const ctxDb = (ctx.env as Record<string, unknown>).DB;
+        if (ctxDb && typeof (ctxDb as D1Database).prepare === "function") {
+          return ctxDb as D1Database;
+        }
+      }
+      // env.bindings.DB
+      const bindings = e.bindings as Record<string, unknown> | undefined;
+      if (bindings?.DB && typeof (bindings.DB as D1Database).prepare === "function") {
+        return bindings.DB as D1Database;
+      }
+    }
+
+    // Global fallbacks for Cloudflare Workers / Pages context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = typeof globalThis !== "undefined" ? (globalThis as any) : undefined;
+    if (g?.__env__?.DB && typeof g.__env__.DB.prepare === "function") {
+      return g.__env__.DB as D1Database;
+    }
+    if (g?.DB && typeof g.DB.prepare === "function") {
+      return g.DB as D1Database;
+    }
+    if (g?.env?.DB && typeof g.env.DB.prepare === "function") {
+      return g.env.DB as D1Database;
+    }
+
+    // Process env fallback for Node context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = typeof process !== "undefined" ? (process as any) : undefined;
+    if (p?.env?.DB && typeof p.env.DB.prepare === "function") {
+      return p.env.DB as D1Database;
+    }
+  } catch (_e) {
+    // Ignore environment probing errors
   }
   return null;
 }
-
-// Local persistent fallback file for local development when D1 is not in environment
-const LOCAL_DB_PATH = path.resolve(process.cwd(), ".local-chat-db.json");
 
 interface LocalStore {
   sessions: Record<string, ChatSession>;
   messages: ChatMessageItem[];
 }
 
+// In-memory fallback (guaranteed to never fail or throw in any runtime)
+const inMemoryStore: LocalStore = { sessions: {}, messages: [] };
+
+function canUseNodeFs(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = typeof globalThis !== "undefined" ? (globalThis as any) : {};
+    // Do NOT attempt require in Cloudflare Workers / Edge environments
+    if (g.__env__ || g.WebSocketPair || g.caches?.default) {
+      return false;
+    }
+    return (
+      typeof g.require === "function" &&
+      typeof process !== "undefined" &&
+      typeof process.cwd === "function" &&
+      process.release?.name === "node"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function loadLocalStore(): LocalStore {
   try {
-    if (fs.existsSync(LOCAL_DB_PATH)) {
-      const data = fs.readFileSync(LOCAL_DB_PATH, "utf8");
-      return JSON.parse(data);
+    if (canUseNodeFs()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nodeRequire = (globalThis as any).require;
+      const fs = nodeRequire("fs");
+      const path = nodeRequire("path");
+      const localDbPath = path.resolve(process.cwd(), ".local-chat-db.json");
+      if (fs.existsSync(localDbPath)) {
+        const data = fs.readFileSync(localDbPath, "utf8");
+        return JSON.parse(data);
+      }
     }
-  } catch (e) {
-    console.warn("[D1 Fallback] Error reading local store:", e);
+  } catch (_e) {
+    // Edge/serverless fallback: use memory store
   }
-  return { sessions: {}, messages: [] };
+  return inMemoryStore;
 }
 
 function saveLocalStore(store: LocalStore) {
   try {
-    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch (e) {
-    console.warn("[D1 Fallback] Error saving local store:", e);
+    inMemoryStore.sessions = store.sessions;
+    inMemoryStore.messages = store.messages;
+    if (canUseNodeFs()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nodeRequire = (globalThis as any).require;
+      const fs = nodeRequire("fs");
+      const path = nodeRequire("path");
+      const localDbPath = path.resolve(process.cwd(), ".local-chat-db.json");
+      fs.writeFileSync(localDbPath, JSON.stringify(store, null, 2), "utf8");
+    }
+  } catch (_e) {
+    // Edge/serverless fallback
   }
 }
 
@@ -168,7 +243,7 @@ export async function getOrCreateSession(
     }
   }
 
-  // Local fallback
+  // Local memory / fallback
   const store = loadLocalStore();
   if (store.sessions[sessionId]) {
     return store.sessions[sessionId];

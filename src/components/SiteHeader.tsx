@@ -37,17 +37,22 @@ export function SiteHeader() {
   };
 
   const handleSearchClick = () => {
+    if (typeof window === "undefined") return;
     if (window.location.pathname !== "/") {
       void router.navigate({ to: "/" });
       setTimeout(() => {
+        if (typeof document !== "undefined") {
+          const el = document.getElementById("search-input");
+          el?.focus();
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+    } else {
+      if (typeof document !== "undefined") {
         const el = document.getElementById("search-input");
         el?.focus();
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
-    } else {
-      const el = document.getElementById("search-input");
-      el?.focus();
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
   };
 

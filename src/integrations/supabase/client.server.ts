@@ -34,12 +34,21 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const envUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+  const g = globalThis as unknown as { __env__?: Record<string, string | undefined> };
+  const envUrl =
+    (typeof process !== "undefined" &&
+      process.env &&
+      (process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"])) ||
+    g.__env__?.SUPABASE_URL ||
+    g.__env__?.VITE_SUPABASE_URL ||
+    FALLBACK_SUPABASE_URL;
   const SUPABASE_URL =
     envUrl && !envUrl.includes("fgobmapryccuqcmbotkj") && !envUrl.includes("://fg")
       ? envUrl
       : FALLBACK_SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  const SUPABASE_SERVICE_ROLE_KEY =
+    (typeof process !== "undefined" && process.env && process.env["SUPABASE_SERVICE_ROLE_KEY"]) ||
+    g.__env__?.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     const message = `Missing Supabase environment variable: SUPABASE_SERVICE_ROLE_KEY. Please configure Supabase service role key in environment variables for administrative server operations.`;

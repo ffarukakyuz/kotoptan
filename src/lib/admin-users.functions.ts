@@ -67,6 +67,14 @@ async function ensureNotFixedAdminForDeletion(userId: string, supabase: Supabase
   }
 }
 
+function hasServiceRoleKey(): boolean {
+  return Boolean(
+    (typeof process !== "undefined" && process.env && process.env["SUPABASE_SERVICE_ROLE_KEY"]) ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (typeof globalThis !== "undefined" && (globalThis as any)?.__env__?.SUPABASE_SERVICE_ROLE_KEY),
+  );
+}
+
 /** Yalnızca yöneticiler: kayıtlı kullanıcıları listeler. */
 export const listAppUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -83,7 +91,7 @@ export const listAppUsers = createServerFn({ method: "GET" })
 
     // Supabase auth admin listUsers opsiyonel denenir
     try {
-      if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+      if (hasServiceRoleKey()) {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: authData } = await supabaseAdmin.auth.admin.listUsers({
           page: 1,
@@ -141,7 +149,7 @@ export const updateAppUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
 
-    if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+    if (hasServiceRoleKey()) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         await supabaseAdmin.auth.admin.updateUserById(data.id, {
@@ -176,7 +184,7 @@ export const resetAppUserPassword = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
 
-    if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+    if (hasServiceRoleKey()) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error } = await supabaseAdmin.auth.admin.updateUserById(data.id, {
         password: data.password,
@@ -203,7 +211,7 @@ export const deleteAppUser = createServerFn({ method: "POST" })
       throw new Error("Bu müşterinin sipariş geçmişi bulunduğu için hesap silinemez.");
     }
 
-    if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+    if (hasServiceRoleKey()) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         await supabaseAdmin.auth.admin.deleteUser(data.id);

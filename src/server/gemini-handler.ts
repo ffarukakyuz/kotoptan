@@ -1,8 +1,16 @@
 import { FALLBACK_PRODUCTS } from "../data/products";
 import { deduceFMCGProduct } from "../lib/fmcg-knowledge";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const globalEnv = typeof globalThis !== "undefined" ? (globalThis as any).__env__ : undefined;
+
 export const OPENROUTER_API_KEY =
-  process.env["OPENROUTER_API_KEY"] || process.env["VITE_OPENROUTER_API_KEY"] || "";
+  (typeof process !== "undefined" && process.env
+    ? process.env["OPENROUTER_API_KEY"] || process.env["VITE_OPENROUTER_API_KEY"]
+    : "") ||
+  globalEnv?.OPENROUTER_API_KEY ||
+  globalEnv?.VITE_OPENROUTER_API_KEY ||
+  "";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";

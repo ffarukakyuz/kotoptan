@@ -86,6 +86,7 @@ function Index() {
   const [stockTick, setStockTick] = useState(0);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const handleStockChange = () => setStockTick((t) => t + 1);
     const handleCatalogUpdate = () => {
       setStockTick((t) => t + 1);
@@ -170,8 +171,10 @@ function Index() {
   }, [allProducts, category, search]);
 
   const scrollToCatalog = () => {
-    const el = document.getElementById("urunler");
-    el?.scrollIntoView({ behavior: "smooth" });
+    if (typeof document !== "undefined") {
+      const el = document.getElementById("urunler");
+      el?.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   return (

@@ -88,6 +88,7 @@ function ProductDetail() {
   const [togglingStock, setTogglingStock] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const handleStockChange = () => setStockTick((t) => t + 1);
     window.addEventListener("product_stock_status_changed", handleStockChange);
     return () => window.removeEventListener("product_stock_status_changed", handleStockChange);

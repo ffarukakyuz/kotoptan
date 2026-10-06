@@ -1,6 +1,11 @@
 export async function authenticateCronRequest(request: Request): Promise<Response | null> {
-  const currentSecret = process.env["CRON_SECRET"];
-  const previousSecret = process.env["CRON_SECRET_PREVIOUS"];
+  const g = globalThis as unknown as { __env__?: Record<string, string | undefined> };
+  const currentSecret =
+    (typeof process !== "undefined" && process.env && process.env["CRON_SECRET"]) ||
+    g.__env__?.CRON_SECRET;
+  const previousSecret =
+    (typeof process !== "undefined" && process.env && process.env["CRON_SECRET_PREVIOUS"]) ||
+    g.__env__?.CRON_SECRET_PREVIOUS;
 
   if (!currentSecret) {
     return new Response("Server configuration error", { status: 500 });

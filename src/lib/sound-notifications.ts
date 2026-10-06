@@ -1,28 +1,35 @@
 // Web Audio API ile harici mp3 dosyasına bağımlı kalmadan kristal netliğinde bildirim sesleri üretir
 
-let audioCtx: AudioContext | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let audioCtx: any = null;
 
-function getAudioContext(): AudioContext | null {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getAudioContext(): any {
   if (typeof window === "undefined") return null;
-  if (!audioCtx) {
-    const AudioContextClass =
-      window.AudioContext ||
+  try {
+    if (!audioCtx) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
+      const w = window as any;
+      const AudioContextClass = w.AudioContext || w.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
     }
+    if (audioCtx && audioCtx.state === "suspended") {
+      void audioCtx.resume();
+    }
+    return audioCtx;
+  } catch (err) {
+    console.warn("[Sound] getAudioContext failed:", err);
+    return null;
   }
-  if (audioCtx && audioCtx.state === "suspended") {
-    void audioCtx.resume();
-  }
-  return audioCtx;
 }
 
 /**
  * Müşteriye yönetici yanıt verdiğinde çalan hoş 2 tonlu bildirim sesi (587Hz -> 880Hz)
  */
 export function playCustomerNotificationChime() {
+  if (typeof window === "undefined") return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -58,8 +65,16 @@ export function playCustomerNotificationChime() {
     osc2.stop(now + 0.6);
 
     // Mobil cihazlarda titreşim
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate([100, 50, 150]);
+    if (
+      typeof window !== "undefined" &&
+      typeof navigator !== "undefined" &&
+      "vibrate" in navigator
+    ) {
+      try {
+        navigator.vibrate([100, 50, 150]);
+      } catch {
+        // ignore
+      }
     }
   } catch (e) {
     console.warn("[Sound] Error playing customer chime:", e);
@@ -70,6 +85,7 @@ export function playCustomerNotificationChime() {
  * Yönetici paneline yeni müşteri mesajı düştüğünde çalan dikkat çekici 3 tonlu zil sesi (Do5 -> Mi5 -> Sol5)
  */
 export function playAdminAlertChime() {
+  if (typeof window === "undefined") return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -96,8 +112,16 @@ export function playAdminAlertChime() {
       osc.stop(startTime + 0.45);
     });
 
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate([150, 80, 200]);
+    if (
+      typeof window !== "undefined" &&
+      typeof navigator !== "undefined" &&
+      "vibrate" in navigator
+    ) {
+      try {
+        navigator.vibrate([150, 80, 200]);
+      } catch {
+        // ignore
+      }
     }
   } catch (e) {
     console.warn("[Sound] Error playing admin chime:", e);
@@ -108,15 +132,27 @@ export function playAdminAlertChime() {
  * Tarayıcı Web Notification izin kontrolü ve isteme
  */
 export async function requestBrowserNotificationPermission(): Promise<boolean> {
-  if (typeof window === "undefined" || !("Notification" in window)) {
+  if (typeof window === "undefined") {
     return false;
   }
-  if (Notification.permission === "granted") {
-    return true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  if (!w.Notification || typeof w.Notification !== "function") {
+    return false;
   }
-  if (Notification.permission !== "denied") {
-    const result = await Notification.requestPermission();
-    return result === "granted";
+  try {
+    if (w.Notification.permission === "granted") {
+      return true;
+    }
+    if (
+      w.Notification.permission !== "denied" &&
+      typeof w.Notification.requestPermission === "function"
+    ) {
+      const result = await w.Notification.requestPermission();
+      return result === "granted";
+    }
+  } catch (err) {
+    console.warn("[Notification] permission request error:", err);
   }
   return false;
 }
@@ -124,22 +160,36 @@ export async function requestBrowserNotificationPermission(): Promise<boolean> {
 /**
  * Tarayıcı bildirimi gönder
  */
-export function sendBrowserNotification(title: string, options?: NotificationOptions) {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function sendBrowserNotification(title: string, options?: any) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  if (!w.Notification || typeof w.Notification !== "function") {
+    return;
+  }
 
-  if (Notification.permission === "granted") {
-    try {
-      const notif = new Notification(title, {
+  try {
+    if (w.Notification.permission === "granted") {
+      const notif = new w.Notification(title, {
         icon: "/favicon.png",
         badge: "/favicon.png",
         ...options,
       });
       notif.onclick = () => {
-        window.focus();
-        notif.close();
+        if (typeof window !== "undefined") {
+          window.focus();
+        }
+        try {
+          notif.close();
+        } catch {
+          // ignore
+        }
       };
-    } catch (e) {
-      console.warn("[Notification] Error creating notification:", e);
     }
+  } catch (e) {
+    console.warn("[Notification] Error creating notification:", e);
   }
 }

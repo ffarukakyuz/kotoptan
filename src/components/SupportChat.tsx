@@ -56,6 +56,9 @@ type Msg = {
  * Kullanıcının yüklediği görseli canvas üzerinde sıkıştırıp küçültür
  */
 async function compressImage(file: File, maxDim = 1200, quality = 0.8): Promise<string> {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    throw new Error("compressImage can only run in browser");
+  }
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -106,12 +109,17 @@ export function SupportChat() {
     "bot" | "transferred" | "active_admin" | "closed"
   >("bot");
   const [unreadAdminCount, setUnreadAdminCount] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
 
   const lastKnownAdminMsgIdRef = useRef<string | null>(null);
   const isFirstCheckRef = useRef<boolean>(true);
 
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Oturum ID'sini hazırla
   useEffect(() => {
@@ -497,6 +505,10 @@ export function SupportChat() {
   const isTransferred = sessionStatus === "transferred";
   const isActiveAdmin = sessionStatus === "active_admin";
   const isClosed = sessionStatus === "closed";
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>

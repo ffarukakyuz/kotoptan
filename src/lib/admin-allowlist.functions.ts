@@ -26,9 +26,14 @@ export const syncAdminRole = createServerFn({ method: "POST" })
     const email = (claims?.email ?? "").trim().toLowerCase();
     if (!email) return { isAdmin: false as const };
 
-    const extra = (process.env["ADMIN_EMAILS"] ?? "")
+    const rawExtra =
+      (typeof process !== "undefined" && process.env && process.env["ADMIN_EMAILS"]) ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (typeof globalThis !== "undefined" ? (globalThis as any).__env__?.ADMIN_EMAILS : "") ||
+      "";
+    const extra = rawExtra
       .split(",")
-      .map((e) => e.trim().toLowerCase())
+      .map((e: string) => e.trim().toLowerCase())
       .filter(Boolean);
     const allowed = new Set([...ALLOWED_ADMIN_EMAILS.map((e) => e.toLowerCase()), ...extra]);
     const shouldBeAdmin = allowed.has(email);

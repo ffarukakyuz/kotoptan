@@ -419,7 +419,11 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
   };
 
   const deleteOrder = async (id: string) => {
-    if (!window.confirm("Bu sipariş kalıcı olarak silinsin mi? Bu işlem geri alınamaz.")) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Bu sipariş kalıcı olarak silinsin mi? Bu işlem geri alınamaz.")
+    )
+      return;
     const { error } = await supabase.from("orders").delete().eq("id", id);
     if (error) {
       toast.error("Sipariş silinemedi");
@@ -735,6 +739,9 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
 }
 
 async function compressImage(file: File, max = 800, quality = 0.72) {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    throw new Error("canvas only available in browser");
+  }
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -836,10 +843,12 @@ function ProductsPanel({
       });
       toast.info(`"${target.name}" düzenleme için hazırlandı.`);
       setTimeout(() => {
-        const formEl = document.getElementById("product-edit-form");
-        formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-        const nameInput = document.getElementById("pr-name");
-        nameInput?.focus();
+        if (typeof document !== "undefined") {
+          const formEl = document.getElementById("product-edit-form");
+          formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+          const nameInput = document.getElementById("pr-name");
+          nameInput?.focus();
+        }
       }, 150);
     }
   }, [initialEditId, data]);
@@ -899,7 +908,9 @@ function ProductsPanel({
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
     void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
-    window.dispatchEvent(new Event("catalog_updated"));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("catalog_updated"));
+    }
   };
 
   const [productView, setProductView] = useState<"aktif" | "arsiv">("aktif");
@@ -944,7 +955,9 @@ function ProductsPanel({
       `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
     );
     setArchivingProduct(null);
-    window.dispatchEvent(new Event("catalog_updated"));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("catalog_updated"));
+    }
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
     void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
@@ -981,7 +994,9 @@ function ProductsPanel({
     setActionBusy(false);
     toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
     setRestoringProduct(null);
-    window.dispatchEvent(new Event("catalog_updated"));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("catalog_updated"));
+    }
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
     void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
@@ -999,7 +1014,9 @@ function ProductsPanel({
     setActionBusy(false);
     toast.success(`"${product.name}" başarıyla silindi.`);
     setPermanentDeletingProduct(null);
-    window.dispatchEvent(new Event("catalog_updated"));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("catalog_updated"));
+    }
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
     void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
@@ -1576,10 +1593,12 @@ function ProductsPanel({
                               is_active: p.is_active ?? true,
                             });
                             setTimeout(() => {
-                              const formEl = document.getElementById("product-edit-form");
-                              formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-                              const nameInput = document.getElementById("pr-name");
-                              nameInput?.focus();
+                              if (typeof document !== "undefined") {
+                                const formEl = document.getElementById("product-edit-form");
+                                formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                const nameInput = document.getElementById("pr-name");
+                                nameInput?.focus();
+                              }
                             }, 50);
                           }}
                         >
