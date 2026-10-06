@@ -25,17 +25,27 @@ import {
   Loader2,
   Boxes,
   Package,
+  MessageSquare,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
 import { GoogleDriveSyncPanel } from "@/components/GoogleDriveSyncPanel";
+import { AdminChatPanel } from "@/components/AdminChatPanel";
+import { listAdminChatSessions } from "@/lib/chat-service";
 import type { DriveOrder } from "@/lib/google-drive";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { FALLBACK_PRODUCTS } from "@/data/products";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  getCustomProducts,
+  saveCustomProduct,
+  deleteCustomProduct,
+  isBogusProductName,
+} from "@/lib/custom-products";
+import { analyzeProductPhoto } from "@/lib/gemini";
 import { ADMIN_MEMBERS, isUserAdmin, GUEST_ACCOUNT } from "@/lib/admin-config";
 import {
   deleteAppUser,
@@ -58,10 +68,8 @@ import {
   cleanProductDescription,
   extractPackageOrBoxInfo,
   normalizeProductWithOverrides,
-  fetchCatalogProducts,
-  saveCatalogProduct,
-  archiveCatalogProduct,
-  deleteCatalogProductPermanently,
+  setProductArchivedStatusLocal,
+  isProductArchived,
 } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,12 +125,12 @@ export const Route = createFileRoute("/_authenticated/yonetim")({
 });
 
 const productSchema = z.object({
-  name: z.string().trim().min(2, "Ürün adı en az 2 karakter olmalı").max(200),
-  description: z.string().trim().max(2000).optional().default(""),
-  category: z.string().trim().min(1, "Kategori seçiniz"),
-  unit: z.string().trim().min(1, "Birim gerekli").max(50),
-  image_url: z.string().trim().optional().default(""),
-  is_active: z.boolean().default(true),
+  name: z.string().trim().min(2, "Ürün adı gerekli").max(120),
+  description: z.string().trim().max(500),
+  category: z.string().trim().min(1),
+  unit: z.string().trim().min(1, "Birim gerekli").max(30),
+  image_url: z.string().trim().max(400000),
+  is_active: z.boolean(),
 });
 
 const emptyProduct = {
@@ -151,7 +159,10 @@ type AdminOrder = {
 };
 
 async function fetchAdminProductsList(): Promise<Product[]> {
-  return fetchCatalogProducts();
+  const custom = getCustomProducts();
+  return [...custom, ...FALLBACK_PRODUCTS.map(normalizeProductWithOverrides)].filter(
+    (p) => !p.name.toLowerCase().includes("peos") && !p.name.toLowerCase().includes("peros"),
+  );
 }
 
 function AdminPage() {
@@ -169,16 +180,6 @@ function AdminPage() {
       setActiveTab(search.tab);
     }
   }, [search.edit, search.tab]);
-
-  useEffect(() => {
-    const handleCatalogChange = () => {
-      void qc.invalidateQueries({ queryKey: ["admin-products"] });
-      void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
-    };
-    window.addEventListener("products_catalog_changed", handleCatalogChange);
-    return () => window.removeEventListener("products_catalog_changed", handleCatalogChange);
-  }, [qc]);
 
   const { data: allOrders = [] } = useQuery({
     queryKey: ["admin-orders"],
@@ -201,6 +202,14 @@ function AdminPage() {
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
+
+  const { data: chatSessions = [] } = useQuery({
+    queryKey: ["admin-chat-sessions"],
+    queryFn: listAdminChatSessions,
+    refetchInterval: 5000,
+  });
+
+  const transferredChatCount = chatSessions.filter((s) => s.status === "transferred").length;
 
   if (loading) {
     return (
@@ -242,7 +251,7 @@ function AdminPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid w-full grid-cols-4 h-10 p-1 bg-muted rounded-xl gap-0.5 sm:gap-1">
+        <TabsList className="grid w-full grid-cols-5 h-10 p-1 bg-muted rounded-xl gap-0.5 sm:gap-1">
           <TabsTrigger
             value="orders"
             className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center gap-0.5 sm:gap-1"
@@ -256,6 +265,18 @@ function AdminPage() {
           >
             <span>Ürünler</span>
             <span className="hidden sm:inline"> ({allProducts.length})</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="messages"
+            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate relative"
+          >
+            <MessageSquare className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            <span>Mesajlar</span>
+            {transferredChatCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-extrabold text-black animate-pulse">
+                {transferredChatCount}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger
             value="drive"
@@ -281,6 +302,9 @@ function AdminPage() {
             initialProducts={allProducts}
             isLoadingProducts={isProductsLoading}
           />
+        </TabsContent>
+        <TabsContent value="messages">
+          <AdminChatPanel />
         </TabsContent>
         <TabsContent value="drive">
           <GoogleDriveSyncPanel
@@ -752,7 +776,28 @@ function ProductsPanel({
     try {
       const dataUrl = await compressImage(file);
       setForm((f) => ({ ...f, image_url: dataUrl }));
-      toast.success("Fotoğraf hazır");
+      toast.success("Fotoğraf yüklendi");
+
+      // Yapay zeka ile otomatik ürün analizi ve alanları doldurma
+      toast.info("Yapay zeka görseli analiz ediyor...");
+      const aiResult = await analyzeProductPhoto(dataUrl, "image/jpeg", form.name || undefined);
+      if (aiResult.ok && aiResult.product) {
+        const p = aiResult.product;
+        const validName = !isBogusProductName(p.name) ? p.name : "";
+        setForm((f) => ({
+          ...f,
+          name: f.name ? f.name : validName,
+          category: f.category !== "gida" ? f.category : p.category,
+          unit: f.unit !== "adet" ? f.unit : p.unit,
+          description: f.description ? f.description : p.description,
+          image_url: dataUrl,
+        }));
+        if (validName) {
+          toast.success(`Yapay zeka "${validName}" ürününü tespit etti ve formu doldurdu!`);
+        } else {
+          toast.info("Fotoğraf yüklendi. Lütfen ürün adını yazınız.");
+        }
+      }
     } catch {
       toast.error("Fotoğraf işlenemedi");
     } finally {
@@ -826,18 +871,35 @@ function ProductsPanel({
       image_url: normalizedImageUrl || null,
     };
     setBusy(true);
+    const finalId = editingId || `custom-${Date.now()}`;
+    const customProd: Product = {
+      id: finalId,
+      name: payload.name,
+      category: payload.category as Product["category"],
+      unit: payload.unit,
+      description: payload.description,
+      image_url: payload.image_url,
+      is_active: payload.is_active,
+    };
+    saveCustomProduct(customProd);
+
     try {
-      await saveCatalogProduct(payload, editingId);
-      setBusy(false);
-      toast.success(editingId ? "Ürün güncellendi" : "Ürün eklendi");
-      reset();
-      void qc.invalidateQueries({ queryKey: ["admin-products"] });
-      void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
-    } catch (err) {
-      setBusy(false);
-      toast.error("Ürün kaydedilirken bir hata oluştu.");
+      if (editingId) {
+        await supabase.from("products").update(payload).eq("id", editingId);
+      } else {
+        await supabase.from("products").insert({ ...payload, id: finalId });
+      }
+    } catch {
+      // ignore
     }
+    setBusy(false);
+
+    toast.success(editingId ? "Ürün güncellendi" : "Ürün eklendi");
+    reset();
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    window.dispatchEvent(new Event("catalog_updated"));
   };
 
   const [productView, setProductView] = useState<"aktif" | "arsiv">("aktif");
@@ -848,52 +910,99 @@ function ProductsPanel({
 
   const archiveProduct = async (product: Product) => {
     setActionBusy(true);
-    try {
-      await archiveCatalogProduct(product.id, false);
-      toast.success(
-        `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
-      );
-    } catch {
-      toast.error("Arşive kaldırılamadı.");
-    } finally {
-      setActionBusy(false);
-      setArchivingProduct(null);
-      void qc.invalidateQueries({ queryKey: ["admin-products"] });
-      void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+
+    // 1. Yerel arşivleme durumunu kaydet (tüm ürün tiplerinde anında çalışır)
+    setProductArchivedStatusLocal(product.id, true);
+
+    // 2. Custom ürünlerde de is_active'i false yap
+    const customList = getCustomProducts();
+    const targetCustom = customList.find((p) => p.id === product.id);
+    if (targetCustom) {
+      saveCustomProduct({ ...targetCustom, is_active: false });
     }
+
+    // 3. Supabase'i de güncellemeye çalış
+    try {
+      await supabase.from("products").update({ is_active: false }).eq("id", product.id);
+    } catch {
+      // ignore
+    }
+
+    // 4. Cache'i optimistic olarak güncelle
+    const updateInactive = (old: Product[] | undefined) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: false } : p));
+    };
+    qc.setQueryData<Product[]>(["admin-products"], updateInactive);
+    qc.setQueryData<Product[]>(["products", "active"], (old) =>
+      old ? old.filter((p) => p.id !== product.id) : old,
+    );
+    qc.setQueryData<Product[]>(["live-supabase-products"], updateInactive);
+
+    setActionBusy(false);
+    toast.success(
+      `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
+    );
+    setArchivingProduct(null);
+    window.dispatchEvent(new Event("catalog_updated"));
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const restoreProduct = async (product: Product) => {
     setActionBusy(true);
-    try {
-      await archiveCatalogProduct(product.id, true);
-      toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
-    } catch {
-      toast.error("Geri yüklenemedi.");
-    } finally {
-      setActionBusy(false);
-      setRestoringProduct(null);
-      void qc.invalidateQueries({ queryKey: ["admin-products"] });
-      void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+
+    // 1. Yerel arşivleme durumunu kaldır
+    setProductArchivedStatusLocal(product.id, false);
+
+    // 2. Custom ürünlerde de is_active'i true yap
+    const customList = getCustomProducts();
+    const targetCustom = customList.find((p) => p.id === product.id);
+    if (targetCustom) {
+      saveCustomProduct({ ...targetCustom, is_active: true });
     }
+
+    // 3. Supabase'i de güncelle
+    try {
+      await supabase.from("products").update({ is_active: true }).eq("id", product.id);
+    } catch {
+      // ignore
+    }
+
+    // 4. Cache'i optimistic olarak güncelle
+    const updateActive = (old: Product[] | undefined) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, is_active: true } : p));
+    };
+    qc.setQueryData<Product[]>(["admin-products"], updateActive);
+    qc.setQueryData<Product[]>(["live-supabase-products"], updateActive);
+
+    setActionBusy(false);
+    toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
+    setRestoringProduct(null);
+    window.dispatchEvent(new Event("catalog_updated"));
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const permanentlyDeleteProduct = async (product: Product) => {
     setActionBusy(true);
+    deleteCustomProduct(product.id);
+    setProductArchivedStatusLocal(product.id, true);
     try {
-      await deleteCatalogProductPermanently(product.id);
-      toast.success(`"${product.name}" kalıcı olarak silindi.`);
+      await supabase.from("products").delete().eq("id", product.id);
     } catch {
-      toast.error("Silinemedi.");
-    } finally {
-      setActionBusy(false);
-      setPermanentDeletingProduct(null);
-      void qc.invalidateQueries({ queryKey: ["admin-products"] });
-      void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+      // ignore
     }
+    setActionBusy(false);
+    toast.success(`"${product.name}" başarıyla silindi.`);
+    setPermanentDeletingProduct(null);
+    window.dispatchEvent(new Event("catalog_updated"));
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+    void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
@@ -944,8 +1053,23 @@ function ProductsPanel({
     void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
   };
 
-  const activeProducts = useMemo(() => data.filter((p) => p.is_active !== false), [data]);
-  const archivedProducts = useMemo(() => data.filter((p) => p.is_active === false), [data]);
+  const normalizedData = useMemo(
+    () =>
+      data
+        .filter(
+          (p) => !p.name.toLowerCase().includes("peos") && !p.name.toLowerCase().includes("peros"),
+        )
+        .map(normalizeProductWithOverrides),
+    [data],
+  );
+  const activeProducts = useMemo(
+    () => normalizedData.filter((p) => p.is_active !== false),
+    [normalizedData],
+  );
+  const archivedProducts = useMemo(
+    () => normalizedData.filter((p) => p.is_active === false),
+    [normalizedData],
+  );
   const currentViewList = productView === "arsiv" ? archivedProducts : activeProducts;
 
   const filteredProducts = useMemo(() => {
@@ -1465,23 +1589,12 @@ function ProductsPanel({
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label="Arşive Kaldır"
+                          aria-label="Sil / Arşive Kaldır"
                           className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
                           onClick={() => setArchivingProduct(p)}
                           title="Arşive Kaldır"
                         >
                           <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Ürünü Sil"
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setPermanentDeletingProduct(p)}
-                          title="Ürünü Sil"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </>
                     )}
@@ -1831,7 +1944,7 @@ function UsersPanel() {
             <ShieldCheck className="h-4 w-4 text-[#166534]" />
           </div>
           <p className="mt-2 text-2xl font-bold text-[#166534]">{adminCount} Kişi</p>
-          <p className="text-[11px] text-[#166534]/80">Suat, Faruk, Yavuz, Mücahit, Selim</p>
+          <p className="text-[11px] text-[#166534]/80">Yetkili Yönetici Ekibi</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">

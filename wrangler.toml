@@ -1,0 +1,8 @@
+name = "kasimogullari-toptan"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kasimogullari-db"
+database_id = "0ff122d9-4dce-4988-a5db-1cd374f4c7c7"

@@ -93,14 +93,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "KasımOğulları depomuzun ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+          "KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
       },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "KasımOğulları Toptan" },
       {
         property: "og:description",
         content:
-          "KasımOğulları depomuzun ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+          "KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
       },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -165,16 +165,6 @@ function RootAppContent() {
         <main className="flex flex-1 items-center justify-center p-4">
           <Outlet />
         </main>
-        <Toaster position="top-center" richColors />
-      </div>
-    );
-  }
-
-  // If still checking session or not authenticated, render outlet without main site header/footer/chat
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-screen flex-col bg-[#060b08] font-sans text-white">
-        <Outlet />
         <Toaster position="top-center" richColors />
       </div>
     );

@@ -32,7 +32,6 @@ import {
   extractPackageOrBoxInfo,
   setProductStockStatusLocal,
   normalizeProductWithOverrides,
-  fetchCatalogProducts,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -46,24 +45,27 @@ import {
   BakliyatCategoryIcon,
   KisiselCategoryIcon,
 } from "@/components/CategoryIcons";
+import { getCustomProducts } from "@/lib/custom-products";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
-  return fetchCatalogProducts();
+  // AI veya yönetici tarafından fotoğraf yüklenerek eklenen ürünleri 197 sabit ürünün başına bağla
+  const custom = getCustomProducts();
+  return [...custom, ...FALLBACK_PRODUCTS];
 }
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "KasımOğulları Ltd. Şti. — Toptan Ürün Kataloğu" },
+      { title: "KasımOğulları Ltd. Şti. — Tatvan Toptan Satış Kataloğu" },
       {
         name: "description",
         content:
-          "KasımOğulları depomuzun toptan ürünlerini inceleyin, adetleri seçin ve siparişinizi oluşturun.",
+          "KasımOğulları Tatvan toptan şirketimizin 197 çeşit ürününü inceleyin, adetleri seçin ve siparişinizi oluşturun.",
       },
-      { property: "og:title", content: "KasımOğulları Ltd. Şti. — Toptan Ürün Kataloğu" },
+      { property: "og:title", content: "KasımOğulları Ltd. Şti. — Tatvan Toptan Satış Kataloğu" },
       {
         property: "og:description",
-        content: "Market ve bakkallar için toptan ürün kataloğu ve kolay sipariş.",
+        content: "Tatvan ve çevre ilçelerdeki market ve bakkallar için toptan ürün kataloğu.",
       },
     ],
   }),
@@ -83,6 +85,20 @@ function Index() {
   const [search, setSearch] = useState("");
   const [stockTick, setStockTick] = useState(0);
 
+  useEffect(() => {
+    const handleStockChange = () => setStockTick((t) => t + 1);
+    const handleCatalogUpdate = () => {
+      setStockTick((t) => t + 1);
+      fetchProductsFromDatabase().then((items) => setClientProducts(items));
+    };
+    window.addEventListener("product_stock_status_changed", handleStockChange);
+    window.addEventListener("catalog_updated", handleCatalogUpdate);
+    return () => {
+      window.removeEventListener("product_stock_status_changed", handleStockChange);
+      window.removeEventListener("catalog_updated", handleCatalogUpdate);
+    };
+  }, []);
+
   // 1. TanStack Query for cache & live updates from live Supabase database
   const {
     data: dbProducts,
@@ -99,23 +115,6 @@ function Index() {
   // 2. Direct client-side explicit Supabase call on initial mount
   const [clientProducts, setClientProducts] = useState<Product[]>(FALLBACK_PRODUCTS);
   const [isClientLoading, setIsClientLoading] = useState(false);
-
-  useEffect(() => {
-    const handleStockChange = () => setStockTick((t) => t + 1);
-    const handleCatalogChange = () => {
-      void refetch();
-      void fetchProductsFromDatabase().then((items) => {
-        if (items.length > 0) setClientProducts(items);
-      });
-      setStockTick((t) => t + 1);
-    };
-    window.addEventListener("product_stock_status_changed", handleStockChange);
-    window.addEventListener("products_catalog_changed", handleCatalogChange);
-    return () => {
-      window.removeEventListener("product_stock_status_changed", handleStockChange);
-      window.removeEventListener("products_catalog_changed", handleCatalogChange);
-    };
-  }, [refetch]);
 
   useEffect(() => {
     let active = true;
@@ -150,8 +149,13 @@ function Index() {
         : dbProducts && dbProducts.length > 0
           ? dbProducts
           : [];
-    // Soft-deleted/archived products are completely hidden from customer catalog
-    return base.filter((p) => p.is_active !== false).map(normalizeProductWithOverrides);
+    // Soft-deleted/archived products and banned products are completely hidden from customer catalog
+    return base
+      .filter(
+        (p) => !p.name.toLowerCase().includes("peos") && !p.name.toLowerCase().includes("peros"),
+      )
+      .map(normalizeProductWithOverrides)
+      .filter((p) => p.is_active !== false);
   }, [clientProducts, dbProducts, stockTick]);
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;

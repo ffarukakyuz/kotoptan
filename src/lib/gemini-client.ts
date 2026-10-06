@@ -4,7 +4,7 @@ export const OPENROUTER_API_KEY =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_OPENROUTER_API_KEY) ||
-  "";
+  "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";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -35,6 +35,6 @@ export async function callGeminiAI(
   return {
     ok: true,
     reply:
-      "Merhaba! KasımOğulları toptan depomuza hoş geldiniz. 197 çeşit ürünümüz, koli bilgileri ve sipariş süreçleri için yardımcı olabilirim.",
+      "Merhaba! KasımOğulları toptan şirketimize hoş geldiniz. 197 çeşit ürünümüz, koli bilgileri ve sipariş süreçleri için yardımcı olabilirim.",
   };
 }

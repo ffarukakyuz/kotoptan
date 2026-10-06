@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -9,14 +9,24 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname;
+
+  // Vitrin (ana sayfa ve ürün detay) herkese açık açılır.
+  // Sadece sepet, siparişlerim, profil ve yönetim için oturum zorunludur.
+  const isProtected =
+    currentPath.startsWith("/sepet") ||
+    currentPath.startsWith("/siparislerim") ||
+    currentPath.startsWith("/profil") ||
+    currentPath.startsWith("/yonetim");
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && isProtected) {
       void navigate({ to: "/giris", replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, isProtected, navigate]);
 
-  if (loading) {
+  if (loading && isProtected) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#060b08] text-white">
         <div className="flex flex-col items-center gap-3">
@@ -29,7 +39,7 @@ function AuthenticatedLayout() {
     );
   }
 
-  if (!user) {
+  if (!user && isProtected) {
     return null;
   }
 

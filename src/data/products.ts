@@ -1,9 +1,8 @@
 import type { Product } from "@/lib/catalog";
 
 /**
- * 197 adet toptan depomuzun sabit yerel ürün kataloğu (Fallback / Offline Data).
- * Supabase bağlantısı kopsa veya .env dosyası sıfırlansa bile tüm ürünler,
- * kategoriler, birimler ve fotoğraflar eksiksiz olarak buradan sunulur.
+ * Canlı siteden (https://kotoptan.pages.dev) senkronize edilmiş gerçek toptan ürün kataloğu.
+ * Kırılmayan mutlak CDN ve yerel asset yolları içerir.
  */
 export const FALLBACK_PRODUCTS: Product[] = [
   {
@@ -72,7 +71,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/d1f1f5a7-9d28-45d9-9c61-216b51b673d7/barbunya.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/d1f1f5a7-9d28-45d9-9c61-216b51b673d7/barbunya.jpg",
     is_active: true,
   },
   {
@@ -81,7 +81,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "bakliyat",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/d1f1f5a7-9d28-45d9-9c61-216b51b673d7/barbunya.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/d1f1f5a7-9d28-45d9-9c61-216b51b673d7/barbunya.jpg",
     is_active: true,
   },
   {
@@ -90,7 +91,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
     is_active: true,
   },
   {
@@ -99,7 +101,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
     is_active: true,
   },
   {
@@ -109,7 +112,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     category: "bakliyat",
     unit: "koli",
     image_url:
-      "/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -118,7 +121,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -127,7 +131,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "bakliyat",
     unit: "çuval",
-    image_url: "/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
     is_active: true,
   },
   {
@@ -136,7 +141,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -145,7 +151,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/5282d673-b7a1-47ab-be37-e9c171f54560/asurelik-bugday-5kg.webp",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/5282d673-b7a1-47ab-be37-e9c171f54560/asurelik-bugday-5kg.webp",
     is_active: true,
   },
   {
@@ -154,7 +161,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/977c7876-a8f6-49dd-8003-0e976cbf0515/fasulye.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/977c7876-a8f6-49dd-8003-0e976cbf0515/fasulye.jpg",
     is_active: true,
   },
   {
@@ -173,7 +181,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
     is_active: true,
   },
   {
@@ -182,7 +191,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/17656c44-0582-48c6-8ab8-7699adfc59c1/yesil-mercimek.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/17656c44-0582-48c6-8ab8-7699adfc59c1/yesil-mercimek.jpg",
     is_active: true,
   },
   {
@@ -191,7 +201,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 8 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/17656c44-0582-48c6-8ab8-7699adfc59c1/yesil-mercimek.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/17656c44-0582-48c6-8ab8-7699adfc59c1/yesil-mercimek.jpg",
     is_active: true,
   },
   {
@@ -200,7 +211,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "bakliyat",
     unit: "çuval",
-    image_url: "/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
     is_active: true,
   },
   {
@@ -209,7 +221,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
     is_active: true,
   },
   {
@@ -218,7 +231,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/0a815c0a-5415-4fcc-a08e-beaf429ea449/kirmizi-mercimek.jpg",
     is_active: true,
   },
   {
@@ -227,7 +241,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ace84746-ff55-440d-8983-767ec1601ab0/nohut.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ace84746-ff55-440d-8983-767ec1601ab0/nohut.jpg",
     is_active: true,
   },
   {
@@ -236,7 +251,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ace84746-ff55-440d-8983-767ec1601ab0/nohut.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ace84746-ff55-440d-8983-767ec1601ab0/nohut.jpg",
     is_active: true,
   },
   {
@@ -245,7 +261,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ace84746-ff55-440d-8983-767ec1601ab0/nohut.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ace84746-ff55-440d-8983-767ec1601ab0/nohut.jpg",
     is_active: true,
   },
   {
@@ -254,7 +271,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/90ed3337-f0b6-49d6-a7a0-cfd391177f2a/misir-tane.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/90ed3337-f0b6-49d6-a7a0-cfd391177f2a/misir-tane.jpg",
     is_active: true,
   },
   {
@@ -263,7 +281,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -272,7 +291,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -281,7 +301,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -290,7 +311,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 15 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -299,7 +321,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -308,7 +331,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -317,7 +341,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/9ceeb36d-f135-42be-bee0-010411abde38/pirinc.jpg",
     is_active: true,
   },
   {
@@ -336,7 +361,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/a836cc0c-3c72-41ef-9d95-08a743c91df0/bezelye.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/a836cc0c-3c72-41ef-9d95-08a743c91df0/bezelye.jpg",
     is_active: true,
   },
   {
@@ -345,7 +371,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 10 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/4dade2c3-629e-4dfb-9488-7c3bff6b289b/cay.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/4dade2c3-629e-4dfb-9488-7c3bff6b289b/cay.jpg",
     is_active: true,
   },
   {
@@ -354,7 +381,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 9 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
     is_active: true,
   },
   {
@@ -363,7 +391,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
     is_active: true,
   },
   {
@@ -372,7 +401,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 16 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
     is_active: true,
   },
   {
@@ -381,7 +411,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 5 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/95be505c-e6a5-4920-a82a-03dfa79dec31/matik.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/95be505c-e6a5-4920-a82a-03dfa79dec31/matik.jpg",
     is_active: true,
   },
   {
@@ -390,7 +421,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 16 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/c2016df8-5065-4039-9d79-70c75adb9324/kirec-cozucu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/c2016df8-5065-4039-9d79-70c75adb9324/kirec-cozucu.jpg",
     is_active: true,
   },
   {
@@ -429,7 +461,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 10 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/d3d7654b-9030-473c-a546-13adfd23f299/temizlik-kremi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/d3d7654b-9030-473c-a546-13adfd23f299/temizlik-kremi.jpg",
     is_active: true,
   },
   {
@@ -438,7 +471,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
     is_active: true,
   },
   {
@@ -447,7 +481,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/dac007d3-827b-4c38-ac6a-9958b7eeaa7b/bulasik-deterjani.jpg",
     is_active: true,
   },
   {
@@ -486,7 +521,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 16 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/0e13a3fb-82fa-497d-ba56-ce8bac4c9bf1/yag-cozucu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/0e13a3fb-82fa-497d-ba56-ce8bac4c9bf1/yag-cozucu.jpg",
     is_active: true,
   },
   {
@@ -495,7 +531,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 9 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
     is_active: true,
   },
   {
@@ -504,7 +541,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 9 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
     is_active: true,
   },
   {
@@ -513,7 +551,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
     is_active: true,
   },
   {
@@ -522,7 +561,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca60490c-75de-4c5f-b852-e8132e894ffb/yumusatici.jpg",
     is_active: true,
   },
   {
@@ -531,7 +571,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/51ce48eb-fa17-402c-9a87-62393e6a9254/yuzey-temizleyici.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/51ce48eb-fa17-402c-9a87-62393e6a9254/yuzey-temizleyici.jpg",
     is_active: true,
   },
   {
@@ -540,7 +581,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/51ce48eb-fa17-402c-9a87-62393e6a9254/yuzey-temizleyici.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/51ce48eb-fa17-402c-9a87-62393e6a9254/yuzey-temizleyici.jpg",
     is_active: true,
   },
   {
@@ -559,7 +601,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
     is_active: true,
   },
   {
@@ -568,7 +611,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/a836cc0c-3c72-41ef-9d95-08a743c91df0/bezelye.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/a836cc0c-3c72-41ef-9d95-08a743c91df0/bezelye.jpg",
     is_active: true,
   },
   {
@@ -577,7 +621,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/5a9f0ac8-15a8-4f63-8861-b985038565d0/biber-salcasi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/5a9f0ac8-15a8-4f63-8861-b985038565d0/biber-salcasi.jpg",
     is_active: true,
   },
   {
@@ -586,7 +631,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/d3603678-ad07-47f7-831c-f8b9b43d5d3c/garnitur.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/d3603678-ad07-47f7-831c-f8b9b43d5d3c/garnitur.jpg",
     is_active: true,
   },
   {
@@ -635,7 +681,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/2cec6353-b5de-4821-9e99-c4985628fe6a/domates-salcasi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/2cec6353-b5de-4821-9e99-c4985628fe6a/domates-salcasi.jpg",
     is_active: true,
   },
   {
@@ -654,7 +701,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/c40bcd99-f08d-470b-8e18-223fb33d6a9e/fasulye-konserve.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/c40bcd99-f08d-470b-8e18-223fb33d6a9e/fasulye-konserve.jpg",
     is_active: true,
   },
   {
@@ -663,7 +711,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -672,7 +721,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -681,7 +731,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -700,7 +751,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -709,7 +761,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -718,7 +771,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -727,7 +781,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -736,7 +791,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -745,7 +801,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -754,7 +811,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -763,7 +821,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -772,7 +831,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -781,7 +841,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -790,7 +851,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -799,7 +861,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "kisisel",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -808,7 +871,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 2 Adet",
     category: "kisisel",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/470540d4-8262-43b4-bbd6-5216854c09b4/bebek-bezi.jpg",
     is_active: true,
   },
   {
@@ -927,7 +991,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 6 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/2cec6353-b5de-4821-9e99-c4985628fe6a/domates-salcasi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/2cec6353-b5de-4821-9e99-c4985628fe6a/domates-salcasi.jpg",
     is_active: true,
   },
   {
@@ -936,7 +1001,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 24 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/2cec6353-b5de-4821-9e99-c4985628fe6a/domates-salcasi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/2cec6353-b5de-4821-9e99-c4985628fe6a/domates-salcasi.jpg",
     is_active: true,
   },
   {
@@ -985,7 +1051,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/e4aab001-80dc-49e5-822f-0d6496f3a62f/doa-camasir-suyu-35kg.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/e4aab001-80dc-49e5-822f-0d6496f3a62f/doa-camasir-suyu-35kg.png",
     is_active: true,
   },
   {
@@ -1005,7 +1072,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     category: "temizlik",
     unit: "koli",
     image_url:
-      "/__l5e/assets-v1/a3bbdfe3-a467-4231-a9aa-82a521df19fa/doa-yuzey-temizleyici-25l.jpg",
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/a3bbdfe3-a467-4231-a9aa-82a521df19fa/doa-yuzey-temizleyici-25l.jpg",
     is_active: true,
   },
   {
@@ -1154,7 +1221,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 20 Adet",
     category: "temizlik",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/33c7290d-9fa9-463f-ac23-b958677e2b3c/fairy-limon-650ml.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/33c7290d-9fa9-463f-ac23-b958677e2b3c/fairy-limon-650ml.jpg",
     is_active: true,
   },
   {
@@ -1164,7 +1232,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     category: "temizlik",
     unit: "koli",
     image_url:
-      "/__l5e/assets-v1/1afedafb-5fb3-41b3-9ed4-52471a510765/familia-plus-natural-havlu.webp",
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/1afedafb-5fb3-41b3-9ed4-52471a510765/familia-plus-natural-havlu.webp",
     is_active: true,
   },
   {
@@ -1423,7 +1491,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "bakliyat",
     unit: "çuval",
-    image_url: "/__l5e/assets-v1/974f2317-0f6a-4620-bab4-94a4c0f7e7ee/asurelik-bugday-25kg.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/974f2317-0f6a-4620-bab4-94a4c0f7e7ee/asurelik-bugday-25kg.png",
     is_active: true,
   },
   {
@@ -1432,7 +1501,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 5 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/5282d673-b7a1-47ab-be37-e9c171f54560/asurelik-bugday-5kg.webp",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/5282d673-b7a1-47ab-be37-e9c171f54560/asurelik-bugday-5kg.webp",
     is_active: true,
   },
   {
@@ -1441,7 +1511,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
     is_active: true,
   },
   {
@@ -1451,7 +1522,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     category: "bakliyat",
     unit: "koli",
     image_url:
-      "/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -1460,7 +1531,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 12 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -1469,7 +1541,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 5 adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/55c3e14d-18c5-48ff-b01f-839024ae5739/iri-pilavlik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/55c3e14d-18c5-48ff-b01f-839024ae5739/iri-pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -1478,7 +1551,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 5 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/ca426370-2152-42ab-9910-024f263b1a45/koftelik-bulgur.png",
     is_active: true,
   },
   {
@@ -1488,17 +1562,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
     category: "bakliyat",
     unit: "koli",
     image_url:
-      "/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
-    is_active: true,
-  },
-  {
-    id: "25addb91-f444-41e8-b99b-870930246bae",
-    name: "İpek Orta (Midyat) Pilavlık Bulgur 5 kg",
-    description: "Koli içi 5 Adet",
-    category: "gida",
-    unit: "çuval",
-    image_url:
-      "/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/85d90e5a-31e0-42c3-b336-2aa085d56f81/ince-midyat-pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -1507,7 +1571,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 5 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/27795d0a-4240-45be-9966-618400a6419d/pilavlik-bulgur.png",
     is_active: true,
   },
   {
@@ -1526,7 +1591,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 5 Adet",
     category: "bakliyat",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/75e31eb1-fd7b-4bc4-bff4-2e146caf726e/sehriyeli-bulgur.png",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/75e31eb1-fd7b-4bc4-bff4-2e146caf726e/sehriyeli-bulgur.png",
     is_active: true,
   },
   {
@@ -1665,7 +1731,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "gida",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/8199da77-69d8-4ea8-9649-0ead1eaaf3ae/cay-bardagi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/8199da77-69d8-4ea8-9649-0ead1eaaf3ae/cay-bardagi.jpg",
     is_active: true,
   },
   {
@@ -1674,7 +1741,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "",
     category: "temizlik",
     unit: "adet",
-    image_url: "/__l5e/assets-v1/cd4cf8a8-a91a-47c3-b667-3a2d2720cfb6/su-bardagi.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/cd4cf8a8-a91a-47c3-b667-3a2d2720cfb6/su-bardagi.jpg",
     is_active: true,
   },
   {
@@ -1823,7 +1891,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 8 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
     is_active: true,
   },
   {
@@ -1832,7 +1901,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 8 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
     is_active: true,
   },
   {
@@ -1841,7 +1911,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 8 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
     is_active: true,
   },
   {
@@ -1850,7 +1921,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 8 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
     is_active: true,
   },
   {
@@ -1859,7 +1931,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 8 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
     is_active: true,
   },
   {
@@ -1868,7 +1941,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     description: "Koli içi 4 Adet",
     category: "gida",
     unit: "koli",
-    image_url: "/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
+    image_url:
+      "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com/__l5e/assets-v1/327d293d-96d6-440d-9b21-b3bb87fb1e94/tursu.jpg",
     is_active: true,
   },
   {

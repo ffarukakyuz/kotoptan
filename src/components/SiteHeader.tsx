@@ -3,6 +3,7 @@ import {
   ShoppingCart,
   Package,
   LogOut,
+  LogIn,
   User as UserIcon,
   ShieldCheck,
   Menu,
@@ -65,6 +66,7 @@ export function SiteHeader() {
       >
         Ürünler
       </Link>
+
       {user && (
         <Link
           to="/siparislerim"
@@ -75,14 +77,16 @@ export function SiteHeader() {
           Siparişlerim
         </Link>
       )}
+
+      {/* Yönetim Butonu (Admin ise belirgin yeşil/altın rozet) */}
       {isAdmin && (
         <Link
           to="/yonetim"
-          className="rounded-lg px-3 py-2 text-sm font-medium text-[#22c55e] transition-colors hover:bg-white/10 hover:text-[#4ade80]"
+          className="rounded-lg px-3 py-2 text-sm font-bold text-[#22c55e] transition-colors hover:bg-white/10 hover:text-[#4ade80] flex items-center gap-1.5"
           onClick={() => setOpen(false)}
         >
-          <ShieldCheck className="mr-1.5 inline h-4 w-4" />
-          Yönetim
+          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+          <span>Yönetim</span>
         </Link>
       )}
     </>
@@ -104,49 +108,66 @@ export function SiteHeader() {
         {/* Desktop Nav Links */}
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
-        {/* Header Actions (Search, Cart, User, Menu) */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        {/* Header Actions (Search, AI, Cart, Yönetim, User, Çıkış, Menu) */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Search Button */}
           <button
             type="button"
             onClick={handleSearchClick}
             aria-label="Ürün Ara"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer"
+            title="Ürün Ara"
           >
-            <Search className="h-5 w-5 stroke-[2]" />
+            <Search className="h-4.5 w-4.5 stroke-[2]" />
           </button>
 
           {/* Cart Button with Count Badge */}
           <Link
             to="/sepet"
             aria-label="Sepetim"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+            title="Sepetim"
           >
-            <ShoppingCart className="h-5 w-5 stroke-[2]" />
+            <ShoppingCart className="h-4.5 w-4.5 stroke-[2]" />
             {totalQuantity > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#166534] px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#060b08]">
+              <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#166534] px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#060b08]">
                 {totalQuantity}
               </span>
             )}
           </Link>
 
-          {/* User / Profile Button */}
+          {/* User & Çıkış Bölümü */}
           {user ? (
-            <Link
-              to="/profil"
-              aria-label="Hesabım"
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
-              title={profile?.business_name || profile?.full_name || "Hesabım"}
-            >
-              <UserIcon className="h-5 w-5 stroke-[2]" />
-            </Link>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Link
+                to="/profil"
+                aria-label="Hesabım"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+                title={profile?.business_name || profile?.full_name || "Hesabım"}
+              >
+                <UserIcon className="h-4.5 w-4.5 stroke-[2]" />
+              </Link>
+
+              {/* ÇIKIŞ YAP BUTONU (Masaüstü Doğrudan Görünür) */}
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="hidden sm:flex items-center gap-1 rounded-lg bg-red-950/40 hover:bg-red-800 border border-red-500/30 px-2.5 py-1.5 text-xs font-semibold text-red-300 hover:text-white transition-colors cursor-pointer"
+                title="Oturumu Kapat"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Çıkış</span>
+              </button>
+            </div>
           ) : (
+            /* GİRİŞ YAP BUTONU */
             <Link
               to="/giris"
               aria-label="Giriş Yap"
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
             >
-              <UserIcon className="h-5 w-5 stroke-[2]" />
+              <LogIn className="h-3.5 w-3.5" />
+              <span>Giriş Yap</span>
             </Link>
           )}
 
@@ -155,7 +176,7 @@ export function SiteHeader() {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-label="Menüyü Aç"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer md:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5 stroke-[2]" />}
           </button>
@@ -164,8 +185,9 @@ export function SiteHeader() {
 
       {/* Mobile Drawer / Dropdown */}
       {open && (
-        <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-1 border-t border-white/10 bg-[#060b08] px-4 py-3 shadow-xl">
+        <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-1 border-t border-white/10 bg-[#060b08] px-4 py-3 shadow-xl md:hidden">
           {navLinks}
+
           {/* Kısayol Ekle / Ana Ekrana Ekle Butonu */}
           {!isInstalled && (
             <div className="mt-2 border-t border-white/10 pt-2">
@@ -181,35 +203,36 @@ export function SiteHeader() {
           )}
 
           {user ? (
-            <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2">
+            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
               <Link
                 to="/profil"
-                className="text-sm font-medium text-[#22c55e] hover:underline"
+                className="text-xs font-semibold text-emerald-400 hover:underline truncate max-w-[180px]"
                 onClick={() => setOpen(false)}
               >
                 {profile?.business_name || profile?.full_name || "Profilim"}
               </Link>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="text-red-400 hover:bg-white/10 hover:text-red-300"
+                className="border-red-500/40 bg-red-950/40 text-red-300 hover:bg-red-800 hover:text-white text-xs gap-1.5 cursor-pointer"
                 onClick={() => {
                   setOpen(false);
                   void signOut();
                 }}
               >
-                <LogOut className="mr-1.5 h-4 w-4" />
-                Çıkış
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Çıkış Yap</span>
               </Button>
             </div>
           ) : (
-            <div className="mt-2 border-t border-white/10 pt-2">
+            <div className="mt-3 border-t border-white/10 pt-3">
               <Link
                 to="/giris"
-                className="text-sm font-semibold text-[#22c55e] hover:underline"
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-colors"
                 onClick={() => setOpen(false)}
               >
-                Giriş Yap / Kayıt Ol
+                <LogIn className="h-4 w-4" />
+                <span>Giriş Yap / Kayıt Ol</span>
               </Link>
             </div>
           )}

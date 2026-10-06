@@ -16,18 +16,18 @@ export type AdminMember = {
 
 export const ADMIN_MEMBERS: AdminMember[] = [
   {
-    name: "Suat",
+    name: "Yönetici",
     phone: "0539 301 67 66",
     normalizedPhone: "5393016766",
     email: "5393016766@kotoptan.local",
     id: "1c37f384-fca9-4c36-82f4-e56aa3e74975",
   },
   {
-    name: "Faruk",
+    name: "Yönetici",
     phone: "0544 893 13 00",
     normalizedPhone: "5448931300",
     email: "5448931300@kotoptan.local",
-    emails: ["5448931300@kotoptan.local", "ffarukakyuz@gmail.com"],
+    emails: ["5448931300@kotoptan.local", "ffarukakyuz@gmail.com", "farukaakyuz@gmail.com"],
     id: "3d5df005-d87d-46dd-82ac-019ebdb13ee7",
   },
   {
@@ -82,7 +82,7 @@ export function isUserAdmin(
   const rawPhone = (profile?.phone ?? "").trim();
   const digits = normalizePhone(rawPhone);
 
-  if (email === "ffarukakyuz@gmail.com") return true;
+  if (email === "ffarukakyuz@gmail.com" || email === "farukaakyuz@gmail.com") return true;
 
   return ADMIN_MEMBERS.some((adm) => {
     if (adm.id && userId === adm.id) return true;

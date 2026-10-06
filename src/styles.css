@@ -257,6 +257,25 @@
   animation: slide-fade-in 0.7s ease-out both;
 }
 
+@keyframes chatShake {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  20%,
+  60% {
+    transform: scale(1.08) rotate(-7deg);
+  }
+  40%,
+  80% {
+    transform: scale(1.08) rotate(7deg);
+  }
+}
+
+@utility animate-chat-shake {
+  animation: chatShake 0.7s ease-in-out infinite;
+}
+
 @keyframes heroProgress {
   0% {
     transform: scaleX(0);

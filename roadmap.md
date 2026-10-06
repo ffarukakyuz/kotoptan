@@ -13,5 +13,4 @@
 - [x] Kod, ürün görselleri ve veritabanı durumunun aktarım kontrolü (Lovable Cloud'da; GitHub bağlantısı bekliyor)
 - [x] Kırık/eksik ürün görselleri düzeltildi — 255 ürünün tamamında fotoğraf var
 - [x] Ana sayfa vitrini dikdörtgen yapıldı; kayan bölüm sola, tanıtım ve yazı sağa alındı
-- [x] Canlı site (kotoptan.pages.dev) tarandı: 196 ürün products.ts ile birebir eşleşiyor; 2 koli içi bilgisi düzeltildi (Akel pirinç 4 Adet, İpek Orta bulgur 5 Adet)
 - [ ] Siteyi yayınla

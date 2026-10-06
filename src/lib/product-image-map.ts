@@ -1,18 +1,14 @@
-// Product image resolver - strictly uses live Supabase image_url (base64 or direct asset paths)
-// No mock product image filenames, no keyword mappings, and no external placeholder services.
+import type React from "react";
 
-import { FALLBACK_PRODUCTS } from "@/data/products";
+// Auto-generated product image mapping for production & local hosting
+export const PRODUCT_IMAGE_MAP: Record<string, string> = {};
 
 export const GENERIC_PRODUCT_ICON =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.5'><rect width='20' height='20' x='2' y='2' rx='4'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>";
 
 /**
- * Resolves a product's display image URL directly from the Supabase record.
- * Handles:
- * - Direct base64 data URLs (data:image/...)
- * - Direct storage / CDN asset URLs
- * - Absolute paths
- * If no image URL is present, returns an empty string or neutral generic SVG.
+ * Resolves a product's display image URL.
+ * Supports string URLs, product objects, absolute CDN paths, and local assets.
  */
 export function getPublicProductImageUrl(
   rawInput?:
@@ -31,83 +27,45 @@ export function getPublicProductImageUrl(
 
   if (rawInput && typeof rawInput === "object") {
     url = rawInput.image_url || rawInput.image;
-    if (!url) {
-      const match = FALLBACK_PRODUCTS.find(
-        (p) =>
-          (rawInput as { id?: string }).id === p.id ||
-          (rawInput.name && p.name.toLowerCase() === rawInput.name.toLowerCase()),
-      );
-      if (match?.image_url) {
-        url = match.image_url;
-      }
-    }
   } else if (typeof rawInput === "string") {
     url = rawInput;
   }
 
-  if (!url && _productName) {
-    const match = FALLBACK_PRODUCTS.find(
-      (p) => p.name.toLowerCase() === _productName.toLowerCase(),
-    );
-    if (match?.image_url) {
-      url = match.image_url;
-    }
+  if (!url || typeof url !== "string") {
+    return GENERIC_PRODUCT_ICON;
   }
 
-  if (url && typeof url === "string") {
-    let trimmed = url.trim();
-    if (trimmed.length > 0) {
-      // Base64 data URLs work directly
-      if (trimmed.startsWith("data:")) return trimmed;
-      // Absolute http/https URLs
-      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  const trimmed = url.trim();
+  if (!trimmed) return GENERIC_PRODUCT_ICON;
 
-      // Clean up accidental public/ prefix (e.g. "public/caykur.jpg" -> "/caykur.jpg")
-      if (trimmed.startsWith("public/")) {
-        trimmed = trimmed.replace(/^public\//, "/");
-      }
-      if (trimmed.startsWith("./public/")) {
-        trimmed = trimmed.replace(/^\.\/public\//, "/");
-      }
+  // Base64 data URLs work anywhere
+  if (trimmed.startsWith("data:")) return trimmed;
 
-      // Root-relative asset paths (e.g. /image_name.jpg)
-      if (trimmed.startsWith("/")) return trimmed;
+  // Absolute http/https URLs (direct CDN paths) work anywhere
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
 
-      // Relative filename without leading slash (e.g. "caykur.jpg") -> convert to root-relative "/caykur.jpg"
-      return `/${trimmed}`;
-    }
+  // Direct public path
+  if (trimmed.startsWith("/products/")) return trimmed;
+
+  // Check direct mapping
+  if (PRODUCT_IMAGE_MAP[trimmed]) {
+    return PRODUCT_IMAGE_MAP[trimmed];
   }
 
-  return "";
+  // If local /public/__l5e/assets-v1/...
+  if (trimmed.startsWith("/__l5e/assets-v1/")) {
+    return trimmed;
+  }
+
+  // If local /src/assets/images/...
+  if (trimmed.includes("/src/assets/images/")) {
+    const filename = trimmed.split("/").pop();
+    return filename ? "/products/" + filename : trimmed;
+  }
+
+  return trimmed;
 }
 
-/**
- * Convenience helper to resolve image from a Product object
- */
-export function resolveProductImage(
-  product?: {
-    image_url?: string | null;
-    image?: string | null;
-    name?: string | null;
-    category?: string | null;
-  } | null,
-): string {
-  if (!product) return "";
-  return getPublicProductImageUrl(product);
-}
-
-/**
- * Category fallback - returns empty string or generic icon, no mock products
- */
-export function getCategoryFallbackImageUrl(_category?: string | null): string {
-  return "";
-}
-
-/**
- * Image error handler for <img /> components:
- * Sets opacity and uses a generic neutral SVG icon if the image cannot be loaded.
- * Does not fall back to any mock product images.
- */
 export function handleProductImageError(
   e: React.SyntheticEvent<HTMLImageElement>,
   _productName?: string | null,

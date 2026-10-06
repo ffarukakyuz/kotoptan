@@ -1,0 +1,48 @@
+{
+  "sessions": {
+    "session_user_793e3788-1290-4362-ac09-f89791d14395": {
+      "id": "session_user_793e3788-1290-4362-ac09-f89791d14395",
+      "user_id": "793e3788-1290-4362-ac09-f89791d14395",
+      "user_name": "Misafir Müşteri",
+      "user_phone": "0500 000 00 00",
+      "status": "transferred",
+      "last_message": "Sohbetiniz müşteri temsilcisine / yetkili yöneticiye aktarıldı. Yetkili yöneticimiz birazdan size do",
+      "created_at": "2026-10-06T10:02:55.673Z",
+      "updated_at": "2026-10-06T10:03:02.606Z"
+    }
+  },
+  "messages": [
+    {
+      "id": "msg_1791280967653_0222o",
+      "session_id": "session_user_793e3788-1290-4362-ac09-f89791d14395",
+      "sender": "bot",
+      "sender_name": "Ko Depo Asistanı",
+      "content": "Sohbetiniz müşteri temsilcisine / yetkili yöneticiye aktarıldı. Yetkili yöneticimiz birazdan size doğrudan buradan yanıt verecektir.",
+      "created_at": "2026-10-06T10:02:47.653Z"
+    },
+    {
+      "id": "msg_1791280975674_emoi5",
+      "session_id": "session_user_793e3788-1290-4362-ac09-f89791d14395",
+      "sender": "user",
+      "sender_name": "Misafir Müşteri",
+      "content": "alo nhdr",
+      "created_at": "2026-10-06T10:02:55.674Z"
+    },
+    {
+      "id": "msg_1791280975882_vnqn3",
+      "session_id": "session_user_793e3788-1290-4362-ac09-f89791d14395",
+      "sender": "bot",
+      "sender_name": "Ko Depo Asistanı",
+      "content": "Depomuzda aradığınız konuyla ilgili 197 ürünlük toptan kataloğumuzda yer alan ürünler şunlardır:\n\n1. **Alo Baby Islak Mendil 120'li** (Koli içi 12 Adet) - Kategori: *KISISEL*\n2. **Alo Matik 7 Kg** (ADET) - Kategori: *TEMIZLIK*\n\n✅ Bu ürünlerin tamamı Bitlis ana depomuzda mevcut ve sevkiyata hazırdır. İhtiyacınız olan adetleri koli veya paket olarak sepetinize ekleyip hızlıca siparişinizi oluşturabilirsiniz. Belirli bir ürünün koli içi adedini öğrenmek isterseniz adını yazmanız yeterlidir!",
+      "created_at": "2026-10-06T10:02:55.882Z"
+    },
+    {
+      "id": "msg_1791280982606_qjblv",
+      "session_id": "session_user_793e3788-1290-4362-ac09-f89791d14395",
+      "sender": "bot",
+      "sender_name": "Ko Depo Asistanı",
+      "content": "Sohbetiniz müşteri temsilcisine / yetkili yöneticiye aktarıldı. Yetkili yöneticimiz birazdan size doğrudan buradan yanıt verecektir.",
+      "created_at": "2026-10-06T10:03:02.606Z"
+    }
+  ]
+}

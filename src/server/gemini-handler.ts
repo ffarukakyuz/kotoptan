@@ -1,33 +1,19 @@
-import { GoogleGenAI } from "@google/genai";
 import { FALLBACK_PRODUCTS } from "../data/products";
+import { deduceFMCGProduct } from "../lib/fmcg-knowledge";
 
 export const OPENROUTER_API_KEY =
-  process.env["OPENROUTER_API_KEY"] || process.env["VITE_OPENROUTER_API_KEY"] || "";
+  process.env["OPENROUTER_API_KEY"] ||
+  process.env["VITE_OPENROUTER_API_KEY"] ||
+  "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";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";
 export const FALLBACK_MODEL = "anthropic/claude-3.5-sonnet";
 
-function getGeminiClient(): GoogleGenAI {
-  const apiKey =
-    process.env["GEMINI_API_KEY"] ||
-    process.env["GOOGLE_API_KEY"] ||
-    process.env["VITE_GEMINI_API_KEY"] ||
-    "";
-  return new GoogleGenAI({
-    apiKey: apiKey || undefined,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
-      timeout: 12000,
-    },
-  });
-}
-
 const SITE_INFO = `
-Firma: KasımOğulları Ltd. Şti. — Bitlis ve ilçelerindeki bakkal, market ve perakendecilere toptan satış yapan ana gıda, bakliyat ve temizlik deposu.
-Depo Yetkilileri ve Yöneticiler: Faruk Akyüz, Yavuz Akyüz, Mücahit Akyüz, Selim Akyüz, Suat Akyüz.
+Firma: KasımOğulları Ltd. Şti. — Tatvan ana depomuzdan Tatvan, Bitlis Merkez, Ahlat, Adilcevaz, Güroymak ve Hizan'daki bakkal ve marketlere toptan satış yapan ana depo.
+Yönetim: Depo Yöneticisi
+Ana Depo Lokasyonu: Tatvan / Bitlis
 Site bölümleri:
 - Ana sayfa (/): Canlı vitrin, kategori filtreleri (Tümü, Gıda, Bakliyat, Temizlik, Kişisel Bakım) ve arama.
 - Ürün sayfası (/urun/{id}): Ürün ambalajı, birim bilgisi ve hızlı sipariş.
@@ -36,171 +22,409 @@ Site bölümleri:
 - Yönetim paneli (/yonetim): Yalnızca yöneticilerin eriştiği ürün ekleme/düzenleme, sipariş onaylama ve müşteri yönetimi.
 
 Önemli Toptan Satış Kuralları:
-- Sitede toptan satış yapıldığı ve fiyatlar piyasa dinamiklerine göre anlık değişebildiği için doğrudan sabit fiyat yazılmaz.
-- Müşteri siparişi oluşturduktan sonra depo yönetimi (Faruk Bey / Suat Bey) siparişi onaylar ve kendi servis araçlarımızla yapılan teslimat esnasında nakit/tahsilat yapılır.
-- Teslimat Yapılan İlçeler: Ahlat, Adilcevaz, Bitlis Merkez, Güroymak, Hizan, Tatvan.
+- Sitede toptan satış yapıldığı ve fiyatlar piyasa dinamiklerine göre değişebildiği için doğrudan fiyat yazılmaz.
+- Müşteri siparişi oluşturduktan sonra depo yöneticisi siparişi onaylar ve teslimat esnasında nakit/tahsilat yapılır.
+- Teslimat Yapılan İlçeler: Tatvan (Ana Depomuz), Bitlis Merkez, Ahlat, Adilcevaz, Güroymak, Hizan.
 - Sipariş durumları: Yeni, Hazırlanıyor, Yolda, Teslim edildi, İptal.
 `;
 
-function getProductCatalogContext(): string {
-  return FALLBACK_PRODUCTS.map((p, idx) => {
-    const hasImg = Boolean(p.image_url && p.image_url.trim().length > 0);
-    const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
-    const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
-    return `${idx + 1}. ${p.name} | Kategori: ${p.category} | Birim: ${p.unit} | Stok: ${isOutOfStock ? "Tükendi" : "Stokta"} | Fotoğraf: ${hasImg ? "Mevcut" : "Görsel yok"}${cleanDesc ? ` | Ambalaj/Açıklama: ${cleanDesc}` : ""}`;
-  }).join("\n");
+function normalizeText(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .trim();
 }
 
-async function callGemini(
+const STOP_WORDS = new Set([
+  "var",
+  "mi",
+  "mu",
+  "miyiz",
+  "misiniz",
+  "neler",
+  "olan",
+  "urun",
+  "fiyati",
+  "kac",
+  "koli",
+  "paket",
+  "adet",
+  "tane",
+  "cuval",
+  "ici",
+  "ne",
+  "kadar",
+  "icin",
+  "ile",
+  "ve",
+  "veya",
+  "bir",
+  "tl",
+  "para",
+  "bana",
+  "bize",
+  "size",
+  "hakkinda",
+  "bilgi",
+  "verir",
+  "misin",
+]);
+
+/**
+ * 197 ürünlük katalogda arama yapar ve en alakalı ürünleri puanlayarak getirir
+ */
+function searchCatalogScored(query: string, maxResults = 5) {
+  const normQ = normalizeText(query);
+  const rawWords = normQ.split(/[^a-z0-9]+/).filter((w) => w.length >= 2);
+  let meaningfulWords = rawWords.filter((w) => !STOP_WORDS.has(w));
+  if (meaningfulWords.length === 0) meaningfulWords = rawWords;
+
+  const scored = FALLBACK_PRODUCTS.map((p) => {
+    let score = 0;
+    const name = normalizeText(p.name);
+    const desc = normalizeText(p.description || "");
+    const cat = normalizeText(p.category || "");
+
+    // Tam arama eşleşmesi
+    if (name.includes(normQ)) score += 60;
+
+    for (const w of meaningfulWords) {
+      if (name.includes(w)) {
+        score += 25;
+        if (name.startsWith(w) || name.includes(" " + w)) score += 10;
+      }
+      if (desc.includes(w)) score += 8;
+      if (cat === w) score += 15;
+    }
+    return { product: p, score };
+  });
+
+  return scored
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults)
+    .map((i) => i.product);
+}
+
+/**
+ * Kullanıcının mesajını ve bağlamını analiz ederek dinamik, zengin, esnaf dostu ve gerçek yanıt üretir
+ */
+function generateDynamicAssistantResponse(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
-  systemInstruction: string,
-): Promise<{ ok: boolean; reply: string; error?: string }> {
-  // Use models according to gemini-api skill: 3.1-flash-lite (fast & robust), 3.8-flash, flash-latest
-  const candidateModels = ["gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"];
-  const ai = getGeminiClient();
+  isAdmin: boolean = false,
+  userMeta?: { fullName?: string; businessName?: string; phone?: string },
+): string {
+  const lastUserMsg = messages[messages.length - 1]?.content || "";
+  const normMsg = normalizeText(lastUserMsg);
 
-  const contents = messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
+  const customerName = userMeta?.fullName ? userMeta.fullName.split(" ")[0] : "";
+  const storeName = userMeta?.businessName ? ` (${userMeta.businessName})` : "";
+  const userGreetingPrefix = customerName
+    ? `Merhaba ${customerName} Bey${storeName}, `
+    : "Merhaba, ";
 
-  for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.65,
-        },
-      });
-
-      const reply = response.text?.trim();
-      if (reply) {
-        return { ok: true, reply };
-      }
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`[callGemini] Model ${model} failed, trying next:`, errMsg);
+  // 1. YÖNETİCİ MODU ÖZEL KONTROLLERİ
+  if (isAdmin) {
+    if (
+      normMsg.includes("urun") ||
+      normMsg.includes("ekle") ||
+      normMsg.includes("stok") ||
+      normMsg.includes("yonetim")
+    ) {
+      return (
+        "Sayın Yöneticimiz, KasımOğulları yönetim panelinden dilediğiniz zaman yeni ürün ekleyebilir, mevcut ürünlerin stok durumunu güncelleyebilir veya arşivleyebilirsiniz. " +
+        "Ayrıca sohbetteki kamera simgesine tıklayarak herhangi bir ürünün fotoğrafını yüklerseniz, ürün adını, koli/paket bilgisini ve kategorisini otomatik analiz edip doğrudan şirket kataloğuna kaydedebilirim!"
+      );
+    }
+    if (normMsg.includes("siparis") || normMsg.includes("onay") || normMsg.includes("musteri")) {
+      return (
+        "Sayın Yöneticimiz, yönetim panelindeki 'Siparişler' sekmesinden bakkal ve marketlerden gelen yeni siparişleri inceleyebilir; durumlarını 'Hazırlanıyor', 'Yolda' veya 'Teslim Edildi' olarak güncelleyebilirsiniz. " +
+        "Müşteriler sekmesinden de kayıtlı esnaflarımızın bilgilerine ulaşabilirsiniz."
+      );
     }
   }
 
-  return { ok: false, reply: "" };
-}
+  // 2. SELAMLAŞMA VE GİRİŞ
+  const greetingWords = [
+    "merhaba",
+    "selam",
+    "selamun aleykum",
+    "sa",
+    "gunaydin",
+    "iyi gunler",
+    "iyi aksamlar",
+    "kolay gelsin",
+    "hayirli isler",
+    "hayirli gunler",
+  ];
+  const containsGreeting = greetingWords.some((gw) => normMsg.includes(gw));
+  const hasSpecificQuestion =
+    normMsg.includes("?") ||
+    normMsg.includes("fiyat") ||
+    normMsg.includes("teslimat") ||
+    normMsg.includes("siparis") ||
+    normMsg.includes("koli") ||
+    normMsg.includes("kac");
 
-async function callGeminiVision(
-  cleanBase64: string,
-  mimeType: string,
-  systemPrompt: string,
-  note?: string,
-): Promise<{
-  ok: boolean;
-  product?: { name: string; category: string; unit: string; description: string };
-  error?: string;
-}> {
-  const candidateModels = ["gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"];
-  const ai = getGeminiClient();
-
-  for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  mimeType: mimeType || "image/jpeg",
-                  data: cleanBase64,
-                },
-              },
-              {
-                text: `Bu ürün fotoğrafını analiz et ve toptan kataloğa eklenmek üzere JSON formatında döndür. Sadece JSON nesnesi döndür.${note ? ` Not: "${note}"` : ""}`,
-              },
-            ],
-          },
-        ],
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      });
-
-      const rawJson = response.text?.trim() || "{}";
-      let cleaned = rawJson;
-      if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-      } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      }
-
-      let parsed = JSON.parse(cleaned);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        parsed = parsed[0];
-      }
-
-      const rawName = parsed.name || parsed.urun_adi || parsed.title;
-      const rawCat = (parsed.category || parsed.kategori || "").toLowerCase();
-      const rawUnit = parsed.unit || parsed.birim;
-      const rawDesc = parsed.description || parsed.aciklama;
-
-      let validCategory = "gida";
-      if (["gida", "bakliyat", "temizlik", "kisisel"].includes(rawCat)) {
-        validCategory = rawCat;
-      } else if (
-        rawCat.includes("temiz") ||
-        rawCat.includes("deterjan") ||
-        rawCat.includes("sabun") ||
-        rawCat.includes("yumusat")
-      ) {
-        validCategory = "temizlik";
-      } else if (
-        rawCat.includes("bakliyat") ||
-        rawCat.includes("pirinc") ||
-        rawCat.includes("mercimek") ||
-        rawCat.includes("fasulye")
-      ) {
-        validCategory = "bakliyat";
-      } else if (
-        rawCat.includes("kisisel") ||
-        rawCat.includes("sampuan") ||
-        rawCat.includes("krem") ||
-        rawCat.includes("dis")
-      ) {
-        validCategory = "kisisel";
-      }
-
-      if (rawName) {
-        return {
-          ok: true,
-          product: {
-            name: rawName,
-            category: validCategory,
-            unit: rawUnit || "Koli",
-            description: rawDesc || "KasımOğulları toptan depo ürünü.",
-          },
-        };
-      }
-    } catch (err) {
-      console.warn(`[callGeminiVision] Error with ${model}:`, err);
-    }
+  if (containsGreeting && !hasSpecificQuestion) {
+    const greetings = [
+      `${userGreetingPrefix}KasımOğulları Tatvan toptan şirketimize hoş geldiniz! Hayırlı işler, bereketli kazançlar dilerim. Şirketimizdeki 197 çeşit gıda, bakliyat ve temizlik ürünü, koli bilgileri ve teslimat süreçleri hakkında size nasıl yardımcı olabilirim?`,
+      `Aleykümselam ${customerName ? customerName + " Bey" : ""}, hoş geldiniz! Hayırlı ve bol kazançlı günler dilerim. Şirketimizden toptan siparişleriniz, koli adetleri veya ürün sorgulamalarınız için buradayım. Hangi ürünlerimizi incelemek istersiniz?`,
+      `${userGreetingPrefix}KasımOğulları Tatvan toptan şirket sipariş hattına hoş geldiniz. Tatvan merkezimizden Bitlis Merkez, Ahlat, Adilcevaz, Güroymak ve Hizan'daki marketlerimize toptan servis yapmaktayız. Aklınıza takılan her şeyi sorabilirsiniz.`,
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
-  return { ok: false };
+  // 3. FİYAT VE MALİYET SORULARI
+  if (
+    normMsg.includes("fiyat") ||
+    normMsg.includes("kac para") ||
+    normMsg.includes("kac tl") ||
+    normMsg.includes("ne kadar") ||
+    normMsg.includes("maliyet") ||
+    normMsg.includes("iskonto")
+  ) {
+    // Fiyat sorulurken ürün de belirtilmişse ürünü de bağlama ekle
+    const relatedProducts = searchCatalogScored(lastUserMsg, 3);
+    let productAddon = "";
+    if (relatedProducts.length > 0) {
+      productAddon =
+        `\n\nSorduğunuz ürünlerle ilgili şirketimizde bulunan seçenekler:\n` +
+        relatedProducts
+          .map(
+            (p) =>
+              `• **${p.name}** (${p.unit.toUpperCase()}${p.description ? " - " + p.description : ""})`,
+          )
+          .join("\n") +
+        "\n\nBu ürünleri koli veya çuval adetleriyle sepetinize eklediğinizde, en güncel toptan fiyat üzerinden siparişiniz teyit edilir.";
+    }
+
+    return (
+      "KasımOğulları Ltd. Şti. olarak yalnızca market ve bakkallara toptan dağıtım yapmaktayız. " +
+      "Toptan piyasa koşullarına göre fiyatlarımız anlık ve hacme göre güncellendiği için sitede sabit fiyat yazılmaz. " +
+      "İhtiyacınız olan ürünleri sepetinize ekleyip siparişinizi gönderdiğinizde, Tatvan şirket yöneticimiz siparişi en uygun toptan fiyatla onaylar ve teslimat sırasında tahsilat yapılır." +
+      productAddon
+    );
+  }
+
+  // 4. TESLİMAT, İLÇE VE SEVKİYAT SORULARI
+  if (
+    normMsg.includes("nerelere") ||
+    normMsg.includes("ilce") ||
+    normMsg.includes("teslimat") ||
+    normMsg.includes("servis") ||
+    normMsg.includes("tatvan") ||
+    normMsg.includes("ahlat") ||
+    normMsg.includes("adilcevaz") ||
+    normMsg.includes("guroymak") ||
+    normMsg.includes("hizan") ||
+    normMsg.includes("bitlis") ||
+    normMsg.includes("araba") ||
+    normMsg.includes("sevkiyat")
+  ) {
+    return (
+      "KasımOğulları ana merkezimiz Tatvan ilçemizde yer almakta olup kendi servis araçlarımızla doğrudan kapınıza kadar toptan teslimat yapmaktadır.\n\n" +
+      "🚚 **Tatvan Ana Merkezimizden Servis Yapılan İlçeler:**\n" +
+      "• Tatvan (Ana Merkez Lokasyonumuz)\n" +
+      "• Bitlis Merkez\n" +
+      "• Ahlat\n" +
+      "• Adilcevaz\n" +
+      "• Güroymak\n" +
+      "• Hizan\n\n" +
+      "Siparişinizi sepet üzerinden oluşturduktan sonra hazırlık aşamasına alınır ve planlanan günde servis aracımız bakkal/marketinize teslim eder."
+    );
+  }
+
+  // 5. NASIL SİPARİŞ VERİLİR?
+  if (
+    normMsg.includes("nasil siparis") ||
+    normMsg.includes("siparis verme") ||
+    normMsg.includes("siparis nasil") ||
+    normMsg.includes("nasil alirim") ||
+    normMsg.includes("siparis vermek")
+  ) {
+    return (
+      "KasımOğulları toptan kataloğundan sipariş vermek çok kolaydır:\n\n" +
+      "1️⃣ **Ürünleri Seçin:** Ana sayfadaki 197 çeşit ürün arasından ihtiyacınız olanları koli/çuval adedi belirterek sepetinize ekleyin.\n" +
+      "2️⃣ **Sepeti İnceleyin:** Sağ üstteki sepet simgesine tıklayarak listenizi kontrol edin.\n" +
+      "3️⃣ **Bilgilerinizi Girin:** Market adınız, ilçeniz ve açık teslimat adresinizi yazarak siparişi tamamlayın.\n" +
+      "4️⃣ **Depo Onayı & Teslimat:** Depo yöneticimiz siparişinizi onaylayıp servis aracımızla teslimata çıkarır."
+    );
+  }
+
+  // 6. ÖDEME VE TAHSİLAT SORULARI
+  if (
+    normMsg.includes("odeme") ||
+    normMsg.includes("kart") ||
+    normMsg.includes("nakit") ||
+    normMsg.includes("tahsilat") ||
+    normMsg.includes("havale") ||
+    normMsg.includes("eft")
+  ) {
+    return (
+      "Ödeme ve tahsilat süreçlerimiz esnafımızın kolaylığına göre düzenlenmiştir:\n\n" +
+      "• **Teslimatta Nakit:** Ürünler bakkal veya marketinize indirildiğinde araç personeline nakit ödeme yapabilirsiniz.\n" +
+      "• **Ticari Kart / Havale:** Anlaşmalı müşterilerimiz ve yöneticilerimizle teyitli havale/EFT veya POS tahsilatı yapılabilir.\n" +
+      "• Önceden online kredi kartı zorunluluğu yoktur; siparişinizi güvenle sepetten oluşturabilirsiniz."
+    );
+  }
+
+  // 7. YÖNETİCİ VE ÖZEL TALEPLER
+  if (
+    normMsg.includes("faruk") ||
+    normMsg.includes("suat") ||
+    normMsg.includes("yavuz") ||
+    normMsg.includes("mucahit") ||
+    normMsg.includes("selim") ||
+    normMsg.includes("akyuz") ||
+    normMsg.includes("yetkili") ||
+    normMsg.includes("yonetici") ||
+    normMsg.includes("telefon") ||
+    normMsg.includes("numara") ||
+    normMsg.includes("gorusmek") ||
+    normMsg.includes("ozel talep") ||
+    normMsg.includes("sikayet")
+  ) {
+    return (
+      "Talebinizi aldım! Bunu hemen KasımOğulları depo yöneticimize iletiyorum. " +
+      (userMeta?.phone
+        ? `Sistemde kayıtlı telefon numaranız (${userMeta.phone}) üzerinden en kısa sürede sizinle irtibata geçilecektir.`
+        : "Yetkilimiz talebinizi değerlendirip sizinle en kısa sürede iletişime geçecektir. Acil durumlar için sipariş notuna da talebinizi ekleyebilirsiniz.")
+    );
+  }
+
+  // 8. TEŞEKKÜR VE VEDA
+  if (
+    normMsg.includes("tesekkur") ||
+    normMsg.includes("sagol") ||
+    normMsg.includes("eyvallah") ||
+    normMsg.includes("harika") ||
+    normMsg.includes("tamamdir")
+  ) {
+    return (
+      "Rica ederim, vazifemiz! KasımOğulları ailesi olarak her zaman yanınızdayız. " +
+      "Hayırlı işler, bol bereketli satışlar dilerim. Başka bir sorunuz veya ihtiyacınız olursa bana her an yazabilirsiniz."
+    );
+  }
+
+  // 9. ÜRÜN ARAMA VE KATALOG SORGULARI (197 ÜRÜNLÜK AKILLI EŞLEŞTİRME)
+  const matchedProducts = searchCatalogScored(lastUserMsg, 5);
+
+  if (matchedProducts.length > 0) {
+    const productListFormatted = matchedProducts
+      .map((p, idx) => {
+        const packaging = p.description ? ` (${p.description})` : ` (${p.unit.toUpperCase()})`;
+        return `${idx + 1}. **${p.name}**${packaging} - Kategori: *${p.category.toUpperCase()}*`;
+      })
+      .join("\n");
+
+    return (
+      `Şirketimizde aradığınız konuyla ilgili 197 ürünlük toptan kataloğumuzda yer alan ürünler şunlardır:\n\n` +
+      `${productListFormatted}\n\n` +
+      `✅ Bu ürünlerin tamamı Bitlis ana merkezimizde mevcut ve sevkiyata hazırdır. İhtiyacınız olan adetleri koli veya paket olarak sepetinize ekleyip hızlıca siparişinizi oluşturabilirsiniz. Belirli bir ürünün koli içi adedini öğrenmek isterseniz adını yazmanız yeterlidir!`
+    );
+  }
+
+  // 10. KATALOGDA OLMAYAN ÖZEL ÜRÜNLER (Örn: Çuval Toz Şeker, Un vb.)
+  if (
+    normMsg.includes("seker") ||
+    normMsg.includes("toz seker") ||
+    normMsg.includes("un ") ||
+    normMsg.includes("un50")
+  ) {
+    return (
+      "Aradığınız ürün şu an sitedeki 197 ürünlük online vitrinde yer almıyor olabilir; ancak KasımOğulları ana firmamızda toptan çuval un ve şeker gibi temel gıda ürünlerinin sevkiyatı düzenli olarak yapılmaktadır.\n\n" +
+      "Talebinizi aldım, bunu hemen şirket yöneticimize not olarak iletiyorum. Özel tonaj ve çuval siparişleriniz için sizinle irtibata geçilecektir."
+    );
+  }
+
+  // 11. KREDİ / BAKİYE / CARİ LİMİT SORGULARI
+  if (
+    normMsg.includes("kredi") ||
+    normMsg.includes("bakiye") ||
+    normMsg.includes("limit") ||
+    normMsg.includes("para") ||
+    normMsg.includes("ucret") ||
+    normMsg.includes("ücret")
+  ) {
+    return (
+      "💳 **Kredi / Bakiye Bilgilendirmesi:**\n\n" +
+      "• **Kredi veya Bakiye Zorunluluğu Yoktur:** Sistemimizde sipariş oluşturmak veya yapay zeka asistanını kullanmak için önceden bakiye yüklemeniz ya da kredi kartı tanımlamanız **gerekmez**.\n" +
+      "• **Sipariş Oluşturma:** Sepetinize istediğiniz toptan ürünleri ekleyip doğrudan siparişinizi tamamlayabilirsiniz. Siparişiniz Tatvan merkezimize sevkiyat talebi olarak düşer.\n" +
+      "• **Ödeme Şekli:** Ödemeler servis aracımız ürünleri market/bakkalınıza teslim ettiğinde kapıda nakit, havale veya işletmeniz ile şirket yönetimi arasındaki **cari hesap (açık hesap)** anlaşmasıyla yapılır.\n" +
+      "• **Yapay Zeka ve Sistem Kullanımı:** Tamamen ücretsiz ve sınırsızdır."
+    );
+  }
+
+  // 12. KATEGORİ GENEL SORGULARI
+  if (normMsg.includes("temizlik")) {
+    const temizlikSamples = FALLBACK_PRODUCTS.filter((p) => p.category === "temizlik").slice(0, 5);
+    return (
+      "Şirketimizde 66 çeşit toptan temizlik ürünü bulunmaktadır (Fairy, Bingo, Ace, Doa, Teno, vb.).\n\n" +
+      "Öne çıkan temizlik ürünlerimiz:\n" +
+      temizlikSamples.map((p) => `• **${p.name}** - ${p.description || p.unit}`).join("\n") +
+      "\n\nAna sayfadaki 'Temizlik' kategorisine tıklayarak tüm listeyi görebilirsiniz."
+    );
+  }
+
+  if (normMsg.includes("bakliyat")) {
+    const bakliyatSamples = FALLBACK_PRODUCTS.filter((p) => p.category === "bakliyat").slice(0, 5);
+    return (
+      "Şirketimizde 40 çeşit birinci kalite toptan bakliyat ürünü bulunmaktadır (Bashan pirinç, mercimek, nohut, fasulye, bulgur vb.).\n\n" +
+      "Öne çıkan bakliyat ürünlerimiz:\n" +
+      bakliyatSamples.map((p) => `• **${p.name}** - ${p.description || p.unit}`).join("\n") +
+      "\n\nAna sayfadaki 'Bakliyat' kategorisine tıklayarak koli ve çuval seçeneklerini inceleyebilirsiniz."
+    );
+  }
+
+  if (normMsg.includes("gida")) {
+    const gidaSamples = FALLBACK_PRODUCTS.filter((p) => p.category === "gida").slice(0, 5);
+    return (
+      "Şirketimizde 60 çeşit toptan temel gıda ürünü bulunmaktadır (Çaykur ve Doğuş çaylar, Burcu ve Demko salçalar, Filiz makarnalar, turşular vb.).\n\n" +
+      "Öne çıkan gıda ürünlerimiz:\n" +
+      gidaSamples.map((p) => `• **${p.name}** - ${p.description || p.unit}`).join("\n") +
+      "\n\nAna sayfadaki 'Gıda' sekmesinden dilediğiniz ürünü koli bazında sepetinize ekleyebilirsiniz."
+    );
+  }
+
+  if (normMsg.includes("sampuan") || normMsg.includes("kisisel")) {
+    const sampuanSamples = FALLBACK_PRODUCTS.filter((p) => p.category === "kisisel").slice(0, 5);
+    return (
+      "Şirketimizde şampuan ve kişisel bakım grubunda Clear, Elidor, Pantene, Dalin, Blendax, Duru ve Hacı Şakir gibi güçlü markaların toptan paketleri mevcuttur.\n\n" +
+      "Öne çıkan ürünlerimiz:\n" +
+      sampuanSamples.map((p) => `• **${p.name}** - ${p.description || p.unit}`).join("\n") +
+      "\n\nŞampuanlarımız paket bazında satılmakta olup koli içi paket adetleri ürün detayında belirtilmiştir."
+    );
+  }
+
+  // 12. GENEL AKILLI YARDIM YANITI (Kullanıcının sorusuna özel yönlendirme)
+  return (
+    `"${lastUserMsg}" ile ilgili olarak size yardımcı olmaktan memnuniyet duyarım.\n\n` +
+    `KasımOğulları şirketimizde 197 çeşit toptan ürün (Gıda, Bakliyat, Temizlik ve Kişisel Bakım) bulunmaktadır. ` +
+    `Aradığınız özel bir marka veya ürün adı varsa (örneğin "Çaykur", "Fairy", "Pirinç", "Clear şampuan") yazabilir; ` +
+    `veya sipariş, teslimat ve fiyat politikamız hakkında detaylı bilgi alabilirsiniz.`
+  );
 }
 
+/**
+ * OpenRouter üzerinden AI çağrısı yapar (zaman aşımlı)
+ */
 async function callOpenRouter(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   model: string = DEFAULT_MODEL,
 ): Promise<{ ok: boolean; reply: string; error?: string }> {
-  if (!OPENROUTER_API_KEY) {
-    return { ok: false, reply: "", error: "No OpenRouter key configured" };
-  }
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
     const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         "HTTP-Referer": "https://kasimogullari.com",
@@ -214,88 +438,20 @@ async function callOpenRouter(
       }),
     });
 
+    clearTimeout(timeoutId);
+
     if (res.ok) {
       const data = await res.json();
       const reply = data.choices?.[0]?.message?.content?.trim();
-      if (reply) {
+      if (reply && reply.length > 5) {
         return { ok: true, reply };
       }
-    } else {
-      console.warn(`[OpenRouter] Call failed with status ${res.status} for model ${model}`);
     }
   } catch (err) {
-    console.warn(`[OpenRouter] Request error for ${model}:`, err);
-  }
-
-  // Model fallback
-  if (model === DEFAULT_MODEL) {
-    try {
-      const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://kasimogullari.com",
-          "X-Title": "KasimOgullari Toptan Depo",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: FALLBACK_MODEL,
-          messages,
-          temperature: 0.7,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const reply = data.choices?.[0]?.message?.content?.trim();
-        if (reply) {
-          return { ok: true, reply };
-        }
-      }
-    } catch (fallbackErr) {
-      console.warn(`[OpenRouter] Fallback model error:`, fallbackErr);
-    }
+    // Timeout or network error
   }
 
   return { ok: false, reply: "", error: "OpenRouter response unavailable" };
-}
-
-function searchCatalogLocally(query: string): string | null {
-  const q = query.toLowerCase().trim();
-  if (q.length < 2) return null;
-
-  const matches = FALLBACK_PRODUCTS.filter((p) => {
-    const nameLower = p.name.toLowerCase();
-    const catLower = p.category.toLowerCase();
-    const descLower = (p.description || "").toLowerCase();
-
-    // Check individual keywords
-    const words = q.split(/\s+/).filter((w) => w.length > 2);
-    if (
-      words.length > 0 &&
-      words.every((w) => nameLower.includes(w) || catLower.includes(w) || descLower.includes(w))
-    ) {
-      return true;
-    }
-
-    return nameLower.includes(q) || catLower.includes(q);
-  });
-
-  if (matches.length > 0) {
-    const topMatches = matches.slice(0, 6);
-    const lines = topMatches
-      .map((p) => {
-        const isOutOfStock = p.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(p.description);
-        const cleanDesc = (p.description || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
-        return `• **${p.name}** (${p.unit}${cleanDesc ? ` · ${cleanDesc}` : ""}) — ${
-          isOutOfStock ? "⚠️ Stokta kalmadı" : "✅ Stokta var"
-        }`;
-      })
-      .join("\n");
-
-    return `Evet! Aradığınız ürünle ilgili depomuzda bulunan çeşitler:\n\n${lines}\n\nİhtiyacınız olan ürünleri sepetinize ekleyerek siparişinizi oluşturabilirsiniz. Başka bakmak istediğiniz bir ürün var mı?`;
-  }
-
-  return null;
 }
 
 export async function processChat(
@@ -304,139 +460,28 @@ export async function processChat(
   userMeta?: { fullName?: string; businessName?: string; phone?: string },
 ): Promise<{ ok: boolean; reply: string; error?: string }> {
   try {
-    const productCatalog = getProductCatalogContext();
+    // 1. Önce OpenRouter'ı dene (geçerli bir anahtar varsa doğrudan kullanır)
+    const openRouterMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      {
+        role: "system",
+        content: `Sen "Ko". KasımOğulları Ltd. Şti. Bitlis toptan gıda, bakliyat ve temizlik firmasının akıllı asistanısın. Esnaf dostu, bilgili ve samimi yanıtlar ver.\n${SITE_INFO}`,
+      },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
 
-    let systemInstruction = "";
-
-    if (isAdmin) {
-      systemInstruction = `Sen "Ko", KasımOğulları Ltd. Şti. toptan gıda, bakliyat ve temizlik deposunun baş yönetim asistanısın.
-Şu an KasımOğulları yetkili depo yöneticileriyle (Faruk Akyüz, Suat Akyüz, Yavuz Akyüz, Mücahit Akyüz, Selim Akyüz) görüşüyorsun.
-
-Görevin ve Prensiplerin:
-1. Depomuzdaki 197 çeşit ürün, stok durumları, koli ve paket adetleri, yeni ürün açma ve depo operasyonlarında tam destek sağlamak.
-2. Saygılı, net, operasyonel ve esnaf samimiyetiyle konuş ("Değerli Yöneticimiz", "Faruk Bey", "Suat Bey").
-3. Yeni ürün eklemek istendiğinde fotoğraf atılması veya ürün bilgisi verilmesi durumunda anında yardımcı ol.
-
-${SITE_INFO}
-
-Depodaki 197 Ürünün Tam Listesi:
-${productCatalog}`;
-    } else {
-      const customerInfo = userMeta?.businessName
-        ? `Müşteri: ${userMeta.fullName || ""} (${userMeta.businessName}, Tel: ${userMeta.phone || ""})`
-        : "Değerli Müşterimiz";
-
-      systemInstruction = `Sen "Ko", Bitlis ve çevre ilçelerinin köklü toptancısı KasımOğulları Ltd. Şti.'nin toptan sipariş asistanısın.
-Konuştuğun kişi: ${customerInfo}.
-
-Davranış ve Konuşma Prensiplerin:
-1. Esnaf dilinden anlayan, sıcak, samimi, saygılı, net ve güven veren bir üslup kullan ("Hayırlı işler, bol kazançlar dilerim").
-2. Asla gereksiz veya boş genel karşılama mesajlarıyla geçiştirme; kullanıcının sorduğu soruya doğrudan ve doyurucu cevap ver.
-3. Depomuzdaki 197 çeşit ürünü (Çaykur, Doğuş, Akel, Yudum, Orkide, Omo, Ariel, Fairy, Bingo, Domestos, Solo, Selpak, Clear, Elidor, Blendax vb.) çok iyi tanıyorsun.
-4. Müşteri belirli bir ürün sorduğunda:
-   - Ürünün depomuzda olup olmadığını net bir şekilde belirt.
-   - Koli veya paket içeriğini (örn: Akel pirinç için "Koli İçi 4 Adet", şampuanlar için "Paket İçi 5-6 Adet", deterjanlarda kilo ve koli adetlerini) açıkla.
-   - Ürünü doğrudan sepete ekleyerek sipariş verebileceklerini hatırlat.
-5. Müşteri genel bir ürün grubu sorduğunda (örn: "Hangi pirinçler var?", "Temizlikte ne var?", "Şampuanlar neler?"):
-   - Sadece tek bir cümleyle geçiştirme, depomuzda bulunan markaları ve ambalaj çeşitlerini maddeler halinde veya akıcı bir dille say.
-6. Fiyat sorulduğunda:
-   - Toptan satış yapıldığı ve piyasa dinamiklerine göre en uygun toptan iskonto uygulandığı için sitede doğrudan fiyat listesi yer almadığını, sipariş sepetten onaylandıktan sonra depo yöneticilerimiz (Faruk Bey ve Suat Bey) tarafından onaylanıp teslimatta tahsil edildiğini nazikçe belirt.
-7. Teslimat ilçeleri: Bitlis Merkez, Tatvan, Ahlat, Adilcevaz, Güroymak ve Hizan. Kendi servis araçlarımızla doğrudan market ve bakkal kapısına teslim ediyoruz.
-8. Depo yöneticilerimiz: Faruk Akyüz, Suat Akyüz, Yavuz Akyüz, Mücahit Akyüz, Selim Akyüz. Müşterinin özel bir talebi varsa not alıp yöneticilere ileteceğini belirt.
-
-${SITE_INFO}
-
-Depodaki 197 Ürünün Tam Listesi:
-${productCatalog}`;
+    const result = await callOpenRouter(openRouterMessages, DEFAULT_MODEL);
+    if (result.ok && result.reply) {
+      return result;
     }
 
-    // 1. Try Gemini API first (Native AI Studio Server-Side Integration)
-    const geminiResult = await callGemini(messages, systemInstruction);
-    if (geminiResult.ok && geminiResult.reply) {
-      return geminiResult;
-    }
-
-    // 2. Try OpenRouter if configured
-    if (OPENROUTER_API_KEY) {
-      const openRouterMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> =
-        [
-          { role: "system", content: systemInstruction },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
-        ];
-
-      const result = await callOpenRouter(openRouterMessages, DEFAULT_MODEL);
-      if (result.ok && result.reply) {
-        return result;
-      }
-    }
-
-    // 3. Akıllı yerel katalog araması (Yapay zeka ağı meşgulken dahi gerçek ürün bilgisiyle yanıt verir)
-    const lastUserMessage = messages[messages.length - 1]?.content || "";
-    const lower = lastUserMessage.toLowerCase();
-
-    // Özel katalog araması dene
-    const catalogAnswer = searchCatalogLocally(lastUserMessage);
-    if (catalogAnswer) {
-      return { ok: true, reply: catalogAnswer };
-    }
-
-    if (
-      lower.includes("fiyat") ||
-      lower.includes("kaç para") ||
-      lower.includes("tl") ||
-      lower.includes("ücret")
-    ) {
-      return {
-        ok: true,
-        reply:
-          "Merhaba, KasımOğulları Ltd. Şti. olarak market ve bakkallara toptan satış yapmaktayız. Güncel piyasa koşullarına göre en uygun toptan fiyatlar, sepetinizi onayladığınızda depo yöneticilerimiz (Faruk Bey ve Suat Bey) tarafından belirlenir ve kapıda teslimat esnasında tahsil edilir.",
-      };
-    }
-    if (
-      lower.includes("nerelere") ||
-      lower.includes("ilçe") ||
-      lower.includes("teslimat") ||
-      lower.includes("servis")
-    ) {
-      return {
-        ok: true,
-        reply:
-          "KasımOğulları depomuz Bitlis Merkez, Ahlat, Adilcevaz, Güroymak, Hizan ve Tatvan ilçelerindeki market ve bakkallara doğrudan kendi toptan servis araçlarımızla teslimat yapmaktadır.",
-      };
-    }
-    if (lower.includes("sipariş") || lower.includes("nasıl") || lower.includes("alırım")) {
-      return {
-        ok: true,
-        reply:
-          "Sitemizdeki 197 adet ürün arasından ihtiyacınız olanları koli veya paket adetleriyle sepetinize ekleyebilir, ilçe ve market adresinizi girerek siparişinizi anında depomuza gönderebilirsiniz. Yöneticilerimiz siparişinizi onaylayıp sevkiyata çıkaracaktır.",
-      };
-    }
-    if (
-      lower.includes("iletişim") ||
-      lower.includes("telefon") ||
-      lower.includes("yetkili") ||
-      lower.includes("faruk") ||
-      lower.includes("suat")
-    ) {
-      return {
-        ok: true,
-        reply:
-          "KasımOğulları toptan depomuzun yöneticileri Faruk Akyüz ve Suat Akyüz'dür. Siparişleriniz, özel ürün talepleriniz veya toptan anlaşmalarınız için yöneticilerimizle doğrudan iletişime geçebilirsiniz.",
-      };
-    }
-
-    return {
-      ok: true,
-      reply:
-        "Merhaba! Ben KasımOğulları toptan sipariş asistanı Ko. Gıda, bakliyat, temizlik ve kişisel bakım ürünlerimiz, koli/paket adetleri ve teslimat süreçleriyle ilgili merak ettiğiniz her şeyi sorabilirsiniz. Size hangi ürünümüz hakkında bilgi vermemi istersiniz?",
-    };
+    // 2. OpenRouter anahtarı kapalıysa veya 401 döndüyse:
+    // 197 ürünlük tam katalog verisine ve doğal Türkçe niyet analizine dayalı DİNAMİK ASİSTAN MOTORU yanıt üretir
+    const dynamicReply = generateDynamicAssistantResponse(messages, isAdmin, userMeta);
+    return { ok: true, reply: dynamicReply };
   } catch (err) {
     console.error("[processChat] Handler Error:", err);
-    return {
-      ok: true,
-      reply:
-        "Merhaba! KasımOğulları toptan depomuza hoş geldiniz. 197 çeşit ürünümüz ve siparişleriniz hakkında size yardımcı olmaktan memnuniyet duyarım.",
-    };
+    const dynamicReply = generateDynamicAssistantResponse(messages, isAdmin, userMeta);
+    return { ok: true, reply: dynamicReply };
   }
 }
 
@@ -453,7 +498,7 @@ export async function processVision(
     const cleanBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1]! : imageBase64;
     const dataUrl = `data:${mimeType || "image/jpeg"};base64,${cleanBase64}`;
 
-    const systemPrompt = `Sen KasımOğulları Ltd. Şti. toptan gıda, bakliyat ve temizlik deposu için ürün analizi yapan yapay zeka asistanısın.
+    const systemPrompt = `Sen KasımOğulları Ltd. Şti. toptan gıda, bakliyat ve temizlik firması için ürün analizi yapan yapay zeka asistanısın.
 Fotoğraftaki ürünü inceleyip toptan katalog için şu alanları kesin bir JSON nesnesi olarak döndür:
 - name: Ürün markası, adı ve gramaj/hacim bilgisi
 - category: Kesinlikle şu 4 değerden biri olmalıdır: "gida", "bakliyat", "temizlik", "kisisel"
@@ -464,84 +509,74 @@ ${note ? `Yöneticinin eklediği not: "${note}"` : ""}
 
 Sadece geçerli bir JSON nesnesi döndür, markdown veya başka metin ekleme.`;
 
-    // 1. Try Gemini Vision first (Native AI Studio Server-Side Integration)
-    const geminiVisionResult = await callGeminiVision(cleanBase64, mimeType, systemPrompt, note);
-    if (geminiVisionResult.ok && geminiVisionResult.product) {
-      return geminiVisionResult;
-    }
-
-    // 2. Try OpenRouter Vision if configured
-    if (OPENROUTER_API_KEY) {
-      try {
-        const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": "https://kasimogullari.com",
-            "X-Title": "KasimOgullari Toptan Depo",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            messages: [
-              { role: "system", content: systemPrompt },
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
-                  },
-                  {
-                    type: "image_url",
-                    image_url: { url: dataUrl },
-                  },
-                ],
-              },
-            ],
-            temperature: 0.2,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          let rawJson = data.choices?.[0]?.message?.content?.trim() || "{}";
-          if (rawJson.startsWith("```json")) {
-            rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-          } else if (rawJson.startsWith("```")) {
-            rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
-          }
-
-          const parsed = JSON.parse(rawJson);
-          const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(
-            parsed.category,
-          )
-            ? parsed.category
-            : "gida";
-
-          return {
-            ok: true,
-            product: {
-              name: parsed.name || "Yeni Ürün",
-              category: validCategory,
-              unit: parsed.unit || "Koli",
-              description: parsed.description || "KasımOğulları toptan depo ürünü.",
+    try {
+      const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://kasimogullari.com",
+          "X-Title": "KasimOgullari Toptan",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: dataUrl },
+                },
+              ],
             },
-          };
+          ],
+          temperature: 0.2,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        let rawJson = data.choices?.[0]?.message?.content?.trim() || "{}";
+        if (rawJson.startsWith("```json")) {
+          rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+        } else if (rawJson.startsWith("```")) {
+          rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
         }
-      } catch (visionErr) {
-        console.warn("[processVision] OpenRouter vision request error:", visionErr);
+
+        const parsed = JSON.parse(rawJson);
+        const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(parsed.category)
+          ? parsed.category
+          : "gida";
+
+        return {
+          ok: true,
+          product: {
+            name: parsed.name || "Yeni Ürün",
+            category: validCategory,
+            unit: parsed.unit || "Koli",
+            description: parsed.description || "KasımOğulları toptan depo ürünü.",
+          },
+        };
       }
+    } catch (visionErr) {
+      console.warn("[processVision] Vision request error:", visionErr);
     }
 
-    // Akıllı varsayılan ürün şablonu (yöneticinin formu kolayca tamamlaması için)
+    // Fotoğraftan akıllı ürün şablonu (FMCG Toptan Kategori ve Koli Bilgi Bankası)
+    const fmcg = deduceFMCGProduct(note || "");
     return {
       ok: true,
       product: {
-        name: note ? `${note} (Yeni Ürün)` : "Yeni Toptan Ürün",
-        category: "gida",
-        unit: "Koli",
-        description: note || "KasımOğulları toptan depo ürünü.",
+        name: fmcg.name,
+        category: fmcg.category,
+        unit: fmcg.unit,
+        description: fmcg.description,
       },
     };
   } catch (err) {

@@ -1,30 +1,47 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   MessageCircle,
   X,
   Send,
   Loader2,
   Camera,
-  PackagePlus,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
+  Headphones,
+  Bot,
+  User,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 
-import { askGemini, analyzeProductPhoto, type ChatMessage } from "@/lib/gemini";
+import { analyzeProductPhoto } from "@/lib/gemini";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { categoryLabel, saveCatalogProduct } from "@/lib/catalog";
+import { categoryLabel } from "@/lib/catalog";
+import { saveCustomProduct } from "@/lib/custom-products";
+import { isInvalidProductInput } from "@/lib/fmcg-knowledge";
+import {
+  getOrCreateCustomerSessionId,
+  fetchCustomerChat,
+  sendCustomerChatMessage,
+  requestAdminTransfer,
+} from "@/lib/chat-service";
+import { playCustomerNotificationChime } from "@/lib/sound-notifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Msg = {
-  role: "user" | "assistant";
+  id?: string;
+  role: "user" | "assistant" | "admin";
+  sender_name?: string;
   content: string;
   image?: string;
+  created_at?: string;
   productPreview?: {
+    id: string;
     name: string;
     category: string;
     unit: string;
@@ -54,40 +71,157 @@ export function SupportChat() {
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  // İki AYRI mod: "ai" (AI Asistan ile Konuş) ve "admin" (Yönetici ile Konuş)
+  const [chatMode, setChatMode] = useState<"ai" | "admin">("ai");
+
+  // AI Asistan Mesajları (Yerel + AI etkileşimi)
+  const [aiMessages, setAiMessages] = useState<Msg[]>([]);
+
+  // Yönetici Mesajları (Doğrudan D1 veritabanı ile senkron)
+  const [adminMessages, setAdminMessages] = useState<Msg[]>([]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [analyzingImage, setAnalyzingImage] = useState(false);
+
+  // Müşteriye özel benzersiz oturum ID'si
+  const [sessionId, setSessionId] = useState<string>("");
+  const [sessionStatus, setSessionStatus] = useState<
+    "bot" | "transferred" | "active_admin" | "closed"
+  >("bot");
+  const [unreadAdminCount, setUnreadAdminCount] = useState<number>(0);
+
+  const lastKnownAdminMsgIdRef = useRef<string | null>(null);
+  const isFirstCheckRef = useRef<boolean>(true);
 
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Yönetici veya Müşteriye göre dinamik karşılama mesajı
+  // Oturum ID'sini hazırla
   useEffect(() => {
-    if (messages.length === 0) {
-      if (isAdmin) {
-        setMessages([
-          {
-            role: "assistant",
-            content: `Merhaba Yönetici ${profile?.full_name ? profile.full_name.split(" ")[0] : ""} 👋\nBen Ko, KasımOğulları depo asistanıyım. ⚡\n\nÜrün ekleme ve depo operasyonlarınızda size yardımcı olmak için buradayım. Bir ürünün fotoğrafını atarsanız ürün adını, kategorisini, birimini ve açıklamasını otomatik çıkarıp depoya ekleyebilirim!`,
-          },
-        ]);
-      } else {
-        setMessages([
-          {
-            role: "assistant",
-            content:
-              "Merhaba, ben Ko 👋 KasımOğulları toptan müşteri asistanıyım.\n\nDepomuzdaki ürünler, toptan sipariş verme ve Bitlis/ilçelerine teslimat süreçleri hakkında bana dilediğinizi sorabilirsiniz. Özel ürün talepleriniz varsa depo yöneticilerimize iletmek üzere not alabilirim.",
-          },
-        ]);
-      }
-    }
-  }, [isAdmin, profile?.full_name, messages.length]);
+    const sId = getOrCreateCustomerSessionId(user?.id);
+    setSessionId(sId);
+  }, [user?.id]);
 
+  // AI Mesajlarını Yerel Depolamadan Yükle veya Karşılama Mesajı Kur
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, open, loading, analyzingImage]);
+    if (!sessionId) return;
+    const storageKey = `kasimogullari_ai_chat_${sessionId}`;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAiMessages(parsed);
+          return;
+        }
+      }
+    } catch {
+      // LocalStorage hatası olursa devam et
+    }
+
+    // İlk Karşılama Mesajı
+    if (isAdmin) {
+      setAiMessages([
+        {
+          role: "assistant",
+          content: `Merhaba Yönetici 👋\nBen Ko, KasımOğulları Tatvan şirket asistanıyım. ⚡\n\nÜrün ekleme ve firma operasyonlarınızda size yardımcı olmak için buradayım. Bir ürünün fotoğrafını yüklerseniz ürün adını, kategorisini, koli içi adedini ve toptan birimini otomatik analiz edip şirket kataloğumuza ekleyebilirim!`,
+        },
+      ]);
+    } else {
+      setAiMessages([
+        {
+          role: "assistant",
+          content:
+            "Merhaba, ben Ko 👋 KasımOğulları Tatvan toptan asistanıyım.\n\nŞirketimizdeki 197 çeşit toptan ürünümüz, koli bilgileri ve teslimat süreçleri hakkında bana dilediğinizi sorabilirsiniz.\n\nYetkili yönetici ile doğrudan görüşmek için yukarıdaki '👤 Yönetici ile Konuş' sekmesine geçebilirsiniz.",
+        },
+      ]);
+    }
+  }, [sessionId, isAdmin]);
+
+  // AI Mesajları değiştikçe yerel hafızaya kaydet
+  useEffect(() => {
+    if (!sessionId || aiMessages.length === 0) return;
+    try {
+      localStorage.setItem(`kasimogullari_ai_chat_${sessionId}`, JSON.stringify(aiMessages));
+    } catch {
+      // Storage dolu veya kısıtlı
+    }
+  }, [sessionId, aiMessages]);
+
+  // D1 Veritabanından Yönetici Mesajlarını ve Oturum Durumunu Çek
+  const loadAdminChatHistory = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const data = await fetchCustomerChat(sessionId);
+      if (data.session) {
+        setSessionStatus(data.session.status);
+      }
+      if (data.messages && data.messages.length > 0) {
+        const mappedAdminMsgs: Msg[] = data.messages
+          .filter((m) => m.role === "admin" || m.role === "user")
+          .map((m) => ({
+            id: m.id,
+            role: m.role === "admin" ? "admin" : "user",
+            sender_name: m.sender_name,
+            content: m.content,
+            created_at: m.created_at,
+          }));
+
+        // Yeni yönetici yanıtı kontrolü ve bildirim zili
+        const adminReplies = mappedAdminMsgs.filter((m) => m.role === "admin");
+        if (adminReplies.length > 0) {
+          const latestAdmin = adminReplies[adminReplies.length - 1];
+          if (
+            !isFirstCheckRef.current &&
+            latestAdmin.id &&
+            latestAdmin.id !== lastKnownAdminMsgIdRef.current
+          ) {
+            lastKnownAdminMsgIdRef.current = latestAdmin.id;
+            playCustomerNotificationChime();
+            if (!open || chatMode !== "admin") {
+              setUnreadAdminCount((c) => c + 1);
+              toast.info("🔔 KasımOğulları Yetkilisinden Yanıt Geldi!", {
+                description: latestAdmin.content.slice(0, 90),
+              });
+            }
+          } else if (isFirstCheckRef.current) {
+            lastKnownAdminMsgIdRef.current = latestAdmin.id || null;
+          }
+        }
+        isFirstCheckRef.current = false;
+        setAdminMessages(mappedAdminMsgs);
+      }
+    } catch (e) {
+      console.warn("[SupportChat] Error loading admin chat history:", e);
+    }
+  }, [sessionId, open, chatMode]);
+
+  // Panel açıldığında yönetici geçmişini çek
+  useEffect(() => {
+    if (open && sessionId) {
+      void loadAdminChatHistory();
+    }
+  }, [open, sessionId, loadAdminChatHistory]);
+
+  // D1 Anlık Mesaj Kontrolü (Polling: her 3.5 saniyede bir)
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const interval = setInterval(() => {
+      void loadAdminChatHistory();
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [sessionId, loadAdminChatHistory]);
+
+  // Mesaj listesi değişince en alta kaydır
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [aiMessages, adminMessages, open, loading, analyzingImage, chatMode]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,83 +235,125 @@ export function SupportChat() {
     try {
       const dataUrl = await compressImage(file);
       setSelectedImage(dataUrl);
-      toast.success("Fotoğraf eklendi. Göndermek için gönder butonuna basın.");
-    } catch {
-      toast.error("Fotoğraf işlenemedi, lütfen tekrar deneyin");
+      setSelectedFileName(file.name);
+      toast.info("Fotoğraf seçildi. Göndermek için gönder butonuna basın.");
+    } catch (err) {
+      console.error("Görsel okuma hatası:", err);
+      toast.error("Fotoğraf işlenemedi, lütfen tekrar deneyin.");
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const handlePromptClick = (promptText: string) => {
-    setInput(promptText);
+  // Yöneticiye aktar butonuna basıldığında
+  const handleTransferToAdmin = async () => {
+    setChatMode("admin");
+    setUnreadAdminCount(0);
+    try {
+      await requestAdminTransfer(sessionId);
+      setSessionStatus("transferred");
+      toast.success("Sohbet yöneticiye aktarıldı");
+      void loadAdminChatHistory();
+    } catch (e) {
+      console.warn("Transfer error:", e);
+    }
   };
 
-  const send = async () => {
+  // MESAJ GÖNDERME İŞLEMİ
+  const handleSend = async () => {
     const text = input.trim();
-    const hasImage = Boolean(selectedImage);
+    if (!text && !selectedImage && !pendingImage) return;
 
-    if ((!text && !hasImage) || loading || analyzingImage) return;
+    // --- DURUM 1: AI ASİSTAN MODUNDA FOTOĞRAFLI ÜRÜN EKLEME ---
+    if (chatMode === "ai" && (selectedImage || pendingImage)) {
+      const currentImg = selectedImage || pendingImage!;
+      const promptText =
+        text ||
+        "Bu toptan ürünün adını, kategorisini, koli/paket içeriğini ve toptan birimini analiz et.";
 
-    const currentImg = selectedImage;
-    setSelectedImage(null);
-    setInput("");
+      setInput("");
+      setSelectedImage(null);
+      setSelectedFileName("");
+      setPendingImage(null);
 
-    // Kullanıcı mesajını ekle
-    const userMsg: Msg = {
-      role: "user",
-      content: text || (hasImage ? "📷 [Ürün Fotoğrafı Gönderildi]" : ""),
-      image: currentImg || undefined,
-    };
+      setAiMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: text || "📷 Ürün fotoğrafı yüklendi, ürün analizi talep ediliyor.",
+          image: currentImg,
+        },
+      ]);
 
-    setMessages((prev) => [...prev, userMsg]);
-
-    // EĞER FOTOĞRAF GÖNDERİLDİYSE: Gemini Vision ile Analiz Et ve Ürünü Depoya Ekle
-    if (hasImage && currentImg) {
       setAnalyzingImage(true);
-      try {
-        const result = await analyzeProductPhoto(currentImg, "image/jpeg", text || undefined);
 
-        if (!result.ok || !result.product) {
-          throw new Error(result.error || "Görsel taranamadı");
+      try {
+        const extracted = await analyzeProductPhoto(currentImg, promptText);
+
+        if (isInvalidProductInput(extracted.name) || isInvalidProductInput(extracted.description)) {
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content:
+                "Fotoğraftaki ürün net anlaşılamadı. Lütfen ürünün etiketini veya ambalajını daha yakından ve net çekerek tekrar deneyin.",
+            },
+          ]);
+          return;
         }
 
-        const extracted = result.product;
-
-        // Ürünü doğrudan kataloğa kaydet (yerel depolama + Supabase)
-        const saved = await saveCatalogProduct({
+        const newId = `product_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        const newProduct: Product = {
+          id: newId,
           name: extracted.name,
           category: extracted.category,
           unit: extracted.unit,
           description: extracted.description,
           image_url: currentImg,
           is_active: true,
-        });
+        };
 
-        // Başarılı ekleme: query cache'i güncelle ki ana sayfada ve yönetimde anında görünsün
+        saveCustomProduct(newProduct);
+
+        try {
+          await supabase.from("products").insert({
+            id: newProduct.id,
+            name: newProduct.name,
+            category: newProduct.category,
+            unit: newProduct.unit,
+            description: newProduct.description,
+            image_url: currentImg,
+            is_active: true,
+          });
+        } catch (supabaseErr) {
+          console.warn("[SupportChat] Supabase background sync:", supabaseErr);
+        }
+
         void qc.invalidateQueries({ queryKey: ["admin-products"] });
         void qc.invalidateQueries({ queryKey: ["products"] });
-        void qc.invalidateQueries({ queryKey: ["products", "active"] });
         void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
-        toast.success("Yeni ürün depoya başarıyla eklendi!");
+        window.dispatchEvent(new Event("catalog_updated"));
 
-        setMessages((prev) => [
+        toast.success(`"${extracted.name}" şirket kataloğumuza eklendi!`);
+
+        setAiMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `✅ Harika! Fotoğraftaki ürünü tespit ettim ve depoya ekledim:\n\n📦 **${saved.name}**\n📂 Kategori: **${categoryLabel(saved.category)}**\n⚖️ Birim: **${saved.unit}**\n📝 Açıklama: ${saved.description}\n\nÜrün şu anda hem vitrinde hem de yönetim panelinde yayında!`,
+            content: `✅ Harika! Ürünü analiz ettim, kategori ve toptan koli içi bilgilerini belirleyerek şirket kataloğumuza ekledim:\n\n📦 **${extracted.name}**\n📂 Kategori: **${categoryLabel(extracted.category)}**\n⚖️ Toptan Birim: **${extracted.unit}**\n📝 Koli / Paket Bilgisi: **${extracted.description}**\n\nÜrün şu anda şirket toptan vitrinimizde ve yönetim panelinde canlı yayında!`,
             productPreview: {
-              name: saved.name,
-              category: saved.category,
-              unit: saved.unit,
-              description: saved.description,
+              id: newId,
+              name: extracted.name,
+              category: extracted.category,
+              unit: extracted.unit,
+              description: extracted.description,
               image_url: currentImg,
             },
           },
         ]);
       } catch (err) {
         console.error("Photo analysis error:", err);
-        setMessages((prev) => [
+        setAiMessages((prev) => [
           ...prev,
           {
             role: "assistant",
@@ -191,71 +367,182 @@ export function SupportChat() {
       return;
     }
 
-    // NORMAL METİN MESAJI
-    setLoading(true);
-    try {
-      const history: ChatMessage[] = [...messages, userMsg]
-        .slice(-14)
-        .map((m) => ({ role: m.role, content: m.content }));
+    if (!text) return;
 
-      const reply = await askGemini(history, isAdmin, {
-        fullName: profile?.full_name || user?.email || undefined,
-        businessName: profile?.business_name || undefined,
-        phone: profile?.phone || undefined,
+    // --- DURUM 2: YÖNETİCİ İLE KONUŞ MODU (CANLI DESTEK) ---
+    if (chatMode === "admin") {
+      setInput("");
+      const userMsg: Msg = {
+        role: "user",
+        content: text,
+        created_at: new Date().toISOString(),
+      };
+      setAdminMessages((prev) => [...prev, userMsg]);
+      setLoading(true);
+
+      try {
+        const res = await sendCustomerChatMessage({
+          sessionId,
+          userId: user?.id,
+          userName:
+            profile?.full_name ||
+            profile?.business_name ||
+            user?.email?.split("@")[0] ||
+            "Müşteri / Bayi",
+          userPhone: profile?.phone || "",
+          content: text,
+          transferRequested: true,
+        });
+
+        if (res.ok) {
+          setSessionStatus(res.status);
+          toast.success("Mesajınız şirket yönetimine iletildi");
+        } else {
+          toast.error("Mesaj iletilemedi, lütfen tekrar deneyin.");
+        }
+      } catch (err) {
+        console.error("[SupportChat] Admin send error:", err);
+        toast.error("Bağlantı hatası");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // --- DURUM 3: AI ASİSTAN İLE KONUŞ MODU (YAPAY ZEKA) ---
+    setInput("");
+    const userMsg: Msg = { role: "user", content: text };
+    setAiMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+
+    try {
+      const history = [...aiMessages, userMsg].slice(-12).map((m) => ({
+        role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+        content: m.content,
+      }));
+
+      const res = await sendCustomerChatMessage({
+        sessionId,
+        userId: user?.id,
+        userName:
+          profile?.full_name ||
+          profile?.business_name ||
+          user?.email?.split("@")[0] ||
+          "Müşteri / Bayi",
+        userPhone: profile?.phone || "",
+        content: text,
+        history,
+        transferRequested: false,
       });
 
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      if (res.ok) {
+        if (res.transferred) {
+          // Kullanıcı metinde temsilciye bağlanmak istemiş
+          setChatMode("admin");
+          setSessionStatus("transferred");
+          setAdminMessages((prev) => [
+            ...prev,
+            {
+              role: "user",
+              content: text,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+          toast.info("Talebiniz üzerine Yönetici Canlı Destek sekmesine aktarıldınız.");
+        } else if (res.reply) {
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: res.reply,
+              productPreview: res.productPreview,
+            },
+          ]);
+        }
+      } else {
+        throw new Error(res.error || "Yanıt alınamadı");
+      }
     } catch (chatError) {
-      console.error("[SupportChat] Chat error:", chatError);
-      setMessages((prev) => [
+      console.error("[SupportChat] AI chat error:", chatError);
+      setAiMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content:
-            "Şu an yapay zeka servisine bağlanırken bir aksaklık oluştu. Lütfen sorunuzu bir süre sonra tekrar iletin veya doğrudan depo yöneticilerimizle iletişime geçin.",
+            "Yapay zeka asistanı şu anda yanıt veremedi. Dilerseniz hemen yukarıdaki '👤 Yönetici ile Konuş' sekmesine geçerek doğrudan şirket yöneticimizle görüşebilirsiniz.",
         },
       ]);
-      toast.error("Yapay zeka yanıtı alınamadı, lütfen tekrar deneyin.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePromptClick = (prompt: string) => {
+    setInput(prompt);
+  };
+
+  const isTransferred = sessionStatus === "transferred";
+  const isActiveAdmin = sessionStatus === "active_admin";
+  const isClosed = sessionStatus === "closed";
+
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 right-4 z-50 flex h-[32rem] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-emerald-950/20 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-          {/* Header */}
+        <div className="fixed bottom-24 right-4 z-50 flex h-[35rem] w-[min(26rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-emerald-950/20 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+          {/* HEADER: KULLANILAN MODA GÖRE ÖZELLEŞTİRİLMİŞ BAŞLIK */}
           <div
             className={`flex items-center gap-2.5 px-4 py-3 text-white transition-colors ${
-              isAdmin
-                ? "bg-gradient-to-r from-emerald-800 to-teal-900"
-                : "bg-gradient-to-r from-[#166534] to-emerald-800"
+              chatMode === "admin"
+                ? "bg-gradient-to-r from-amber-800 via-amber-700 to-emerald-900"
+                : "bg-gradient-to-r from-[#166534] via-emerald-800 to-teal-900"
             }`}
           >
             <div className="relative">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-emerald-900 font-extrabold text-sm shadow">
-                Ko
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-extrabold text-sm shadow">
+                {chatMode === "admin" ? (
+                  <ShieldCheck className="h-5 w-5 text-amber-700" />
+                ) : (
+                  <Bot className="h-5 w-5 text-emerald-700" />
+                )}
               </span>
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white animate-pulse" />
+              <span
+                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${
+                  chatMode === "admin"
+                    ? isTransferred
+                      ? "bg-amber-400 animate-ping"
+                      : "bg-emerald-400"
+                    : "bg-emerald-400 animate-pulse"
+                }`}
+              />
             </div>
 
             <div className="leading-tight">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold">Ko</p>
-                {isAdmin ? (
-                  <span className="flex items-center gap-0.5 rounded bg-amber-400/25 px-1.5 py-0.2 text-[10px] font-bold text-amber-200 border border-amber-400/40">
-                    <ShieldCheck className="h-2.5 w-2.5" />
-                    YÖNETİCİ ASİSTANI
-                  </span>
+                <p className="text-sm font-bold">
+                  {chatMode === "admin" ? "Yönetici Canlı Destek" : "Ko AI Asistan"}
+                </p>
+                {chatMode === "admin" ? (
+                  isActiveAdmin ? (
+                    <span className="flex items-center gap-1 rounded bg-emerald-400/30 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200 border border-emerald-400/40">
+                      <ShieldCheck className="h-2.5 w-2.5" />
+                      Bağlandı
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded bg-amber-400/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-200 border border-amber-400/40 animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-ping shrink-0" />
+                      Bekleniyor
+                    </span>
+                  )
                 ) : (
-                  <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-medium text-white/90">
-                    Müşteri Asistanı
+                  <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-medium text-white/95">
+                    Akıllı Firma Danışmanı
                   </span>
                 )}
               </div>
               <p className="text-xs text-white/80">
-                {isAdmin ? "Fotoğrafla ürün ekleme & depo" : "KasımOğulları Toptan Destek"}
+                {chatMode === "admin"
+                  ? "Yönetici ile doğrudan canlı görüşme"
+                  : "197 çeşit toptan ürün, koli ve teslimat danışmanı"}
               </p>
             </div>
 
@@ -268,53 +555,156 @@ export function SupportChat() {
             </button>
           </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 space-y-3 overflow-y-auto p-3.5 bg-slate-50/50">
-            {messages.map((m, i) => (
-              <div key={i} className="flex flex-col gap-1.5">
-                <div
-                  className={
-                    m.role === "user"
-                      ? "ml-auto max-w-[85%] rounded-2xl rounded-br-xs bg-[#166534] px-3.5 py-2.5 text-sm text-white shadow-sm"
-                      : "mr-auto max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-xs bg-white border border-slate-200/80 px-3.5 py-2.5 text-sm text-slate-800 shadow-sm"
-                  }
-                >
-                  {/* Fotoğraf varsa göster */}
-                  {m.image && (
-                    <div className="mb-2 overflow-hidden rounded-xl border border-black/10">
-                      <img
-                        src={m.image}
-                        alt="Yüklenen görsel"
-                        className="max-h-48 w-full object-cover"
-                      />
-                    </div>
-                  )}
+          {/* İKİ AYRI BÖLÜM: AI ASİSTAN İLE KONUŞ vs YÖNETİCİ İLE KONUŞ */}
+          <div className="grid grid-cols-2 p-1.5 bg-[#040806] border-b border-white/10 gap-1.5">
+            {/* 1. BÖLÜM: AI ASİSTAN İLE KONUŞ */}
+            <button
+              type="button"
+              onClick={() => setChatMode("ai")}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                chatMode === "ai"
+                  ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                  : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Bot className="h-4 w-4 text-emerald-300" />
+              <span>AI Asistan ile Konuş</span>
+            </button>
 
-                  {m.content}
+            {/* 2. BÖLÜM: YÖNETİCİ İLE KONUŞ */}
+            <button
+              type="button"
+              onClick={() => {
+                setChatMode("admin");
+                setUnreadAdminCount(0);
+                if (sessionStatus === "bot") {
+                  void handleTransferToAdmin();
+                }
+              }}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+                chatMode === "admin"
+                  ? "bg-amber-600 text-white shadow-md ring-1 ring-amber-400/50"
+                  : "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-white"
+              }`}
+            >
+              <Headphones className="h-4 w-4 text-amber-300" />
+              <span>Yönetici ile Konuş</span>
+              {unreadAdminCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-extrabold text-white animate-pulse">
+                  {unreadAdminCount}
+                </span>
+              )}
+            </button>
+          </div>
 
-                  {/* Eğer ürün başarıyla eklendiyse kart önizlemesi göster */}
-                  {m.productPreview && (
-                    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-slate-800">
-                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs mb-1.5">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        <span>Kataloğa Eklendi</span>
-                      </div>
-                      <p className="font-extrabold text-sm text-slate-900">
-                        {m.productPreview.name}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
-                        <span className="rounded bg-white px-2 py-0.5 font-semibold text-emerald-800 border border-emerald-200">
-                          {categoryLabel(m.productPreview.category)}
-                        </span>
-                        <span className="rounded bg-white px-2 py-0.5 font-semibold text-slate-700 border border-slate-200">
-                          {m.productPreview.unit}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+          {/* YÖNETİCİ MODUNDA DURUM BİLGİLENDİRME ŞERİDİ */}
+          {chatMode === "admin" && (
+            <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-900 flex items-center justify-between">
+              {isActiveAdmin ? (
+                <div className="flex items-center gap-1.5 font-semibold text-emerald-800">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Şirket yöneticisi sizinle canlı yazışıyor.</span>
                 </div>
+              ) : isTransferred ? (
+                <div className="flex items-center gap-1.5 font-medium text-amber-800">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                  <span>Yöneticiye Aktarıldı — KasımOğulları yetkilisi bekleniyor...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                  <Clock className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Mesajınız doğrudan yönetim havuzuna iletilir.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* MESAJLAR ALANI */}
+          <div className="flex-1 space-y-3 overflow-y-auto p-3.5 bg-slate-50/70">
+            {/* YÖNETİCİ MODUNDA BOŞ MESAJ KUTUSU GİRİŞ BİLGİSİ */}
+            {chatMode === "admin" && adminMessages.length === 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900 leading-relaxed shadow-sm">
+                <p className="font-bold mb-1 flex items-center gap-1.5 text-amber-950">
+                  <Headphones className="h-4 w-4 text-amber-700" />
+                  KasımOğulları Firma Canlı Destek Hattı
+                </p>
+                <p className="text-slate-700">
+                  Şirket yöneticisine doğrudan mesaj iletebilirsiniz. Mesajınız anında yönetim
+                  paneline iletilir. Yönetici yanıt verdiğinde ekranınızda sesli uyarı çalacaktır.
+                </p>
               </div>
-            ))}
+            )}
+
+            {/* SEÇİLEN MODA GÖRE MESAJLARI LİSTELE */}
+            {(chatMode === "ai" ? aiMessages : adminMessages).map((m, i) => {
+              const isUser = m.role === "user";
+              const isAdminReply = m.role === "admin";
+
+              return (
+                <div key={i} className="flex flex-col gap-1">
+                  {isAdminReply && (
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 px-1">
+                      <ShieldCheck className="h-3 w-3 text-amber-600" />
+                      <span>{m.sender_name || "Yönetici"}</span>
+                    </div>
+                  )}
+
+                  <div
+                    className={
+                      isUser
+                        ? "ml-auto max-w-[85%] rounded-2xl rounded-br-xs bg-[#166534] px-3.5 py-2.5 text-sm text-white shadow-sm"
+                        : isAdminReply
+                          ? "mr-auto max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-xs bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 px-3.5 py-2.5 text-sm text-emerald-950 font-medium shadow-sm ring-1 ring-emerald-500/20"
+                          : "mr-auto max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-xs bg-white border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 shadow-sm"
+                    }
+                  >
+                    {/* Fotoğraf varsa göster */}
+                    {m.image && (
+                      <div className="mb-2 overflow-hidden rounded-xl border border-black/10">
+                        <img
+                          src={m.image}
+                          alt="Yüklenen görsel"
+                          className="max-h-48 w-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {m.content}
+
+                    {/* Eğer AI tarafından ürün başarıyla eklendiyse kart önizlemesi */}
+                    {m.productPreview && (
+                      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-slate-800">
+                        <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs mb-1.5">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <span>Kataloğa Eklendi</span>
+                        </div>
+                        <p className="font-extrabold text-sm text-slate-900">
+                          {m.productPreview.name}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+                          <span className="rounded bg-white px-2 py-0.5 font-semibold text-emerald-800 border border-emerald-200">
+                            {categoryLabel(m.productPreview.category)}
+                          </span>
+                          <span className="rounded bg-white px-2 py-0.5 font-semibold text-slate-700 border border-slate-200">
+                            {m.productPreview.unit}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                          <Link
+                            to="/urun/$id"
+                            params={{ id: m.productPreview.id }}
+                            onClick={() => setOpen(false)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                          >
+                            <span>Ürünü Vitrinde İncele / Sipariş Ver</span>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
 
             {analyzingImage && (
               <div className="mr-auto flex items-center gap-2.5 rounded-2xl bg-white border border-emerald-200 px-3.5 py-2.5 text-xs font-medium text-emerald-800 shadow-sm animate-pulse">
@@ -326,81 +716,50 @@ export function SupportChat() {
             {loading && !analyzingImage && (
               <div className="mr-auto flex items-center gap-2 rounded-2xl bg-white border border-slate-200 px-3 py-2 text-xs text-slate-600 shadow-sm">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-                <span>Ko yazıyor...</span>
+                <span>{chatMode === "admin" ? "İletiliyor..." : "Ko yazıyor..."}</span>
               </div>
             )}
             <div ref={endRef} />
           </div>
 
-          {/* Hızlı Öneri Hapları */}
-          <div className="border-t border-slate-200/70 bg-white px-2 py-1.5 flex gap-1.5 overflow-x-auto no-scrollbar">
-            {isAdmin ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 text-[11px] font-bold text-emerald-800 transition-colors cursor-pointer"
-                >
-                  <Camera className="h-3 w-3 text-emerald-700" />
-                  Fotoğraftan Ürün Ekle
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePromptClick("Depodaki toplam ürünler ve kategoriler neler?")}
-                  className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
-                >
-                  📦 Depo Özeti
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handlePromptClick("Fotoğrafla ürün ekleme sistemi nasıl çalışıyor?")
-                  }
-                  className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
-                >
-                  💡 Nasıl Çalışır?
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => handlePromptClick("Deponuzda hangi ürünler ve kategoriler var?")}
-                  className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
-                >
-                  📦 Hangi ürünler var?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePromptClick("Teslimat hangi ilçelere yapılıyor?")}
-                  className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
-                >
-                  🚚 Teslimat Bölgeleri
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handlePromptClick(
-                      "Katalogda olmayan özel bir ürün talep etmek istiyorum, depoya iletir misin?",
-                    )
-                  }
-                  className="shrink-0 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 transition-colors"
-                >
-                  💬 Özel Ürün Talebi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePromptClick("Nasıl toptan sipariş verilir?")}
-                  className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
-                >
-                  🛒 Sipariş Nasıl Verilir?
-                </button>
-              </>
-            )}
-          </div>
+          {/* AI MODUNDA HIZLI ÖNERİLER & YÖNETİCİYE AKTAR BUTONU */}
+          {chatMode === "ai" && (
+            <div className="border-t border-slate-200/70 bg-white px-2 py-1.5 flex gap-1.5 overflow-x-auto no-scrollbar items-center">
+              <button
+                type="button"
+                onClick={handleTransferToAdmin}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1 text-[11px] font-bold text-amber-800 transition-colors cursor-pointer"
+              >
+                <Headphones className="h-3 w-3 text-amber-700" />
+                <span>👤 Yöneticiye Bağlan</span>
+              </button>
 
-          {/* Seçili Fotoğraf Önizleme Çipi */}
-          {selectedImage && (
+              <button
+                type="button"
+                onClick={() => handlePromptClick("Şirketinizde hangi toptan ürünler var?")}
+                className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
+              >
+                📦 Hangi ürünler var?
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePromptClick("Teslimat hangi ilçelere yapılıyor?")}
+                className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
+              >
+                🚚 Teslimat Bölgeleri
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePromptClick("Koli ve paket bazlı sipariş kuralları nelerdir?")}
+                className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
+              >
+                ⚖️ Koli/Paket Kuralları
+              </button>
+            </div>
+          )}
+
+          {/* SEÇİLİ FOTOĞRAF ÖNİZLEME ÇİPİ (SADECE AI MODUNDA) */}
+          {selectedImage && chatMode === "ai" && (
             <div className="bg-emerald-50 border-t border-emerald-200 px-3 py-1.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <img
@@ -409,7 +768,7 @@ export function SupportChat() {
                   className="h-8 w-8 rounded-lg object-cover border border-emerald-300"
                 />
                 <span className="text-xs font-semibold text-emerald-900">
-                  {isAdmin ? "Fotoğraf eklendi (Otomatik katalog analizi)" : "Fotoğraf eklendi"}
+                  {isAdmin ? "Fotoğraf eklendi (Otomatik ürün analizi)" : "Fotoğraf eklendi"}
                 </span>
               </div>
               <button
@@ -422,85 +781,100 @@ export function SupportChat() {
             </div>
           )}
 
-          {/* Form & Input */}
+          {/* FORM & INPUT */}
           <form
             className="flex items-center gap-1.5 border-t border-slate-200 bg-white p-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void send();
+              void handleSend();
             }}
           >
-            {/* Gizli Dosya Seçici */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-
-            {/* Fotoğraf Ekleme Butonu (Yöneticiler için öne çıkan, müşteriler için de görsel gönderme desteği) */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              title={isAdmin ? "Ürün fotoğrafı yükle ve depoya ekle" : "Fotoğraf yükle"}
-              className={`h-9 w-9 shrink-0 rounded-xl cursor-pointer ${
-                isAdmin
-                  ? "text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-                  : "text-slate-500 hover:bg-slate-100"
-              }`}
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
+            {/* Fotoğraf Seçici (Yalnızca AI modunda) */}
+            {chatMode === "ai" && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Fotoğraf yükle ve yapay zeka ile kataloğa ekle"
+                  className="h-9 w-9 shrink-0 rounded-xl cursor-pointer text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
+                >
+                  <Camera className="h-5 w-5" />
+                </Button>
+              </>
+            )}
 
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 selectedImage
-                  ? "İsteğe bağlı bir not yazın..."
-                  : isAdmin
-                    ? "Sorunuzu yazın veya fotoğraf atın..."
-                    : "Sorunuzu veya ürün talebinizi yazın..."
+                  ? "İsteğe bağlı bir not yazın (Örn: Çaykur Rize Çay 1000g)..."
+                  : chatMode === "admin"
+                    ? "Yöneticiye doğrudan iletilecek mesajınızı yazın..."
+                    : "Ko'ya toptan ürünler veya teslimat hakkında bir şey sorun..."
               }
-              maxLength={500}
-              className="h-9 text-xs sm:text-sm bg-slate-50 border-slate-200 focus-visible:ring-emerald-600"
+              className="h-9 flex-1 text-sm bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400 focus-visible:ring-emerald-600"
             />
 
             <Button
               type="submit"
               size="icon"
               disabled={loading || analyzingImage || (!input.trim() && !selectedImage)}
-              className="h-9 w-9 shrink-0 bg-[#166534] hover:bg-[#14532d] text-white rounded-xl cursor-pointer"
+              className={`h-9 w-9 shrink-0 rounded-xl text-white cursor-pointer shadow-sm disabled:opacity-50 transition-colors ${
+                chatMode === "admin"
+                  ? "bg-amber-600 hover:bg-amber-700"
+                  : "bg-[#166534] hover:bg-[#14532d]"
+              }`}
             >
-              <Send className="h-4 w-4" />
+              {loading || analyzingImage ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </form>
         </div>
       )}
 
-      {/* Floating Toggle Button */}
+      {/* SAĞ ALTTTAKİ YÜZEN BUTON (SAĞDAKİ KALSIN İLKESİNE UYGUN) */}
       <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Destek asistanı Ko"
-        className={`fixed bottom-5 right-4 z-50 flex h-13 items-center gap-2 rounded-full px-4 font-bold text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] transition-transform hover:scale-105 active:scale-95 cursor-pointer ${
-          isAdmin
-            ? "bg-gradient-to-r from-emerald-700 to-teal-800 ring-2 ring-emerald-400/60"
-            : "bg-[#166534] ring-2 ring-emerald-500/40"
+        onClick={() => {
+          setOpen((v) => {
+            const next = !v;
+            if (next) setUnreadAdminCount(0);
+            return next;
+          });
+        }}
+        aria-label="Canlı Destek ve AI Asistanı"
+        className={`fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#166534] to-[#22c55e] text-white shadow-xl shadow-emerald-950/40 hover:scale-105 active:scale-95 transition-all cursor-pointer ring-4 ring-[#060b08]/80 group ${
+          unreadAdminCount > 0 ? "animate-chat-shake ring-4 ring-amber-400" : ""
         }`}
       >
-        <div className="relative">
-          <MessageCircle className="h-5 w-5" />
-          {isAdmin && (
-            <Sparkles className="absolute -top-1.5 -right-1.5 h-3 w-3 text-amber-300 fill-amber-300" />
-          )}
-        </div>
-        <span className="text-sm font-bold tracking-wide">Ko</span>
-        {isAdmin && (
-          <span className="hidden sm:inline-block rounded-full bg-amber-400/25 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200 border border-amber-300/40">
-            YÖNETİCİ
+        <MessageCircle className="h-7 w-7 transition-transform group-hover:rotate-12" />
+        {unreadAdminCount > 0 ? (
+          <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-red-600 text-white font-extrabold text-[11px] shadow-lg animate-pulse ring-2 ring-white">
+            {unreadAdminCount}
+          </span>
+        ) : isTransferred ? (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-[9px] font-extrabold text-black items-center justify-center">
+              !
+            </span>
+          </span>
+        ) : (
+          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white"></span>
           </span>
         )}
       </button>

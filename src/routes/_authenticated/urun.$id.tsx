@@ -27,7 +27,6 @@ import {
   cleanProductDescription,
   extractPackageOrBoxInfo,
   normalizeProductWithOverrides,
-  fetchSingleCatalogProduct,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -55,8 +54,28 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
   component: ProductDetail,
 });
 
+import { getCustomProducts } from "@/lib/custom-products";
+
 async function fetchSingleProduct(id: string): Promise<Product | null> {
-  return fetchSingleCatalogProduct(id);
+  const custom = getCustomProducts();
+  const customMatch = custom.find((p) => p.id === id);
+  if (customMatch) {
+    return customMatch;
+  }
+
+  const localMatch = FALLBACK_PRODUCTS.find((p) => p.id === id);
+  if (localMatch) {
+    return localMatch;
+  }
+
+  try {
+    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+    if (!error && data) return data as Product;
+  } catch (err) {
+    console.warn("[ProductDetail] Supabase client fetch failed:", err);
+  }
+
+  return null;
 }
 
 function ProductDetail() {
@@ -348,7 +367,7 @@ function ProductDetail() {
             <div className="mt-6 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-800 dark:text-rose-300 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>
-                Bu ürün şu anda depomuzda tükenmiştir. Yeni sevkiyat geldiğinde stok durumu
+                Bu ürün şu anda şirketimizde tükenmiştir. Yeni sevkiyat geldiğinde stok durumu
                 güncellenecektir.
               </span>
             </div>
