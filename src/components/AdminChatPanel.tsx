@@ -18,6 +18,7 @@ import {
   BellRing,
   Volume2,
   VolumeX,
+  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -564,8 +565,8 @@ export function AdminChatPanel() {
                             </>
                           ) : isAdminMsg ? (
                             <>
-                              <Shield className="h-2.5 w-2.5 text-amber-400" />
-                              <span className="font-bold text-amber-300">
+                              <Shield className="h-2.5 w-2.5 text-emerald-400" />
+                              <span className="font-bold text-emerald-300">
                                 {m.sender_name || "Yönetici"}
                               </span>
                             </>
@@ -589,13 +590,26 @@ export function AdminChatPanel() {
                         <div
                           className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
                             isUser
-                              ? "bg-white/10 text-white rounded-tl-sm border border-white/10"
+                              ? "bg-[#202c33] text-white rounded-tl-sm border border-white/10"
                               : isAdminMsg
-                                ? "bg-gradient-to-r from-emerald-700 to-teal-700 text-white rounded-tr-sm shadow-md border border-emerald-500/40"
-                                : "bg-sky-950/40 text-sky-100 rounded-tr-sm border border-sky-500/30"
+                                ? "bg-[#005c4b] text-[#e9edef] rounded-tr-sm shadow-md border border-emerald-600/30"
+                                : "bg-[#202c33] text-sky-100 rounded-tr-sm border border-sky-500/30"
                           }`}
                         >
                           <p className="whitespace-pre-wrap">{m.content}</p>
+                          {isAdminMsg && (
+                            <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-emerald-200/70 font-mono">
+                              <span>
+                                {m.created_at
+                                  ? new Date(m.created_at).toLocaleTimeString("tr-TR", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : ""}
+                              </span>
+                              <CheckCheck className="h-3 w-3 text-sky-400" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

@@ -12,6 +12,8 @@ import {
   User,
   Clock,
   Sparkles,
+  CheckCheck,
+  Shield,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -64,6 +66,17 @@ async function compressImage(file: File, maxDim = 1200, quality = 0.8): Promise<
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return canvas.toDataURL("image/jpeg", quality);
+}
+
+function formatMsgTime(iso?: string) {
+  if (!iso) {
+    return new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  }
+  try {
+    return new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
 }
 
 export function SupportChat() {
@@ -488,25 +501,19 @@ export function SupportChat() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 right-4 z-50 flex h-[35rem] w-[min(26rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-emerald-950/20 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-          {/* HEADER: KULLANILAN MODA GÖRE ÖZELLEŞTİRİLMİŞ BAŞLIK */}
-          <div
-            className={`flex items-center gap-2.5 px-4 py-3 text-white transition-colors ${
-              chatMode === "admin"
-                ? "bg-gradient-to-r from-amber-800 via-amber-700 to-emerald-900"
-                : "bg-gradient-to-r from-[#166534] via-emerald-800 to-teal-900"
-            }`}
-          >
+        <div className="fixed bottom-24 right-4 z-50 flex h-[36rem] w-[min(27rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b141a] shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+          {/* HEADER: WHATSAPP YEŞİL / KOYU TEMA BAŞLIK */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-[#202c33] border-b border-white/10 text-white transition-colors">
             <div className="relative">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-extrabold text-sm shadow">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-sm shadow">
                 {chatMode === "admin" ? (
-                  <ShieldCheck className="h-5 w-5 text-amber-700" />
+                  <ShieldCheck className="h-5 w-5 text-emerald-400" />
                 ) : (
-                  <Bot className="h-5 w-5 text-emerald-700" />
+                  <Bot className="h-5 w-5 text-emerald-400" />
                 )}
-              </span>
+              </div>
               <span
-                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${
+                className={`absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-[#202c33] ${
                   chatMode === "admin"
                     ? isTransferred
                       ? "bg-amber-400 animate-ping"
@@ -516,59 +523,63 @@ export function SupportChat() {
               />
             </div>
 
-            <div className="leading-tight">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold">
-                  {chatMode === "admin" ? "Yönetici Canlı Destek" : "Ko AI Asistan"}
+            <div className="leading-tight flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold truncate text-white">
+                  {chatMode === "admin" ? "KasımOğulları Yetkili Yönetici" : "Ko Depo Asistanı"}
                 </p>
                 {chatMode === "admin" ? (
                   isActiveAdmin ? (
-                    <span className="flex items-center gap-1 rounded bg-emerald-400/30 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200 border border-emerald-400/40">
-                      <ShieldCheck className="h-2.5 w-2.5" />
-                      Bağlandı
+                    <span className="flex items-center gap-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/30">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Canlı
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 rounded bg-amber-400/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-200 border border-amber-400/40 animate-pulse">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-ping shrink-0" />
+                    <span className="flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/30">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
                       Bekleniyor
                     </span>
                   )
                 ) : (
-                  <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-medium text-white/95">
-                    Akıllı Firma Danışmanı
+                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300 border border-emerald-500/30">
+                    AI Asistan
                   </span>
                 )}
               </div>
-              <p className="text-xs text-white/80">
+              <p className="text-xs text-white/60 truncate mt-0.5">
                 {chatMode === "admin"
-                  ? "Yönetici ile doğrudan canlı görüşme"
-                  : "197 çeşit toptan ürün, koli ve teslimat danışmanı"}
+                  ? isActiveAdmin
+                    ? "Yönetici sizinle canlı yazışıyor"
+                    : isTransferred
+                      ? "Yetkili yanıtı bekleniyor..."
+                      : "çevrimiçi • Tatvan Depo"
+                  : "çevrimiçi • 197 çeşit toptan ürün danışmanı"}
               </p>
             </div>
 
             <button
               onClick={() => setOpen(false)}
               aria-label="Sohbeti kapat"
-              className="ml-auto rounded-lg p-1.5 hover:bg-white/15 transition-colors cursor-pointer"
+              className="ml-auto rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
           {/* İKİ AYRI BÖLÜM: AI ASİSTAN İLE KONUŞ vs YÖNETİCİ İLE KONUŞ */}
-          <div className="grid grid-cols-2 p-1.5 bg-[#040806] border-b border-white/10 gap-1.5">
+          <div className="grid grid-cols-2 p-1.5 bg-[#111b21] border-b border-white/10 gap-1.5">
             {/* 1. BÖLÜM: AI ASİSTAN İLE KONUŞ */}
             <button
               type="button"
               onClick={() => setChatMode("ai")}
               className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 chatMode === "ai"
-                  ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/50"
+                  ? "bg-emerald-700 text-white shadow-md ring-1 ring-emerald-500/50"
                   : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
               }`}
             >
               <Bot className="h-4 w-4 text-emerald-300" />
-              <span>AI Asistan ile Konuş</span>
+              <span>AI Asistan</span>
             </button>
 
             {/* 2. BÖLÜM: YÖNETİCİ İLE KONUŞ */}
@@ -583,11 +594,11 @@ export function SupportChat() {
               }}
               className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                 chatMode === "admin"
-                  ? "bg-amber-600 text-white shadow-md ring-1 ring-amber-400/50"
-                  : "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-white"
+                  ? "bg-[#00a884] text-white shadow-md ring-1 ring-emerald-400/50"
+                  : "bg-white/5 text-emerald-300 hover:bg-emerald-950/40 hover:text-white"
               }`}
             >
-              <Headphones className="h-4 w-4 text-amber-300" />
+              <Headphones className="h-4 w-4 text-emerald-300" />
               <span>Yönetici ile Konuş</span>
               {unreadAdminCount > 0 && (
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-extrabold text-white animate-pulse">
@@ -599,38 +610,38 @@ export function SupportChat() {
 
           {/* YÖNETİCİ MODUNDA DURUM BİLGİLENDİRME ŞERİDİ */}
           {chatMode === "admin" && (
-            <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-900 flex items-center justify-between">
+            <div className="border-b border-white/10 bg-[#182229] px-3 py-1.5 text-[11px] text-emerald-300/90 flex items-center justify-between">
               {isActiveAdmin ? (
-                <div className="flex items-center gap-1.5 font-semibold text-emerald-800">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Şirket yöneticisi sizinle canlı yazışıyor.</span>
+                <div className="flex items-center gap-1.5 font-semibold text-emerald-300">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <span>Yetkili yönetici canlı hatta • Doğrudan yazışıyorsunuz</span>
                 </div>
               ) : isTransferred ? (
-                <div className="flex items-center gap-1.5 font-medium text-amber-800">
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-                  <span>Yöneticiye Aktarıldı — KasımOğulları yetkilisi bekleniyor...</span>
+                <div className="flex items-center gap-1.5 font-medium text-emerald-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                  <span>Yöneticiye aktarıldı • KasımOğulları yetkilisi bekleniyor...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                  <Clock className="h-3.5 w-3.5 text-slate-500" />
+                <div className="flex items-center gap-1.5 font-medium text-white/70">
+                  <Clock className="h-3.5 w-3.5 text-white/50 shrink-0" />
                   <span>Mesajınız doğrudan yönetim havuzuna iletilir.</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* MESAJLAR ALANI */}
-          <div className="flex-1 space-y-3 overflow-y-auto p-3.5 bg-slate-50/70">
+          {/* MESAJLAR ALANI: WHATSAPP ARKA PLANI */}
+          <div className="flex-1 space-y-3 overflow-y-auto p-3.5 bg-[#0b141a] bg-[radial-gradient(#1f2c34_1px,transparent_1px)] [background-size:16px_16px]">
             {/* YÖNETİCİ MODUNDA BOŞ MESAJ KUTUSU GİRİŞ BİLGİSİ */}
             {chatMode === "admin" && adminMessages.length === 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900 leading-relaxed shadow-sm">
-                <p className="font-bold mb-1 flex items-center gap-1.5 text-amber-950">
-                  <Headphones className="h-4 w-4 text-amber-700" />
-                  KasımOğulları Firma Canlı Destek Hattı
+              <div className="rounded-xl border border-emerald-500/20 bg-[#182229] p-3.5 text-xs text-white/90 leading-relaxed shadow-sm">
+                <p className="font-bold mb-1.5 flex items-center gap-1.5 text-emerald-300">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                  KasımOğulları Yönetici Canlı Destek
                 </p>
-                <p className="text-slate-700">
-                  Şirket yöneticisine doğrudan mesaj iletebilirsiniz. Mesajınız anında yönetim
-                  paneline iletilir. Yönetici yanıt verdiğinde ekranınızda sesli uyarı çalacaktır.
+                <p className="text-white/70 leading-relaxed">
+                  Tatvan depomuzdaki yetkili yöneticimize doğrudan mesaj gönderebilirsiniz.
+                  Mesajınız anında yönetim paneline iletilir ve yetkili yönetici canlı yanıt verir.
                 </p>
               </div>
             )}
@@ -641,26 +652,37 @@ export function SupportChat() {
               const isAdminReply = m.role === "admin";
 
               return (
-                <div key={i} className="flex flex-col gap-1">
-                  {isAdminReply && (
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 px-1">
-                      <ShieldCheck className="h-3 w-3 text-amber-600" />
-                      <span>{m.sender_name || "Yönetici"}</span>
+                <div key={i} className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+                  {!isUser && (
+                    <div className="flex items-center gap-1 text-[10px] text-white/50 mb-1 px-1">
+                      {isAdminReply ? (
+                        <>
+                          <Shield className="h-2.5 w-2.5 text-emerald-400" />
+                          <span className="font-bold text-emerald-300">
+                            {m.sender_name || "Yetkili Yönetici"}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Bot className="h-2.5 w-2.5 text-sky-400" />
+                          <span className="font-semibold text-sky-300">Ko AI Asistan</span>
+                        </>
+                      )}
                     </div>
                   )}
 
                   <div
                     className={
                       isUser
-                        ? "ml-auto max-w-[85%] rounded-2xl rounded-br-xs bg-[#166534] px-3.5 py-2.5 text-sm text-white shadow-sm"
+                        ? "max-w-[85%] rounded-2xl rounded-tr-xs bg-[#005c4b] text-[#e9edef] px-3.5 py-2.5 text-xs sm:text-sm shadow-sm border border-emerald-600/30 leading-relaxed"
                         : isAdminReply
-                          ? "mr-auto max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-xs bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 px-3.5 py-2.5 text-sm text-emerald-950 font-medium shadow-sm ring-1 ring-emerald-500/20"
-                          : "mr-auto max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-xs bg-white border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 shadow-sm"
+                          ? "max-w-[88%] rounded-2xl rounded-tl-xs bg-[#202c33] text-[#e9edef] px-3.5 py-2.5 text-xs sm:text-sm shadow-sm border border-white/10 leading-relaxed"
+                          : "max-w-[88%] rounded-2xl rounded-tl-xs bg-[#202c33] text-[#e9edef] px-3.5 py-2.5 text-xs sm:text-sm shadow-sm border border-sky-500/30 leading-relaxed"
                     }
                   >
                     {/* Fotoğraf varsa göster */}
                     {m.image && (
-                      <div className="mb-2 overflow-hidden rounded-xl border border-black/10">
+                      <div className="mb-2 overflow-hidden rounded-xl border border-black/20">
                         <img
                           src={m.image}
                           alt="Yüklenen görsel"
@@ -669,32 +691,40 @@ export function SupportChat() {
                       </div>
                     )}
 
-                    {m.content}
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+
+                    {/* WhatsApp Zaman & Çift Tik */}
+                    <div
+                      className={`flex items-center justify-end gap-1 mt-1 text-[10px] font-mono ${
+                        isUser ? "text-emerald-200/70" : "text-white/40"
+                      }`}
+                    >
+                      <span>{formatMsgTime(m.created_at)}</span>
+                      {isUser && <CheckCheck className="h-3 w-3 text-sky-400" />}
+                    </div>
 
                     {/* Eğer AI tarafından ürün başarıyla eklendiyse kart önizlemesi */}
                     {m.productPreview && (
-                      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-slate-800">
-                        <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs mb-1.5">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <div className="mt-3 rounded-xl border border-emerald-500/30 bg-[#182229] p-3 text-white">
+                        <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs mb-1.5">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                           <span>Kataloğa Eklendi</span>
                         </div>
-                        <p className="font-extrabold text-sm text-slate-900">
-                          {m.productPreview.name}
-                        </p>
+                        <p className="font-extrabold text-sm text-white">{m.productPreview.name}</p>
                         <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
-                          <span className="rounded bg-white px-2 py-0.5 font-semibold text-emerald-800 border border-emerald-200">
+                          <span className="rounded bg-black/40 px-2 py-0.5 font-semibold text-emerald-300 border border-emerald-500/30">
                             {categoryLabel(m.productPreview.category)}
                           </span>
-                          <span className="rounded bg-white px-2 py-0.5 font-semibold text-slate-700 border border-slate-200">
+                          <span className="rounded bg-black/40 px-2 py-0.5 font-semibold text-white/80 border border-white/10">
                             {m.productPreview.unit}
                           </span>
                         </div>
-                        <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                        <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between">
                           <Link
                             to="/urun/$id"
                             params={{ id: m.productPreview.id }}
                             onClick={() => setOpen(false)}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition-colors shadow-sm cursor-pointer"
                           >
                             <span>Ürünü Vitrinde İncele / Sipariş Ver</span>
                           </Link>
@@ -707,15 +737,15 @@ export function SupportChat() {
             })}
 
             {analyzingImage && (
-              <div className="mr-auto flex items-center gap-2.5 rounded-2xl bg-white border border-emerald-200 px-3.5 py-2.5 text-xs font-medium text-emerald-800 shadow-sm animate-pulse">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+              <div className="mr-auto flex items-center gap-2.5 rounded-2xl bg-[#202c33] border border-emerald-500/30 px-3.5 py-2.5 text-xs font-medium text-emerald-300 shadow-sm animate-pulse">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
                 <span>Fotoğraf yapay zeka ile taranıyor ve ürün kataloğa ekleniyor...</span>
               </div>
             )}
 
             {loading && !analyzingImage && (
-              <div className="mr-auto flex items-center gap-2 rounded-2xl bg-white border border-slate-200 px-3 py-2 text-xs text-slate-600 shadow-sm">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+              <div className="mr-auto flex items-center gap-2 rounded-2xl bg-[#202c33] border border-white/10 px-3 py-2 text-xs text-white/60 shadow-sm">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
                 <span>{chatMode === "admin" ? "İletiliyor..." : "Ko yazıyor..."}</span>
               </div>
             )}
@@ -724,34 +754,34 @@ export function SupportChat() {
 
           {/* AI MODUNDA HIZLI ÖNERİLER & YÖNETİCİYE AKTAR BUTONU */}
           {chatMode === "ai" && (
-            <div className="border-t border-slate-200/70 bg-white px-2 py-1.5 flex gap-1.5 overflow-x-auto no-scrollbar items-center">
+            <div className="border-t border-white/10 bg-[#111b21] px-2 py-1.5 flex gap-1.5 overflow-x-auto no-scrollbar items-center">
               <button
                 type="button"
                 onClick={handleTransferToAdmin}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1 text-[11px] font-bold text-amber-800 transition-colors cursor-pointer"
+                className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 px-3 py-1 text-[11px] font-bold text-emerald-300 transition-colors cursor-pointer"
               >
-                <Headphones className="h-3 w-3 text-amber-700" />
-                <span>👤 Yöneticiye Bağlan</span>
+                <Headphones className="h-3 w-3 text-emerald-400" />
+                <span>Yöneticiye Bağlan</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handlePromptClick("Şirketinizde hangi toptan ürünler var?")}
-                className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
+                className="shrink-0 rounded-full bg-[#202c33] hover:bg-[#2a3942] border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/80 transition-colors cursor-pointer"
               >
                 📦 Hangi ürünler var?
               </button>
               <button
                 type="button"
                 onClick={() => handlePromptClick("Teslimat hangi ilçelere yapılıyor?")}
-                className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
+                className="shrink-0 rounded-full bg-[#202c33] hover:bg-[#2a3942] border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/80 transition-colors cursor-pointer"
               >
                 🚚 Teslimat Bölgeleri
               </button>
               <button
                 type="button"
                 onClick={() => handlePromptClick("Koli ve paket bazlı sipariş kuralları nelerdir?")}
-                className="shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors"
+                className="shrink-0 rounded-full bg-[#202c33] hover:bg-[#2a3942] border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/80 transition-colors cursor-pointer"
               >
                 ⚖️ Koli/Paket Kuralları
               </button>
@@ -760,30 +790,30 @@ export function SupportChat() {
 
           {/* SEÇİLİ FOTOĞRAF ÖNİZLEME ÇİPİ (SADECE AI MODUNDA) */}
           {selectedImage && chatMode === "ai" && (
-            <div className="bg-emerald-50 border-t border-emerald-200 px-3 py-1.5 flex items-center justify-between">
+            <div className="bg-[#182229] border-t border-white/10 px-3 py-1.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <img
                   src={selectedImage}
                   alt="Önizleme"
-                  className="h-8 w-8 rounded-lg object-cover border border-emerald-300"
+                  className="h-8 w-8 rounded-lg object-cover border border-emerald-500/40"
                 />
-                <span className="text-xs font-semibold text-emerald-900">
+                <span className="text-xs font-semibold text-emerald-300">
                   {isAdmin ? "Fotoğraf eklendi (Otomatik ürün analizi)" : "Fotoğraf eklendi"}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedImage(null)}
-                className="text-xs font-bold text-red-600 hover:text-red-700 cursor-pointer"
+                className="text-xs font-bold text-red-400 hover:text-red-300 cursor-pointer"
               >
                 Kaldır
               </button>
             </div>
           )}
 
-          {/* FORM & INPUT */}
+          {/* FORM & INPUT: WHATSAPP TARZI ALT ÇUBUK */}
           <form
-            className="flex items-center gap-1.5 border-t border-slate-200 bg-white p-2"
+            className="flex items-center gap-2 border-t border-white/10 bg-[#202c33] p-2.5"
             onSubmit={(e) => {
               e.preventDefault();
               void handleSend();
@@ -805,7 +835,7 @@ export function SupportChat() {
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
                   title="Fotoğraf yükle ve yapay zeka ile kataloğa ekle"
-                  className="h-9 w-9 shrink-0 rounded-xl cursor-pointer text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
+                  className="h-9 w-9 shrink-0 rounded-full cursor-pointer text-emerald-400 bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   <Camera className="h-5 w-5" />
                 </Button>
@@ -819,21 +849,17 @@ export function SupportChat() {
                 selectedImage
                   ? "İsteğe bağlı bir not yazın (Örn: Çaykur Rize Çay 1000g)..."
                   : chatMode === "admin"
-                    ? "Yöneticiye doğrudan iletilecek mesajınızı yazın..."
+                    ? "Yöneticiye doğrudan mesajınızı yazın..."
                     : "Ko'ya toptan ürünler veya teslimat hakkında bir şey sorun..."
               }
-              className="h-9 flex-1 text-sm bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400 focus-visible:ring-emerald-600"
+              className="h-9 flex-1 text-xs sm:text-sm bg-[#2a3942] border-0 text-white placeholder:text-white/40 rounded-full px-4 focus-visible:ring-1 focus-visible:ring-emerald-500"
             />
 
             <Button
               type="submit"
               size="icon"
               disabled={loading || analyzingImage || (!input.trim() && !selectedImage)}
-              className={`h-9 w-9 shrink-0 rounded-xl text-white cursor-pointer shadow-sm disabled:opacity-50 transition-colors ${
-                chatMode === "admin"
-                  ? "bg-amber-600 hover:bg-amber-700"
-                  : "bg-[#166534] hover:bg-[#14532d]"
-              }`}
+              className="h-9 w-9 shrink-0 rounded-full bg-[#00a884] hover:bg-[#02906f] text-white cursor-pointer shadow-md disabled:opacity-50 transition-colors"
             >
               {loading || analyzingImage ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -845,7 +871,7 @@ export function SupportChat() {
         </div>
       )}
 
-      {/* SAĞ ALTTTAKİ YÜZEN BUTON (SAĞDAKİ KALSIN İLKESİNE UYGUN) */}
+      {/* SAĞ ALTTTAKİ YÜZEN BUTON (WHATSAPP YEŞİLİ) */}
       <button
         onClick={() => {
           setOpen((v) => {
@@ -855,8 +881,8 @@ export function SupportChat() {
           });
         }}
         aria-label="Canlı Destek ve AI Asistanı"
-        className={`fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#166534] to-[#22c55e] text-white shadow-xl shadow-emerald-950/40 hover:scale-105 active:scale-95 transition-all cursor-pointer ring-4 ring-[#060b08]/80 group ${
-          unreadAdminCount > 0 ? "animate-chat-shake ring-4 ring-amber-400" : ""
+        className={`fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl shadow-black/50 hover:scale-105 active:scale-95 transition-all cursor-pointer ring-4 ring-[#060b08]/80 group ${
+          unreadAdminCount > 0 ? "animate-chat-shake ring-4 ring-emerald-400" : ""
         }`}
       >
         <MessageCircle className="h-7 w-7 transition-transform group-hover:rotate-12" />
@@ -866,8 +892,8 @@ export function SupportChat() {
           </span>
         ) : isTransferred ? (
           <span className="absolute -top-1 -right-1 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-[9px] font-extrabold text-black items-center justify-center">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-[9px] font-extrabold text-white items-center justify-center">
               !
             </span>
           </span>

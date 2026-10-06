@@ -106,13 +106,19 @@ export async function initD1Tables(env: unknown) {
       `);
       try {
         await d1.exec("ALTER TABLE chat_messages ADD COLUMN type TEXT DEFAULT 'text'");
-      } catch {}
+      } catch (_e) {
+        // column may already exist
+      }
       try {
         await d1.exec("ALTER TABLE chat_messages ADD COLUMN audio_url TEXT");
-      } catch {}
+      } catch (_e) {
+        // column may already exist
+      }
       try {
         await d1.exec("ALTER TABLE chat_messages ADD COLUMN duration INTEGER DEFAULT 0");
-      } catch {}
+      } catch (_e) {
+        // column may already exist
+      }
     } catch (e) {
       console.warn("[D1] init tables warning:", e);
     }
@@ -268,7 +274,17 @@ export async function addChatMessage(
         .prepare(
           "INSERT INTO chat_messages (id, session_id, sender, sender_name, content, type, audio_url, duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
-        .bind(id, sessionId, sender, senderName, content, type, audioUrl || null, duration || 0, now)
+        .bind(
+          id,
+          sessionId,
+          sender,
+          senderName,
+          content,
+          type,
+          audioUrl || null,
+          duration || 0,
+          now,
+        )
         .run();
 
       await d1

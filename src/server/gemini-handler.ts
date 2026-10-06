@@ -2,9 +2,7 @@ import { FALLBACK_PRODUCTS } from "../data/products";
 import { deduceFMCGProduct } from "../lib/fmcg-knowledge";
 
 export const OPENROUTER_API_KEY =
-  process.env["OPENROUTER_API_KEY"] ||
-  process.env["VITE_OPENROUTER_API_KEY"] ||
-  "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";
+  process.env["OPENROUTER_API_KEY"] || process.env["VITE_OPENROUTER_API_KEY"] || "";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";
