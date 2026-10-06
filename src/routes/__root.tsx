@@ -41,29 +41,65 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  console.error("[Route Error]", error);
   const router = useRouter();
 
+  const handleClearCacheAndReload = () => {
+    try {
+      if (typeof window !== "undefined") {
+        const keysToRemove = Object.keys(localStorage).filter(
+          (k) => k.startsWith("kasimogullari_") || k.startsWith("ko_customer_chat"),
+        );
+        for (const k of keysToRemove) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    router.invalidate();
+    reset();
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Sayfa yüklenemedi</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Bir sorun oluştu. Sayfayı yenilemeyi deneyebilirsiniz.
+    <div className="flex min-h-screen items-center justify-center bg-[#060b08] text-white px-4">
+      <div className="max-w-md w-full text-center rounded-2xl border border-white/10 bg-[#0e1612] p-6 shadow-2xl">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xl">
+          ⚡
+        </div>
+        <h1 className="text-xl font-bold tracking-tight text-white">Sayfa yüklenemedi</h1>
+        <p className="mt-2 text-xs sm:text-sm text-white/70">
+          Bir sorun oluştu. Sayfayı yenilemeyi deneyebilir veya ana sayfaya dönebilirsiniz.
         </p>
+
+        {error?.message && (
+          <p className="mt-3 rounded-lg bg-black/40 p-2 font-mono text-[11px] text-red-300 break-words text-left border border-white/5">
+            {error.message}
+          </p>
+        )}
+
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-emerald-500 cursor-pointer shadow-md"
           >
             Tekrar dene
           </button>
+          <button
+            onClick={handleClearCacheAndReload}
+            className="inline-flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-3.5 py-2 text-xs sm:text-sm font-medium text-emerald-300 transition-colors cursor-pointer"
+          >
+            Önbelleği Temizle & Aç
+          </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-3.5 py-2 text-xs sm:text-sm font-medium text-white/80 transition-colors hover:bg-white/10"
           >
             Ana sayfa
           </a>

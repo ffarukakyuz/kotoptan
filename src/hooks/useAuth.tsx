@@ -19,6 +19,7 @@ export type Profile = {
   business_name: string;
   phone: string;
   address: string;
+  district?: string;
 };
 
 type AuthContextValue = {
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           business_name: fallback.businessName,
           phone: fallback.phone,
           address: fallback.address,
+          district: fallback.district || "Tatvan",
         };
       } else if (currentUser?.user_metadata && currentUser.user_metadata["full_name"]) {
         prof = {
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           business_name: String(currentUser.user_metadata["business_name"] || ""),
           phone: String(currentUser.user_metadata["phone"] || ""),
           address: String(currentUser.user_metadata["address"] || ""),
+          district: String(currentUser.user_metadata["district"] || ""),
         };
       }
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   MessageSquare,
   User,
@@ -38,9 +38,39 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { CustomerProfileModal } from "@/components/CustomerProfileModal";
+
+function safeScrollToBottom(ref: React.RefObject<HTMLDivElement | null>) {
+  if (typeof window === "undefined" || !ref || !ref.current) return;
+  try {
+    if (typeof ref.current.scrollIntoView === "function") {
+      ref.current.scrollIntoView({ block: "end", behavior: "smooth" });
+    }
+  } catch {
+    try {
+      ref.current?.scrollIntoView?.();
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function formatMsgTime(iso?: unknown): string {
+  if (!iso || typeof iso !== "string") {
+    return "";
+  }
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
 
 export function AdminChatPanel() {
-  const adminName = "Yönetici";
+  const { profile } = useAuth();
+  const adminName = profile?.full_name || "Yönetici";
 
   const [sessions, setSessions] = useState<ChatSessionData[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -52,6 +82,7 @@ export function AdminChatPanel() {
   const [closingSession, setClosingSession] = useState(false);
   const [filter, setFilter] = useState<"all" | "transferred" | "active" | "closed">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [profileModalTarget, setProfileModalTarget] = useState<ChatSessionData | null>(null);
 
   // Bildirim Ayarları
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -93,71 +124,75 @@ export function AdminChatPanel() {
   };
 
   // Oturumları çek ve yeni talep / mesaj varsa sesli ve masaüstü bildirimi gönder
-  const loadSessions = async (showToast = false) => {
-    setLoadingList(true);
-    try {
-      const data = await listAdminChatSessions();
-      setSessions(data);
+  const loadSessions = useCallback(
+    async (showToast = false) => {
+      setLoadingList(true);
+      try {
+        const data = await listAdminChatSessions();
+        setSessions(data);
 
-      if (!isFirstAdminLoadRef.current) {
-        let hasNewRequest = false;
-        let alertSession: ChatSessionData | null = null;
+        if (!isFirstAdminLoadRef.current) {
+          let hasNewRequest = false;
+          let alertSession: ChatSessionData | null = null;
 
-        for (const s of data) {
-          const prev = prevSessionsRef.current[s.id];
-          if (!prev) {
-            // Tamamen yeni oturum
-            hasNewRequest = true;
-            alertSession = s;
-            break;
-          } else if (
-            prev.updatedAt !== s.updated_at &&
-            (prev.status !== s.status || prev.lastMessage !== s.last_message)
-          ) {
-            // Durum veya mesaj değişmiş
-            if (s.status === "transferred" || s.last_message !== prev.lastMessage) {
+          for (const s of data) {
+            const prev = prevSessionsRef.current[s.id];
+            if (!prev) {
+              // Tamamen yeni oturum
               hasNewRequest = true;
               alertSession = s;
               break;
+            } else if (
+              prev.updatedAt !== s.updated_at &&
+              (prev.status !== s.status || prev.lastMessage !== s.last_message)
+            ) {
+              // Durum veya mesaj değişmiş
+              if (s.status === "transferred" || s.last_message !== prev.lastMessage) {
+                hasNewRequest = true;
+                alertSession = s;
+                break;
+              }
             }
           }
-        }
 
-        if (hasNewRequest && alertSession) {
-          if (soundEnabled) {
-            playAdminAlertChime();
+          if (hasNewRequest && alertSession) {
+            if (soundEnabled) {
+              playAdminAlertChime();
+            }
+            sendBrowserNotification("🔔 Yeni Müşteri Canlı Destek Talebi!", {
+              body: `${alertSession.user_name || "Müşteri"}: ${alertSession.last_message || "Temsilciye bağlanmak istiyor"}`,
+            });
+            toast.warning(`🔔 Yeni Talep: ${alertSession.user_name || "Müşteri"}`, {
+              description: alertSession.last_message || "Canlı destek talebi iletildi",
+            });
           }
-          sendBrowserNotification("🔔 Yeni Müşteri Canlı Destek Talebi!", {
-            body: `${alertSession.user_name || "Müşteri"}: ${alertSession.last_message || "Temsilciye bağlanmak istiyor"}`,
-          });
-          toast.warning(`🔔 Yeni Talep: ${alertSession.user_name || "Müşteri"}`, {
-            description: alertSession.last_message || "Canlı destek talebi iletildi",
-          });
         }
-      }
 
-      // Harita kaydet
-      const newMap: Record<string, { updatedAt: string; lastMessage: string; status: string }> = {};
-      for (const s of data) {
-        newMap[s.id] = {
-          updatedAt: s.updated_at,
-          lastMessage: s.last_message,
-          status: s.status,
-        };
-      }
-      prevSessionsRef.current = newMap;
-      isFirstAdminLoadRef.current = false;
+        // Harita kaydet
+        const newMap: Record<string, { updatedAt: string; lastMessage: string; status: string }> =
+          {};
+        for (const s of data) {
+          newMap[s.id] = {
+            updatedAt: s.updated_at,
+            lastMessage: s.last_message,
+            status: s.status,
+          };
+        }
+        prevSessionsRef.current = newMap;
+        isFirstAdminLoadRef.current = false;
 
-      if (showToast) toast.success("Sohbet listesi güncellendi");
-    } catch {
-      if (showToast) toast.error("Sohbet listesi yüklenemedi");
-    } finally {
-      setLoadingList(false);
-    }
-  };
+        if (showToast) toast.success("Sohbet listesi güncellendi");
+      } catch {
+        if (showToast) toast.error("Sohbet listesi yüklenemedi");
+      } finally {
+        setLoadingList(false);
+      }
+    },
+    [soundEnabled],
+  );
 
   // Seçilen oturumun mesajlarını çek
-  const loadSessionMessages = async (sessionId: string) => {
+  const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
       const data = await getAdminChatSession(sessionId);
       setCurrentSession(data.session);
@@ -165,7 +200,7 @@ export function AdminChatPanel() {
     } catch {
       toast.error("Mesajlar yüklenemedi");
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadSessions();
@@ -174,7 +209,7 @@ export function AdminChatPanel() {
       void loadSessions();
     }, 4000);
     return () => clearInterval(interval);
-  }, [soundEnabled]);
+  }, [loadSessions]);
 
   // Seçili oturumun mesajlarını düzenli aralıklarla yokla
   useEffect(() => {
@@ -184,10 +219,10 @@ export function AdminChatPanel() {
       void loadSessionMessages(selectedSessionId);
     }, 3000);
     return () => clearInterval(interval);
-  }, [selectedSessionId]);
+  }, [selectedSessionId, loadSessionMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    safeScrollToBottom(messagesEndRef);
   }, [messages]);
 
   // Yanıt Gönderme
@@ -267,7 +302,7 @@ export function AdminChatPanel() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-emerald-400" />
-              Müşteri Canlı Destek & Mesajlaşma
+              Müşteri ile Konuş (WhatsApp Mesajlaşma)
             </h2>
             {transferredCount > 0 && (
               <Badge
@@ -439,9 +474,18 @@ export function AdminChatPanel() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-white truncate">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProfileModalTarget(s);
+                        }}
+                        className="flex items-center gap-1.5 font-bold text-xs text-white hover:text-emerald-300 transition-colors cursor-pointer truncate"
+                        title="Müşteri ve bölge detaylarını görüntüle"
+                      >
                         <User className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate">{s.user_name || "Müşteri / Bayi"}</span>
+                        <span className="truncate underline decoration-emerald-500/40 underline-offset-2">
+                          {s.user_name || "Müşteri / Bayi"}
+                        </span>
                       </div>
 
                       {/* Durum Rozeti */}
@@ -510,9 +554,18 @@ export function AdminChatPanel() {
                       ? currentSession.user_name.charAt(0).toUpperCase()
                       : "M"}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      {currentSession.user_name || "Müşteri / Bayi"}
+                  <div
+                    onClick={() => setProfileModalTarget(currentSession)}
+                    className="cursor-pointer group/userheader"
+                    title="Müşteri ve bölge detay kartını aç"
+                  >
+                    <h3 className="text-sm font-bold text-white group-hover/userheader:text-emerald-400 flex items-center gap-2 transition-colors">
+                      <span className="underline decoration-emerald-500/40 underline-offset-2">
+                        {currentSession.user_name || "Müşteri / Bayi"}
+                      </span>
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded font-normal">
+                        Bölge & Üye Detayı
+                      </span>
                       {currentSession.status === "transferred" && (
                         <Badge className="bg-amber-500 text-black text-[10px] font-extrabold">
                           Yetkili Yanıtı Bekleniyor
@@ -521,8 +574,8 @@ export function AdminChatPanel() {
                     </h3>
                     <p className="text-xs text-white/60 flex items-center gap-2">
                       {currentSession.user_phone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-emerald-400" />
+                        <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                          <Phone className="h-3 w-3" />
                           {currentSession.user_phone}
                         </span>
                       )}
@@ -535,6 +588,18 @@ export function AdminChatPanel() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {currentSession.user_phone && (
+                    <a
+                      href={`https://wa.me/90${currentSession.user_phone.replace(/\D/g, "").replace(/^0/, "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 px-2.5 py-1 text-xs text-emerald-300 font-semibold transition-colors"
+                      title="Müşteriyle Doğrudan WhatsApp Uygulamasında Aç"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      <span>WhatsApp Web</span>
+                    </a>
+                  )}
                   {currentSession.status !== "closed" ? (
                     <Button
                       variant="outline"
@@ -555,8 +620,8 @@ export function AdminChatPanel() {
                 </div>
               </div>
 
-              {/* Mesaj Listesi */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[380px] max-h-[460px] bg-black/10">
+              {/* Mesaj Listesi (WhatsApp Arka Plan) */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[380px] max-h-[460px] bg-[#0b141a] bg-[radial-gradient(#1f2c34_1px,transparent_1px)] [background-size:16px_16px]">
                 {messages.length === 0 ? (
                   <div className="py-16 text-center text-xs text-white/40">
                     Bu oturumda henüz mesaj bulunmuyor.
@@ -594,14 +659,7 @@ export function AdminChatPanel() {
                             </>
                           )}
                           <span>•</span>
-                          <span>
-                            {m.created_at
-                              ? new Date(m.created_at).toLocaleTimeString("tr-TR", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : ""}
-                          </span>
+                          <span>{formatMsgTime(m.created_at)}</span>
                         </div>
 
                         <div
@@ -616,14 +674,7 @@ export function AdminChatPanel() {
                           <p className="whitespace-pre-wrap">{m.content}</p>
                           {isAdminMsg && (
                             <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-emerald-200/70 font-mono">
-                              <span>
-                                {m.created_at
-                                  ? new Date(m.created_at).toLocaleTimeString("tr-TR", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : ""}
-                              </span>
+                              <span>{formatMsgTime(m.created_at)}</span>
                               <CheckCheck className="h-3 w-3 text-sky-400" />
                             </div>
                           )}
@@ -633,6 +684,26 @@ export function AdminChatPanel() {
                   })
                 )}
                 <div ref={messagesEndRef} />
+              </div>
+
+              {/* Hızlı Yanıt Şablonları */}
+              <div className="px-3 py-1.5 border-t border-white/10 bg-[#111b21] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {[
+                  "✅ Siparişiniz depoda hazırlanıyor.",
+                  "🚚 Servis aracımız bugün marketinize teslim edecek.",
+                  "📞 Sizi telefon numaranızdan arıyoruz.",
+                  "💰 Toptan fiyat ve iskonto teyit edildi.",
+                  "📦 Ürünler depomuzda mevcut, ayrıldı.",
+                ].map((tmpl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setReplyText(tmpl)}
+                    className="shrink-0 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    {tmpl}
+                  </button>
+                ))}
               </div>
 
               {/* Alt Yanıt Yazma Alanı */}
@@ -674,6 +745,14 @@ export function AdminChatPanel() {
           )}
         </div>
       </div>
+
+      <CustomerProfileModal
+        open={Boolean(profileModalTarget)}
+        onOpenChange={(op) => !op && setProfileModalTarget(null)}
+        userName={profileModalTarget?.user_name}
+        userPhone={profileModalTarget?.user_phone}
+        userId={profileModalTarget?.user_id}
+      />
     </div>
   );
 }

@@ -106,7 +106,7 @@ import {
 
 const adminSearchSchema = z
   .object({
-    tab: z.enum(["orders", "products", "drive", "users"]).optional(),
+    tab: z.enum(["orders", "products", "drive", "users", "messages"]).optional(),
     edit: z.string().optional(),
   })
   .passthrough();
@@ -271,7 +271,7 @@ function AdminPage() {
             className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate relative"
           >
             <MessageSquare className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-            <span>Mesajlar</span>
+            <span>Müşteri ile Konuş</span>
             {transferredChatCount > 0 && (
               <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-extrabold text-black animate-pulse">
                 {transferredChatCount}

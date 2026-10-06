@@ -113,7 +113,7 @@ export function SiteHeader() {
         {/* Desktop Nav Links */}
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
-        {/* Header Actions (Search, AI, Cart, Yönetim, User, Çıkış, Menu) */}
+        {/* Header Actions (Search, Cart, Yönetim, User, Çıkış, Menu) */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Search Button */}
           <button

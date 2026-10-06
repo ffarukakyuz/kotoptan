@@ -12,9 +12,22 @@ export type FallbackUser = {
   fullName: string;
   businessName: string;
   address: string;
+  district?: string;
   role: "admin" | "customer";
   passwords: string[]; // İzin verilen şifreler (örn: 123456, test vb.)
 };
+
+export const BITLIS_DISTRICTS = [
+  "Tatvan",
+  "Bitlis Merkez",
+  "Ahlat",
+  "Adilcevaz",
+  "Güroymak",
+  "Hizan",
+  "Mutki",
+] as const;
+
+export type BitlisDistrict = (typeof BITLIS_DISTRICTS)[number];
 
 export const FALLBACK_USERS: FallbackUser[] = [
   {
@@ -25,6 +38,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Faruk Akyüz",
     businessName: "KasımOğulları Şirket Yönetimi",
     address: "Bitlis Toptancılar Sitesi No: 4",
+    district: "Tatvan",
     role: "admin",
     passwords: ["123456", "12345678", "password", "password123", "faruk123", "admin123"],
   },
@@ -36,6 +50,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Suat Akyüz",
     businessName: "KasımOğulları Şirket Yönetimi",
     address: "Bitlis Toptancılar Sitesi No: 4",
+    district: "Tatvan",
     role: "admin",
     passwords: ["123456", "12345678", "password", "password123", "suat123", "admin123"],
   },
@@ -47,6 +62,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Yavuz Akyüz",
     businessName: "KasımOğulları Şirket Yönetimi",
     address: "Bitlis Toptancılar Sitesi No: 4",
+    district: "Bitlis Merkez",
     role: "admin",
     passwords: ["123456", "12345678", "password", "password123", "yavuz123", "admin123"],
   },
@@ -58,6 +74,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Mücahit Akyüz",
     businessName: "KasımOğulları Şirket Yönetimi",
     address: "Bitlis Toptancılar Sitesi No: 4",
+    district: "Tatvan",
     role: "admin",
     passwords: ["123456", "12345678", "password", "password123", "mucahit123", "admin123"],
   },
@@ -69,6 +86,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Selim Akyüz",
     businessName: "KasımOğulları Şirket Yönetimi",
     address: "Bitlis Toptancılar Sitesi No: 4",
+    district: "Tatvan",
     role: "admin",
     passwords: ["123456", "12345678", "password", "password123", "selim123", "admin123"],
   },
@@ -80,6 +98,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Misafir Müşteri",
     businessName: "Örnek Bakkal / Market",
     address: "Bitlis Merkez",
+    district: "Bitlis Merkez",
     role: "customer",
     passwords: ["123456", "12345678", "misafir", "password"],
   },
@@ -91,6 +110,7 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Ahmet Yılmaz",
     businessName: "Güneş Market - Tatvan",
     address: "Cumhuriyet Cad. No: 12 Tatvan / Bitlis",
+    district: "Tatvan",
     role: "customer",
     passwords: ["123456", "12345678", "password", "password123"],
   },
@@ -102,6 +122,43 @@ export const FALLBACK_USERS: FallbackUser[] = [
     fullName: "Mehmet Kaya",
     businessName: "Kaya Bakkaliyesi - Ahlat",
     address: "Selçuklu Mah. Çarşı İçi Ahlat / Bitlis",
+    district: "Ahlat",
+    role: "customer",
+    passwords: ["123456", "12345678", "password", "password123"],
+  },
+  {
+    id: "ad4b81c2-32a1-4e78-9812-789a456b1234",
+    phone: "0532 456 78 90",
+    normalizedPhone: "5324567890",
+    email: "5324567890@kotoptan.local",
+    fullName: "Cevdet Demir",
+    businessName: "Demir Ticaret - Adilcevaz",
+    address: "Sahil Cad. No: 8 Adilcevaz / Bitlis",
+    district: "Adilcevaz",
+    role: "customer",
+    passwords: ["123456", "12345678", "password", "password123"],
+  },
+  {
+    id: "ef5a92d3-43b2-5f89-0923-890b567c2345",
+    phone: "0533 567 89 01",
+    normalizedPhone: "5335678901",
+    email: "5335678901@kotoptan.local",
+    fullName: "Hasan Çelik",
+    businessName: "Çelik Market - Güroymak",
+    address: "İnönü Mah. No: 15 Güroymak / Bitlis",
+    district: "Güroymak",
+    role: "customer",
+    passwords: ["123456", "12345678", "password", "password123"],
+  },
+  {
+    id: "bc6b03e4-54c3-6a90-1034-901c678d3456",
+    phone: "0534 678 90 12",
+    normalizedPhone: "5346789012",
+    email: "5346789012@kotoptan.local",
+    fullName: "Yusuf Yıldız",
+    businessName: "Yıldız Bakkal - Hizan",
+    address: "Cumhuriyet Mah. Çarşı İçi Hizan / Bitlis",
+    district: "Hizan",
     role: "customer",
     passwords: ["123456", "12345678", "password", "password123"],
   },

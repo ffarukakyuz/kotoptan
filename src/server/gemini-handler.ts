@@ -1,8 +1,17 @@
+import { GoogleGenAI } from "@google/genai";
 import { FALLBACK_PRODUCTS } from "../data/products";
 import { deduceFMCGProduct } from "../lib/fmcg-knowledge";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const globalEnv = typeof globalThis !== "undefined" ? (globalThis as any).__env__ : undefined;
+
+export const GEMINI_API_KEY =
+  (typeof process !== "undefined" && process.env
+    ? process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"]
+    : "") ||
+  globalEnv?.GEMINI_API_KEY ||
+  globalEnv?.VITE_GEMINI_API_KEY ||
+  "";
 
 export const OPENROUTER_API_KEY =
   (typeof process !== "undefined" && process.env
@@ -466,22 +475,55 @@ export async function processChat(
   userMeta?: { fullName?: string; businessName?: string; phone?: string },
 ): Promise<{ ok: boolean; reply: string; error?: string }> {
   try {
-    // 1. Önce OpenRouter'ı dene (geçerli bir anahtar varsa doğrudan kullanır)
-    const openRouterMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      {
-        role: "system",
-        content: `Sen "Ko". KasımOğulları Ltd. Şti. Bitlis toptan gıda, bakliyat ve temizlik firmasının akıllı asistanısın. Esnaf dostu, bilgili ve samimi yanıtlar ver.\n${SITE_INFO}`,
-      },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ];
+    // 1. Google Gemini via @google/genai if GEMINI_API_KEY is available
+    if (GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const systemInstruction = `Sen "Ko". KasımOğulları Ltd. Şti. Bitlis toptan gıda, bakliyat ve temizlik firmasının akıllı asistanısın. Esnaf dostu, bilgili ve samimi yanıtlar ver.\n${SITE_INFO}`;
 
-    const result = await callOpenRouter(openRouterMessages, DEFAULT_MODEL);
-    if (result.ok && result.reply) {
-      return result;
+        const contents = messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
+
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+          },
+        });
+
+        const reply = response.text?.trim();
+        if (reply && reply.length > 3) {
+          return { ok: true, reply };
+        }
+      } catch (geminiErr) {
+        console.warn("[processChat] Gemini API error:", geminiErr);
+      }
     }
 
-    // 2. OpenRouter anahtarı kapalıysa veya 401 döndüyse:
-    // 197 ürünlük tam katalog verisine ve doğal Türkçe niyet analizine dayalı DİNAMİK ASİSTAN MOTORU yanıt üretir
+    // 2. OpenRouter'ı dene (varsa)
+    if (OPENROUTER_API_KEY) {
+      const openRouterMessages: Array<{
+        role: "system" | "user" | "assistant";
+        content: string;
+      }> = [
+        {
+          role: "system",
+          content: `Sen "Ko". KasımOğulları Ltd. Şti. Bitlis toptan gıda, bakliyat ve temizlik firmasının akıllı asistanısın. Esnaf dostu, bilgili ve samimi yanıtlar ver.\n${SITE_INFO}`,
+        },
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ];
+
+      const result = await callOpenRouter(openRouterMessages, DEFAULT_MODEL);
+      if (result.ok && result.reply) {
+        return result;
+      }
+    }
+
+    // 3. Dinamik Asistan Motoru (197 ürünlük tam katalog verisine ve doğal Türkçe niyet analizine dayalı)
     const dynamicReply = generateDynamicAssistantResponse(messages, isAdmin, userMeta);
     return { ok: true, reply: dynamicReply };
   } catch (err) {
@@ -515,46 +557,37 @@ ${note ? `Yöneticinin eklediği not: "${note}"` : ""}
 
 Sadece geçerli bir JSON nesnesi döndür, markdown veya başka metin ekleme.`;
 
-    try {
-      const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://kasimogullari.com",
-          "X-Title": "KasimOgullari Toptan",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: DEFAULT_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
+    // 1. Google Gemini Vision via @google/genai
+    if (GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [
             {
               role: "user",
-              content: [
+              parts: [
                 {
-                  type: "text",
-                  text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
+                  text:
+                    "Bu ürün fotoğrafını analiz et ve toptan katalog için JSON nesnesini üret." +
+                    (note ? `\nNot: ${note}` : ""),
                 },
                 {
-                  type: "image_url",
-                  image_url: { url: dataUrl },
+                  inlineData: {
+                    data: cleanBase64,
+                    mimeType: mimeType || "image/jpeg",
+                  },
                 },
               ],
             },
           ],
-          temperature: 0.2,
-        }),
-      });
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: "application/json",
+          },
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        let rawJson = data.choices?.[0]?.message?.content?.trim() || "{}";
-        if (rawJson.startsWith("```json")) {
-          rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-        } else if (rawJson.startsWith("```")) {
-          rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
-        }
-
+        const rawJson = response.text?.trim() || "{}";
         const parsed = JSON.parse(rawJson);
         const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(parsed.category)
           ? parsed.category
@@ -569,9 +602,72 @@ Sadece geçerli bir JSON nesnesi döndür, markdown veya başka metin ekleme.`;
             description: parsed.description || "KasımOğulları toptan depo ürünü.",
           },
         };
+      } catch (geminiVisionErr) {
+        console.warn("[processVision] Gemini vision error:", geminiVisionErr);
       }
-    } catch (visionErr) {
-      console.warn("[processVision] Vision request error:", visionErr);
+    }
+
+    if (OPENROUTER_API_KEY) {
+      try {
+        const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "https://kasimogullari.com",
+            "X-Title": "KasimOgullari Toptan",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: DEFAULT_MODEL,
+            messages: [
+              { role: "system", content: systemPrompt },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Bu ürün fotoğrafını analiz et ve KasımOğulları toptan kataloğuna eklenmek üzere JSON nesnesini üret.",
+                  },
+                  {
+                    type: "image_url",
+                    image_url: { url: dataUrl },
+                  },
+                ],
+              },
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          let rawJson = data.choices?.[0]?.message?.content?.trim() || "{}";
+          if (rawJson.startsWith("```json")) {
+            rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+          } else if (rawJson.startsWith("```")) {
+            rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "");
+          }
+
+          const parsed = JSON.parse(rawJson);
+          const validCategory = ["gida", "bakliyat", "temizlik", "kisisel"].includes(
+            parsed.category,
+          )
+            ? parsed.category
+            : "gida";
+
+          return {
+            ok: true,
+            product: {
+              name: parsed.name || "Yeni Ürün",
+              category: validCategory,
+              unit: parsed.unit || "Koli",
+              description: parsed.description || "KasımOğulları toptan depo ürünü.",
+            },
+          };
+        }
+      } catch (visionErr) {
+        console.warn("[processVision] Vision request error:", visionErr);
+      }
     }
 
     // Fotoğraftan akıllı ürün şablonu (FMCG Toptan Kategori ve Koli Bilgi Bankası)

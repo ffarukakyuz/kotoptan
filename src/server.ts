@@ -193,7 +193,25 @@ export default {
                 );
               }
 
-              // 4. Müşteri mesajı (AI + Temsilciye Aktarım)
+              // 4. Saf AI Asistan Mesajı (Yöneticiye veya oturum tablosuna aktarılmaz, alarm çalmaz)
+              if (action === "ai_chat") {
+                const { messages, content, isAdmin: userIsAdmin, userMeta } = body;
+                const chatMessages =
+                  messages && messages.length > 0
+                    ? messages
+                    : [{ role: "user", content: content || "" }];
+                const result = await processChat(chatMessages, Boolean(userIsAdmin), userMeta);
+                return new Response(
+                  JSON.stringify({
+                    ok: true,
+                    reply: result.reply,
+                    status: "bot",
+                  }),
+                  { headers: { "content-type": "application/json" } },
+                );
+              }
+
+              // 5. Canlı Destek / Müşteri Yönetici Mesajı ("Yönetici ile Konuş" veya Aktarım)
               const {
                 sessionId,
                 userId,
@@ -205,9 +223,26 @@ export default {
                 audio_url,
                 duration,
                 transferRequested,
-                isAdmin,
+                isAdmin: userIsAdmin,
                 userMeta,
               } = body;
+
+              // Eğer yönetici kendi paneli içinden konuşuyorsa müşteri kuyruğuna eklenmesin
+              if (userIsAdmin && !transferRequested) {
+                const chatMessages =
+                  messages && messages.length > 0
+                    ? messages
+                    : [{ role: "user", content: content || "" }];
+                const result = await processChat(chatMessages, true, userMeta);
+                return new Response(
+                  JSON.stringify({
+                    ok: true,
+                    reply: result.reply,
+                    status: "bot",
+                  }),
+                  { headers: { "content-type": "application/json" } },
+                );
+              }
 
               const safeSessionId = sessionId || `session_${userId || "guest"}_${Date.now()}`;
               const session = await getOrCreateSession(
@@ -249,54 +284,12 @@ export default {
                 );
               }
 
-              // AI sekmesinde yazılan metinde "temsilciye aktar" talebi var mı?
-              const lowerContent = (content || "").toLowerCase();
-              const wantsHuman =
-                lowerContent.includes("temsilci") ||
-                lowerContent.includes("yetkili") ||
-                lowerContent.includes("yonetici") ||
-                lowerContent.includes("canli destek") ||
-                lowerContent.includes("aktar") ||
-                lowerContent.includes("temsilciye baglan") ||
-                lowerContent.includes("yetkiliye baglan");
-
-              if (wantsHuman && session.status !== "active_admin") {
-                await updateSessionStatus(safeEnv, safeSessionId, "transferred");
-                const botNotice = await addChatMessage(
-                  safeEnv,
-                  safeSessionId,
-                  "bot",
-                  "Ko Şirket Asistanı",
-                  "Talebiniz alındı. Sohbet yetkili yöneticiye aktarıldı. Yetkili yöneticimiz birazdan size doğrudan buradan yazacaktır. Dilerseniz yukarıdaki 'Yönetici ile Konuş' sekmesine geçebilirsiniz.",
-                );
-                return new Response(
-                  JSON.stringify({
-                    ok: true,
-                    sessionId: safeSessionId,
-                    status: "transferred",
-                    reply: botNotice.content,
-                    transferred: true,
-                  }),
-                  { headers: { "content-type": "application/json" } },
-                );
-              }
-
-              // AI Asistan ile yanıt üret (AI sekmesi)
+              // AI sekmesinde yazılan mesaj
               const chatMessages =
                 messages && messages.length > 0
                   ? messages
                   : [{ role: "user", content: content || "" }];
-              const result = await processChat(chatMessages, isAdmin, userMeta);
-
-              if (result.reply) {
-                await addChatMessage(
-                  safeEnv,
-                  safeSessionId,
-                  "bot",
-                  "Ko Şirket Asistanı",
-                  result.reply,
-                );
-              }
+              const result = await processChat(chatMessages, Boolean(userIsAdmin), userMeta);
 
               return new Response(
                 JSON.stringify({

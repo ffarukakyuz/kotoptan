@@ -23,6 +23,7 @@ export type AppUser = {
   business_name: string;
   profile_phone: string;
   address: string;
+  district?: string | null;
 };
 
 const customerUpdateSchema = z.object({

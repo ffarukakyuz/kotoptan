@@ -81,6 +81,44 @@ export async function fetchCustomerChat(sessionId: string): Promise<{
 }
 
 /**
+ * Saf AI Asistan Sohbeti (Yöneticiye bildirim göndermez, D1 oturum tablosunu kirletmez)
+ */
+export async function sendAiChatMessage(params: {
+  content: string;
+  history?: { role: "user" | "assistant"; content: string }[];
+  isAdmin?: boolean;
+  userMeta?: { fullName?: string; businessName?: string; phone?: string };
+}): Promise<{
+  ok: boolean;
+  reply?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ai_chat",
+        content: params.content,
+        messages: params.history || [],
+        isAdmin: Boolean(params.isAdmin),
+        userMeta: params.userMeta,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, reply: data.reply };
+    }
+    const errData = await res.json().catch(() => ({}));
+    return { ok: false, error: errData.error || "Asistan yanıt veremedi" };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Bağlantı hatası";
+    return { ok: false, error: msg };
+  }
+}
+
+/**
  * Müşterinin mesaj göndermesi (AI veya Yöneticiye aktarım)
  */
 export async function sendCustomerChatMessage(params: {
