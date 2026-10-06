@@ -97,7 +97,7 @@ function ProductDetail() {
     queryKey: ["product", id],
     queryFn: () => fetchSingleProduct(id),
     initialData: () => FALLBACK_PRODUCTS.find((p) => p.id === id) ?? undefined,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
     refetchOnMount: true,
   });
 

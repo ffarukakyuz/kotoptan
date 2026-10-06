@@ -239,6 +239,69 @@ function apiGeminiPlugin() {
           }
         });
       });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      server.middlewares.use("/api/products", async (req: any, res: any) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+        if (req.method === "OPTIONS") {
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        if (req.method === "GET") {
+          try {
+            const { FALLBACK_PRODUCTS } = await import("./src/data/products");
+            res.setHeader("Content-Type", "application/json");
+            return res.end(JSON.stringify(FALLBACK_PRODUCTS));
+          } catch {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: "Failed to load products" }));
+          }
+        }
+
+        if (req.method === "POST") {
+          let body = "";
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          req.on("data", (chunk: any) => {
+            body += chunk;
+          });
+          req.on("end", async () => {
+            try {
+              const data = JSON.parse(body || "{}");
+              const id = data.id || `ko-prod-${Date.now()}`;
+              const product = {
+                id,
+                name: data.name,
+                category: data.category || "gida",
+                unit: data.unit || "koli",
+                description: data.description || "",
+                image_url: data.image_url || null,
+                is_active: data.is_active !== false,
+              };
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ ok: true, product }));
+            } catch {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ ok: false, error: "Invalid product data" }));
+            }
+          });
+          return;
+        }
+
+        if (req.method === "DELETE") {
+          const url = new URL(req.url || "", "http://localhost");
+          const id = url.searchParams.get("id");
+          res.setHeader("Content-Type", "application/json");
+          return res.end(JSON.stringify({ ok: true, id }));
+        }
+
+        res.statusCode = 405;
+        res.end();
+      });
     },
   };
 }
