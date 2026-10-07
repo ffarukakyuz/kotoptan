@@ -1056,13 +1056,21 @@ function ProductsPanel({
     setActionBusy(true);
     deleteCustomProduct(product.id);
     setProductArchivedStatusLocal(product.id, true);
+
+    // Listeden anında kaldırmak için optimistic güncelleme
+    const removeProduct = (old: Product[] | undefined) =>
+      old ? old.filter((p) => p.id !== product.id) : old;
+    qc.setQueryData<Product[]>(["admin-products"], removeProduct);
+    qc.setQueryData<Product[]>(["products", "active"], removeProduct);
+    qc.setQueryData<Product[]>(["live-supabase-products"], removeProduct);
+
     try {
       await supabase.from("products").delete().eq("id", product.id);
     } catch {
       // ignore
     }
     setActionBusy(false);
-    toast.success(`"${product.name}" başarıyla silindi.`);
+    toast.success(`"${product.name}" silindi.`);
     setPermanentDeletingProduct(null);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("catalog_updated"));
@@ -1858,14 +1866,14 @@ function ProductsPanel({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label={`"${p.name}" ürününü kalıcı sil`}
+                          aria-label={`"${p.name}" ürününü sil`}
                           disabled={actionBusy}
-                          className="h-6 px-1.5 py-0 text-destructive hover:text-white hover:bg-destructive rounded-md shrink-0 inline-flex items-center gap-1 cursor-pointer border border-destructive/30 bg-destructive/10 transition-colors"
-                          onClick={() => setPermanentDeletingProduct(p)}
-                          title={`"${p.name}" ürününü veritabanından tamamen sil`}
+                          className="h-6 px-2 py-0 text-rose-700 hover:text-white hover:bg-rose-600 rounded-md shrink-0 inline-flex items-center gap-1 cursor-pointer border border-rose-400/60 bg-rose-500/15 dark:text-rose-300 dark:bg-rose-950/50 font-bold transition-all shadow-xs"
+                          onClick={() => void permanentlyDeleteProduct(p)}
+                          title={`"${p.name}" ürününü direkt sil`}
                         >
-                          <Trash2 className="h-3 w-3" />
-                          <span className="text-[11px] font-semibold">Sil</span>
+                          <Trash2 className="h-3 w-3 text-rose-600 dark:text-rose-400" />
+                          <span className="text-[11px] font-bold">Sil</span>
                         </Button>
                       )}
                     </div>
@@ -1922,21 +1930,36 @@ function ProductsPanel({
                 </div>
 
                 {/* Aksiyon Butonları Grubu */}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {isArchived ? (
-                    // ARŞİVDEKİ ÜRÜN İÇİN: Geri Yükle
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={actionBusy}
-                      onClick={() => void restoreProduct(p)}
-                      className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 gap-1 cursor-pointer"
-                      title="Ürünü tekrar aktif kataloğa al"
-                    >
-                      <ArchiveRestore className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Geri Yükle</span>
-                    </Button>
+                    // ARŞİVDEKİ ÜRÜN İÇİN: Geri Yükle ve Kalıcı Sil
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={actionBusy}
+                        onClick={() => void restoreProduct(p)}
+                        className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 gap-1 cursor-pointer"
+                        title="Ürünü tekrar aktif kataloğa al"
+                      >
+                        <ArchiveRestore className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Geri Yükle</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={actionBusy}
+                        onClick={() => void permanentlyDeleteProduct(p)}
+                        className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-600 hover:text-white dark:text-rose-400 dark:hover:text-white gap-1 cursor-pointer transition-colors"
+                        title={`"${p.name}" ürününü direkt sil`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 group-hover:text-white" />
+                        <span>Kalıcı Sil</span>
+                      </Button>
+                    </>
                   ) : (
                     // AKTİF ÜRÜN İÇİN BUTONLAR: Stok Durumu, Düzenle, Arşive Kaldır (Sil)
                     <>
