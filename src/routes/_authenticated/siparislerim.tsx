@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { statusLabel, districtLabel } from "@/lib/catalog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { MapPin, Navigation } from "lucide-react";
+import { extractCoordinates, getGoogleMapsNavigationUrl } from "@/lib/location-utils";
 
 export const Route = createFileRoute("/_authenticated/siparislerim")({
   head: () => ({
@@ -65,6 +67,29 @@ function OrderCard({ order }: { order: OrderRow }) {
         <span className="font-medium text-foreground">Adres:</span> {districtLabel(order.district)}{" "}
         — {order.address}
       </p>
+
+      {(() => {
+        const coords = extractCoordinates(order.address) || extractCoordinates(order.note);
+        if (!coords) return null;
+        return (
+          <div className="mt-3 flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-border/50">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>Harita Pimi: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</span>
+            </span>
+            <Button size="sm" variant="outline" asChild className="h-7 text-xs">
+              <a
+                href={getGoogleMapsNavigationUrl(coords.lat, coords.lng)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Navigation className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                Haritada Gör
+              </a>
+            </Button>
+          </div>
+        );
+      })()}
     </article>
   );
 }

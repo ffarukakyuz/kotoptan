@@ -175,7 +175,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       let foundUser: User | null = null;
       try {
-        const { data } = await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 1200),
+        );
+        const { data } = await Promise.race([sessionPromise, timeoutPromise]);
         if (data?.session?.user) {
           setSession(data.session);
           foundUser = data.session.user;

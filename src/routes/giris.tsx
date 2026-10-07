@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SplashScreen } from "@/components/SplashScreen";
 
 export const Route = createFileRoute("/giris")({
   head: () => ({
@@ -77,6 +78,7 @@ function AuthPage() {
   const { user, loading, loginWithFallbackUser } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [busy, setBusy] = useState(false);
+  const [successEntering, setSuccessEntering] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loginPhone, setLoginPhone] = useState("");
   const [registerPhone, setRegisterPhone] = useState("");
@@ -126,8 +128,8 @@ function AuthPage() {
 
       if (!error && data?.user) {
         setBusy(false);
+        setSuccessEntering(true);
         toast.success("Giriş yapıldı");
-        void navigate({ to: "/" });
         return;
       }
     } catch (sbErr) {
@@ -139,8 +141,8 @@ function AuthPage() {
     if (fallbackAuth.user) {
       setBusy(false);
       loginWithFallbackUser(fallbackAuth.user);
+      setSuccessEntering(true);
       toast.success(`Giriş yapıldı (Hoş geldiniz, ${fallbackAuth.user.fullName})`);
-      void navigate({ to: "/" });
       return;
     }
 
@@ -216,8 +218,8 @@ function AuthPage() {
 
         if (!loginError) {
           setBusy(false);
+          setSuccessEntering(true);
           toast.success("Hesabınız başarıyla oluşturuldu");
-          void navigate({ to: "/" });
           return;
         }
       } else if (error.message.includes("already registered")) {
@@ -245,9 +247,19 @@ function AuthPage() {
 
     loginWithFallbackUser(saved);
     setBusy(false);
+    setSuccessEntering(true);
     toast.success("Hesabınız başarıyla oluşturuldu");
-    void navigate({ to: "/" });
   };
+
+  if (successEntering) {
+    return (
+      <SplashScreen
+        message="Giriş Doğrulandı • Toptan Kataloğa Yönlendiriliyorsunuz..."
+        minDuration={600}
+        onFinish={() => void navigate({ to: "/" })}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-8">

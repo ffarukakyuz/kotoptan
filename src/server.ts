@@ -336,7 +336,7 @@ export default {
       if (url.pathname === "/api/analyze-product" && request.method === "POST") {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const body = (await request.json()) as any;
+          const body = (await request.json().catch(() => ({}))) as any;
           const result = await processVision(body.imageBase64, body.mimeType, body.note);
           return new Response(JSON.stringify(result), {
             headers: { "content-type": "application/json" },
@@ -344,7 +344,7 @@ export default {
         } catch (e: unknown) {
           const errMsg = e instanceof Error ? e.message : "Error analyzing product";
           return new Response(JSON.stringify({ ok: false, error: errMsg }), {
-            status: 500,
+            status: 200,
             headers: { "content-type": "application/json" },
           });
         }

@@ -26,6 +26,8 @@ import {
   Boxes,
   Package,
   MessageSquare,
+  MapPin,
+  Navigation,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -71,6 +73,10 @@ import {
   setProductArchivedStatusLocal,
   isProductArchived,
 } from "@/lib/catalog";
+import {
+  extractCoordinates,
+  getGoogleMapsNavigationUrl,
+} from "@/lib/location-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -563,6 +569,16 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
                         {o.full_name} · {o.phone}
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">{o.address}</p>
+                      {(() => {
+                        const coords = extractCoordinates(o.address) || extractCoordinates(o.note);
+                        if (!coords) return null;
+                        return (
+                          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
+                            <MapPin className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                            <span>GPS Konumu: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</span>
+                          </div>
+                        );
+                      })()}
                       <p className="mt-1 text-xs text-muted-foreground">
                         #{o.id.slice(0, 8).toUpperCase()} ·{" "}
                         {new Date(o.created_at).toLocaleString("tr-TR")}
@@ -658,6 +674,27 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
                   )}
 
                   <div className="mt-4 flex flex-wrap gap-2">
+                    {(() => {
+                      const coords = extractCoordinates(o.address) || extractCoordinates(o.note);
+                      const mapsUrl = coords
+                        ? getGoogleMapsNavigationUrl(coords.lat, coords.lng)
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address + " " + districtLabel(o.district))}`;
+
+                      return (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          asChild
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-800 font-semibold shadow-xs"
+                        >
+                          <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                            <Navigation className="h-4 w-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+                            {coords ? "Google Maps'te Aç / Navigasyon Başlat (GPS)" : "Google Maps'te Aç"}
+                          </a>
+                        </Button>
+                      );
+                    })()}
+
                     <Button
                       size="sm"
                       variant={editing ? "default" : "outline"}

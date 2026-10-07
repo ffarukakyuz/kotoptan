@@ -17,6 +17,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { SupportChat } from "@/components/SupportChat";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { SplashScreen } from "@/components/SplashScreen";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
 
 function NotFoundComponent() {
   return (
@@ -193,7 +195,15 @@ function RootComponent() {
 function RootAppContent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, loading } = useAuth();
+  const router = useRouter();
   const isAuthPage = pathname === "/giris";
+
+  // Giriş zorunludur: Giriş yapılmamışsa ve /giris sayfasında değilsek derhal /giris'e yönlendir.
+  useEffect(() => {
+    if (!loading && !user && !isAuthPage) {
+      void router.navigate({ to: "/giris", replace: true });
+    }
+  }, [user, loading, isAuthPage, router]);
 
   if (isAuthPage) {
     return (
@@ -206,9 +216,20 @@ function RootAppContent() {
     );
   }
 
+  // Oturum kontrol ediliyorken kullanıcı henüz yoksa şık Splash Screen animasyonu göster
+  if (loading && !user) {
+    return <SplashScreen message="KasımOğulları — Oturum kontrol ediliyor..." />;
+  }
+
+  // Kullanıcı giriş yapmamışsa vitrin ve panelleri kesinlikle gösterme
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="flex min-h-screen flex-col font-sans">
       <PWAInstallBanner />
+      <WelcomeBanner />
       <SiteHeader />
       <main className="flex-1">
         {/* Required: nested routes render here. */}

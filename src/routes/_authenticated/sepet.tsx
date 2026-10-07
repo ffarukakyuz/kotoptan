@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart, MapPin, Navigation, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -20,6 +20,12 @@ import {
 } from "@/components/ui/select";
 import { DISTRICTS } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
+import { MapLocationDialog } from "@/components/MapLocationDialog";
+import {
+  extractCoordinates,
+  reverseGeocodeNominatim,
+  type GeoLocation,
+} from "@/lib/location-utils";
 
 export const Route = createFileRoute("/_authenticated/sepet")({
   head: () => ({
@@ -50,6 +56,10 @@ function CartPage() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<GeoLocation | null>(null);
+
   const [form, setForm] = useState({
     full_name: "",
     business_name: "",
@@ -61,15 +71,88 @@ function CartPage() {
 
   useEffect(() => {
     if (profile) {
-      setForm((f) => ({
-        ...f,
-        full_name: f.full_name || profile.full_name,
-        business_name: f.business_name || profile.business_name,
-        phone: f.phone || profile.phone,
-        address: f.address || profile.address,
-      }));
+      setForm((f) => {
+        const nextAddress = f.address || profile.address || "";
+        const initialCoords = extractCoordinates(nextAddress);
+        if (initialCoords && !selectedLocation) {
+          setSelectedLocation(initialCoords);
+        }
+        return {
+          ...f,
+          full_name: f.full_name || profile.full_name,
+          business_name: f.business_name || profile.business_name,
+          phone: f.phone || profile.phone,
+          address: nextAddress,
+        };
+      });
     }
   }, [profile]);
+
+  const handleQuickGps = () => {
+    if (
+      typeof window === "undefined" ||
+      typeof navigator === "undefined" ||
+      !("geolocation" in navigator)
+    ) {
+      toast.error("Cihazınız veya tarayıcınız konum servisini desteklemiyor.");
+      return;
+    }
+
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setSelectedLocation({ lat, lng });
+
+          const geo = await reverseGeocodeNominatim(lat, lng);
+          const fullAddr = `${geo.formattedAddress} (📍 Konum: ${lat.toFixed(6)}, ${lng.toFixed(6)})`;
+
+          setForm((prev) => ({
+            ...prev,
+            address: fullAddr.slice(0, 500),
+            district: geo.matchedDistrictValue || prev.district,
+          }));
+
+          toast.success("Mevcut GPS konumunuz alındı ve adres bilgileri dolduruldu!");
+        } catch (err) {
+          console.warn("Reverse geocode error:", err);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const fallback = `(📍 Konum: ${lat.toFixed(6)}, ${lng.toFixed(6)})`;
+          setForm((prev) => ({
+            ...prev,
+            address: prev.address ? `${prev.address} ${fallback}`.slice(0, 500) : fallback,
+          }));
+          toast.success("GPS koordinatları adrese eklendi.");
+        } finally {
+          setGpsLoading(false);
+        }
+      },
+      (err) => {
+        setGpsLoading(false);
+        console.warn("GPS error:", err);
+        toast.error("Konumunuza ulaşılamadı. Lütfen tarayıcı konum iznini kontrol edin.");
+      },
+      { enableHighAccuracy: true, timeout: 12000 },
+    );
+  };
+
+  const handleLocationFromMap = (loc: {
+    lat: number;
+    lng: number;
+    address: string;
+    districtMatch?: string;
+  }) => {
+    setSelectedLocation({ lat: loc.lat, lng: loc.lng });
+    const fullAddr = `${loc.address} (📍 Konum: ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)})`;
+    setForm((prev) => ({
+      ...prev,
+      address: fullAddr.slice(0, 500),
+      district: loc.districtMatch || prev.district,
+    }));
+  };
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -259,15 +342,81 @@ function CartPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="o-address">Teslimat adresi</Label>
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                  <Label htmlFor="o-address" className="font-semibold text-foreground">
+                    Teslimat adresi (zorunlu)
+                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleQuickGps}
+                      disabled={gpsLoading}
+                      className="h-7 text-xs px-2.5 bg-background border-primary/40 text-primary hover:bg-primary/10 shadow-xs transition-colors"
+                      title="Cihazınızın GPS konumunu alıp adresi ve koordinatları otomatik doldurur"
+                    >
+                      {gpsLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Navigation className="h-3.5 w-3.5 mr-1 text-primary" />
+                      )}
+                      {gpsLoading ? "GPS Alınıyor..." : "Konumumu Kullan (GPS)"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMapOpen(true)}
+                      className="h-7 text-xs px-2.5 bg-background border-border text-foreground hover:bg-muted shadow-xs transition-colors"
+                      title="Haritada dükkan veya depo kapısını pimi kaydırarak seçin"
+                    >
+                      <MapPin className="h-3.5 w-3.5 mr-1 text-rose-500" />
+                      Haritada Seç
+                    </Button>
+                  </div>
+                </div>
+
                 <Textarea
                   id="o-address"
                   rows={3}
+                  required
                   value={form.address}
                   maxLength={500}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="Örn: Cumhuriyet Mah. İnönü Cad. No: 12 veya 'Konumumu Kullan' butonuna basarak otomatik doldurun"
+                  onChange={(e) => {
+                    setForm({ ...form, address: e.target.value });
+                    const parsedCoords = extractCoordinates(e.target.value);
+                    if (parsedCoords) setSelectedLocation(parsedCoords);
+                  }}
                 />
+
+                {selectedLocation && (
+                  <div className="mt-1.5 flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                      <span className="truncate">
+                        Harita Pimi: {selectedLocation.lat.toFixed(5)}, {selectedLocation.lng.toFixed(5)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMapOpen(true)}
+                      className="underline text-[11px] font-semibold hover:opacity-80 ml-2 shrink-0 cursor-pointer"
+                    >
+                      Haritada Değiştir
+                    </button>
+                  </div>
+                )}
               </div>
+
+              <MapLocationDialog
+                open={mapOpen}
+                onOpenChange={setMapOpen}
+                initialLocation={selectedLocation}
+                onLocationSelect={handleLocationFromMap}
+              />
               <div>
                 <Label htmlFor="o-note">Sipariş notu (opsiyonel)</Label>
                 <Textarea
