@@ -9,7 +9,7 @@ interface SplashScreenProps {
 
 export function SplashScreen({
   onFinish,
-  message = "Toptan Satış Kataloğu Hazırlanıyor...",
+  message = "KasımOğulları — Oturum açılıyor...",
   minDuration = 800,
 }: SplashScreenProps) {
   const [progress, setProgress] = useState(15);
@@ -74,9 +74,12 @@ export function SplashScreen({
         </div>
 
         {/* Durum Metni */}
-        <p className="text-[11px] font-medium text-white/60 tracking-wide">
-          {message}
-        </p>
+        <div className="flex items-center justify-center gap-2 mt-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+          <p className="text-xs sm:text-sm font-semibold text-emerald-300 tracking-wide">
+            {message}
+          </p>
+        </div>
       </div>
     </div>
   );

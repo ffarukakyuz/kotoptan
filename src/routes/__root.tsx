@@ -218,7 +218,7 @@ function RootAppContent() {
 
   // Oturum kontrol ediliyorken kullanıcı henüz yoksa şık Splash Screen animasyonu göster
   if (loading && !user) {
-    return <SplashScreen message="KasımOğulları — Oturum kontrol ediliyor..." />;
+    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
   }
 
   // Kullanıcı giriş yapmamışsa vitrin ve panelleri kesinlikle gösterme

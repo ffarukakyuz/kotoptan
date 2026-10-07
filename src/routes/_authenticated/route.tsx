@@ -19,7 +19,7 @@ function AuthenticatedLayout() {
   }, [user, loading, navigate]);
 
   if (loading) {
-    return <SplashScreen message="KasımOğulları — Güvenli Oturum Doğrulanıyor..." />;
+    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
   }
 
   if (!user) {

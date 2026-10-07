@@ -254,8 +254,8 @@ function AuthPage() {
   if (successEntering) {
     return (
       <SplashScreen
-        message="Giriş Doğrulandı • Toptan Kataloğa Yönlendiriliyorsunuz..."
-        minDuration={600}
+        message="KasımOğulları — Oturum açılıyor..."
+        minDuration={650}
         onFinish={() => void navigate({ to: "/" })}
       />
     );
