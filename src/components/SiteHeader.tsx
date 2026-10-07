@@ -196,6 +196,26 @@ export function SiteHeader() {
       {/* Mobile Drawer / Dropdown */}
       {open && (
         <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-1 border-t border-white/10 bg-[#060b08] px-4 py-3 shadow-xl md:hidden">
+          {/* Logo & Marka Başlığı */}
+          <div className="flex items-center gap-3 pb-3 mb-1 border-b border-white/10">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/40 border border-emerald-500/30 shrink-0">
+              <img
+                src="/kasimogullari-logo.jpg"
+                alt="KasımOğulları Logo"
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </span>
+            <div>
+              <span className="text-base font-extrabold tracking-tight text-white block">
+                Kasım<span className="text-[#22c55e]">Oğulları</span>
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-400 block">
+                Tatvan Toptan Dağıtım Merkezi
+              </span>
+            </div>
+          </div>
+
           {navLinks}
 
           {/* Kısayol Ekle / Ana Ekrana Ekle Butonu */}

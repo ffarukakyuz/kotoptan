@@ -236,12 +236,22 @@ function RootAppContent() {
         <Outlet />
       </main>
       <footer className="mt-auto border-t border-white/10 bg-[#040806] py-8 text-white/60">
-        <div className="mx-auto max-w-6xl px-4 text-sm">
-          <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
-          <p className="mt-1">
-            Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır, ödeme
-            teslimat sırasında yapılır.
-          </p>
+        <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md border border-emerald-500/30">
+            <img
+              src="/kasimogullari-logo.jpg"
+              alt="KasımOğulları Logo"
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </span>
+          <div>
+            <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
+            <p className="mt-0.5 text-xs text-white/60">
+              Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır, ödeme
+              teslimat sırasında yapılır.
+            </p>
+          </div>
         </div>
       </footer>
       <SupportChat />

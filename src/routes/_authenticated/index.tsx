@@ -199,6 +199,16 @@ function Index() {
 
           {/* Hero Call-To-Action Copy & Badges */}
           <div className="mt-8 text-center sm:mt-10">
+            {/* Ana Menü / Vitrin Logosu */}
+            <div className="mx-auto mb-3.5 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl overflow-hidden shadow-2xl shadow-black/80 border border-emerald-500/40 ring-4 ring-emerald-500/10">
+              <img
+                src="/kasimogullari-logo.jpg"
+                alt="KasımOğulları Logo"
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
             <div className="inline-flex items-center gap-2 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#4ade80] shadow-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-pulse" />
               Toptan & Hızlı Tedarik
