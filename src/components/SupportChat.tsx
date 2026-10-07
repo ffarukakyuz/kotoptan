@@ -928,8 +928,8 @@ function SupportChatInner() {
                   onClick={() => setChatMode("admin")}
                   className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                     chatMode === "admin"
-                      ? "bg-[#00a884] text-white shadow-md ring-1 ring-emerald-400/50"
-                      : "bg-white/5 text-emerald-300 hover:bg-emerald-950/40 hover:text-white"
+                      ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40"
+                      : "bg-white/10 text-emerald-100 hover:bg-white/15 hover:text-white"
                   }`}
                 >
                   <Headphones className="h-4 w-4 text-white" />
@@ -947,8 +947,8 @@ function SupportChatInner() {
                   onClick={() => setChatMode("ai")}
                   className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     chatMode === "ai"
-                      ? "bg-emerald-700 text-white shadow-md ring-1 ring-emerald-500/50"
-                      : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                      ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40"
+                      : "bg-white/10 text-emerald-100 hover:bg-white/15 hover:text-white"
                   }`}
                 >
                   <Bot className="h-4 w-4 text-emerald-300" />
@@ -983,8 +983,8 @@ function SupportChatInner() {
                   }}
                   className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                     chatMode === "admin"
-                      ? "bg-[#00a884] text-white shadow-md ring-1 ring-emerald-400/50"
-                      : "bg-white/5 text-emerald-300 hover:bg-emerald-950/40 hover:text-white"
+                      ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40"
+                      : "bg-white/10 text-emerald-100 hover:bg-white/15 hover:text-white"
                   }`}
                 >
                   <Headphones className="h-4 w-4 text-emerald-300" />

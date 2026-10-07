@@ -275,11 +275,13 @@ function AdminPage() {
           <TabsTrigger
             value="messages"
             className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate relative"
+            title="Müşteri ile Konuş (Canlı Destek)"
           >
-            <MessageSquare className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-            <span>Müşteri ile Konuş</span>
+            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden md:inline">Müşteri </span>
+            <span>Sohbet</span>
             {transferredChatCount > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-extrabold text-black animate-pulse">
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-extrabold text-destructive-foreground animate-pulse">
                 {transferredChatCount}
               </span>
             )}
@@ -310,7 +312,7 @@ function AdminPage() {
           />
         </TabsContent>
         <TabsContent value="messages">
-          <AdminChatPanel />
+          <AdminChatPanel onNavigateToOrders={() => setActiveTab("orders")} />
         </TabsContent>
         <TabsContent value="drive">
           <GoogleDriveSyncPanel

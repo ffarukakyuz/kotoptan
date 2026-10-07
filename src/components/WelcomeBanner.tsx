@@ -51,8 +51,13 @@ export function WelcomeBanner() {
 
         <div className="flex items-start justify-between gap-3 relative z-10">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-md">
-              <Sparkles className="h-5 w-5 animate-pulse" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-md overflow-hidden ring-1 ring-emerald-500/30">
+              <img
+                src="/kasimogullari-logo.jpg"
+                alt="KasımOğulları Logo"
+                className="h-full w-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-400">

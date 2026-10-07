@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Package, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -38,45 +38,54 @@ export function SplashScreen({
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#050a07] text-white transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white text-slate-900 transition-opacity duration-300 ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
-      {/* Arka plan yumuşak radyal ışık efekti */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.12)_0%,transparent_70%)] pointer-events-none" />
+      {/* Arka plan yumuşak zümrüt radyal ışık efekti */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,rgba(255,255,255,0)_70%)] pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-sm">
-        {/* Parıldayan Logo Rozeti */}
-        <div className="relative mb-6">
-          <div className="absolute -inset-3 rounded-3xl bg-emerald-500/20 blur-xl animate-pulse" />
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 border border-emerald-400/40 shadow-[0_10px_35px_rgba(5,150,105,0.35)] transform transition-transform duration-700 hover:scale-105">
-            <Package className="h-10 w-10 text-white drop-shadow-md animate-bounce" />
-            <div className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-black shadow-md">
-              <Sparkles className="h-3.5 w-3.5" />
+        {/* Logo ve Animasyon Alanı (Kutu yerine logonun kendisi) */}
+        <div className="relative mb-5 flex items-center justify-center">
+          {/* Arkadaki yumuşak yeşil parlama */}
+          <div className="absolute -inset-4 rounded-full bg-emerald-500/15 blur-2xl animate-pulse pointer-events-none" />
+
+          {/* Yeni KasımOğulları Logosu */}
+          <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl bg-white p-2 shadow-[0_12px_36px_rgba(16,185,129,0.16)] border border-emerald-100 transition-transform duration-700 hover:scale-105">
+            <img
+              src="/kasimogullari-logo.jpg"
+              alt="KasımOğulları Logo"
+              className="h-full w-full object-contain animate-pulse"
+              referrerPolicy="no-referrer"
+            />
+            {/* Parıldayan yıldız rozeti */}
+            <div className="absolute -top-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md">
+              <Sparkles className="h-4 w-4" />
             </div>
           </div>
         </div>
 
         {/* Marka İsmi ve Tipografi */}
-        <h1 className="text-2xl font-black tracking-tight text-white mb-1.5 flex items-center justify-center gap-1.5">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mb-1 flex items-center justify-center gap-1.5">
           <span>KASIMOĞULLARI</span>
         </h1>
-        <p className="text-xs font-semibold tracking-wider uppercase text-emerald-400 mb-6">
+        <p className="text-xs font-bold tracking-wider uppercase text-emerald-700 mb-6">
           Ltd. Şti. • Tatvan Dağıtım Merkezi
         </p>
 
         {/* İnce Modern İlerleme Çubuğu */}
-        <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden mb-3 border border-white/5">
+        <div className="w-52 h-2 bg-slate-100 rounded-full overflow-hidden mb-3.5 border border-slate-200/80 shadow-inner">
           <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 ease-out shadow-[0_0_12px_rgba(52,211,153,0.8)]"
+            className="h-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-full transition-all duration-300 ease-out shadow-[0_0_12px_rgba(16,185,129,0.5)]"
             style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Durum Metni */}
         <div className="flex items-center justify-center gap-2 mt-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-          <p className="text-xs sm:text-sm font-semibold text-emerald-300 tracking-wide">
+          <span className="h-2 w-2 rounded-full bg-emerald-600 animate-ping" />
+          <p className="text-xs sm:text-sm font-semibold text-emerald-800 tracking-wide">
             {message}
           </p>
         </div>

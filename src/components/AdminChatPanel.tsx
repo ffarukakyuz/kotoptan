@@ -68,7 +68,11 @@ function formatMsgTime(iso?: unknown): string {
   }
 }
 
-export function AdminChatPanel() {
+interface AdminChatPanelProps {
+  onNavigateToOrders?: () => void;
+}
+
+export function AdminChatPanel({ onNavigateToOrders }: AdminChatPanelProps = {}) {
   const { profile } = useAuth();
   const adminName = profile?.full_name || "Yönetici";
 
@@ -288,7 +292,7 @@ export function AdminChatPanel() {
 
   if (!mounted) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-white/10 bg-[#0d1418] p-8 text-white/50 text-sm">
+      <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-border bg-card p-8 text-muted-foreground text-sm shadow-xs">
         Canlı Destek Paneli yükleniyor...
       </div>
     );
@@ -297,25 +301,24 @@ export function AdminChatPanel() {
   return (
     <div className="flex flex-col gap-4">
       {/* Üst Bilgi Barı */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-emerald-400" />
-              Müşteri ile Konuş (WhatsApp Mesajlaşma)
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              Müşteri ile Konuş (Canlı Destek)
             </h2>
             {transferredCount > 0 && (
               <Badge
                 variant="destructive"
-                className="bg-amber-500 text-black font-extrabold animate-pulse"
+                className="bg-amber-500 text-black font-extrabold animate-pulse shadow-xs"
               >
                 {transferredCount} Bekleyen Talep
               </Badge>
             )}
           </div>
-          <p className="text-xs text-white/60 mt-1">
-            Yapay zekanın aktardığı veya temsilci talep eden müşterilerle Cloudflare D1 altyapısı
-            üzerinden canlı yazışın.
+          <p className="text-xs text-muted-foreground mt-1">
+            Yapay zekanın aktardığı veya temsilci talep eden müşterilerle gerçek zamanlı yazışın.
           </p>
         </div>
 
@@ -326,15 +329,15 @@ export function AdminChatPanel() {
               variant="outline"
               size="sm"
               onClick={handleEnableNotifications}
-              className="border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs gap-1.5 cursor-pointer"
+              className="border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs gap-1.5 cursor-pointer shadow-xs"
               title="Yeni müşteri mesajları için masaüstü bildirimi aç"
             >
-              <BellRing className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+              <BellRing className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
               <span>Bildirimleri Aç</span>
             </Button>
           ) : (
-            <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-semibold px-2 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30">
-              <Bell className="h-3 w-3" />
+            <span className="flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <Bell className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
               <span>Bildirimler Aktif</span>
             </span>
           )}
@@ -355,17 +358,17 @@ export function AdminChatPanel() {
                 return next;
               });
             }}
-            className="border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs gap-1.5 cursor-pointer"
+            className="border-border bg-card hover:bg-accent text-foreground text-xs gap-1.5 cursor-pointer shadow-xs"
             title={soundEnabled ? "Bildirim sesini kapat" : "Bildirim sesini aç"}
           >
             {soundEnabled ? (
               <>
-                <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
+                <Volume2 className="h-3.5 w-3.5 text-primary" />
                 <span>Ses Açık</span>
               </>
             ) : (
               <>
-                <VolumeX className="h-3.5 w-3.5 text-white/50" />
+                <VolumeX className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Sessiz</span>
               </>
             )}
@@ -376,27 +379,40 @@ export function AdminChatPanel() {
             size="sm"
             onClick={() => void loadSessions(true)}
             disabled={loadingList}
-            className="border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs gap-1.5 cursor-pointer"
+            className="border-border bg-card hover:bg-accent text-foreground text-xs gap-1.5 cursor-pointer shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loadingList ? "animate-spin" : ""}`} />
             Yenile
           </Button>
+
+          {onNavigateToOrders && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onNavigateToOrders}
+              className="text-xs text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+              title="Siparişler sekmesine dön"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              <span>Kapat</span>
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Ana Sohbet Izgarası (Sol Liste - Sağ Detay) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[580px]">
         {/* Sol Kolon: Sohbet Listesi */}
-        <div className="lg:col-span-4 flex flex-col rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md">
+        <div className="lg:col-span-4 flex flex-col rounded-2xl border border-border bg-card p-3 shadow-xs">
           {/* Arama ve Filtre Butonları */}
-          <div className="space-y-2.5 pb-3 border-b border-white/10">
+          <div className="space-y-2.5 pb-3 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-white/40" />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Müşteri adı, telefon veya mesaj..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 text-xs bg-black/30 border-white/10 text-white placeholder:text-white/30 rounded-lg"
+                className="h-8 pl-8 text-xs bg-muted/40 border-border text-foreground placeholder:text-muted-foreground rounded-lg"
               />
             </div>
 
@@ -406,8 +422,8 @@ export function AdminChatPanel() {
                 onClick={() => setFilter("all")}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                   filter === "all"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white/5 text-white/70 hover:bg-white/10"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 }`}
               >
                 Tümü ({sessions.length})
@@ -417,11 +433,11 @@ export function AdminChatPanel() {
                 onClick={() => setFilter("transferred")}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
                   filter === "transferred"
-                    ? "bg-amber-500 text-black font-bold"
-                    : "bg-white/5 text-amber-300 hover:bg-white/10"
+                    ? "bg-amber-500 text-black font-bold shadow-xs"
+                    : "bg-muted text-amber-700 dark:text-amber-400 hover:bg-muted/80"
                 }`}
               >
-                <span>Yönetici Bekleyen</span>
+                <span>Bekleyen</span>
                 {transferredCount > 0 && <span className="text-[10px]">({transferredCount})</span>}
               </button>
               <button
@@ -429,8 +445,8 @@ export function AdminChatPanel() {
                 onClick={() => setFilter("active")}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                   filter === "active"
-                    ? "bg-emerald-700 text-white"
-                    : "bg-white/5 text-white/70 hover:bg-white/10"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 }`}
               >
                 Aktif
@@ -440,8 +456,8 @@ export function AdminChatPanel() {
                 onClick={() => setFilter("closed")}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                   filter === "closed"
-                    ? "bg-white/20 text-white"
-                    : "bg-white/5 text-white/70 hover:bg-white/10"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 }`}
               >
                 Kapalı
@@ -452,8 +468,8 @@ export function AdminChatPanel() {
           {/* Oturum Listesi */}
           <div className="flex-1 overflow-y-auto space-y-2 pt-2.5 max-h-[500px] pr-1">
             {filteredSessions.length === 0 ? (
-              <div className="py-12 text-center text-xs text-white/40">
-                <MessageCircleQuestion className="mx-auto mb-2 h-7 w-7 text-white/30" />
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                <MessageCircleQuestion className="mx-auto mb-2 h-7 w-7 text-muted-foreground/60" />
                 Henüz eşleşen müşteri mesajı yok
               </div>
             ) : (
@@ -469,8 +485,8 @@ export function AdminChatPanel() {
                     onClick={() => setSelectedSessionId(s.id)}
                     className={`p-3 rounded-xl border transition-all cursor-pointer ${
                       isSelected
-                        ? "border-emerald-500 bg-emerald-950/40 shadow-md ring-1 ring-emerald-500/50"
-                        : "border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/15"
+                        ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/30"
+                        : "border-border/60 bg-card hover:bg-muted/40 hover:border-border"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -479,51 +495,51 @@ export function AdminChatPanel() {
                           e.stopPropagation();
                           setProfileModalTarget(s);
                         }}
-                        className="flex items-center gap-1.5 font-bold text-xs text-white hover:text-emerald-300 transition-colors cursor-pointer truncate"
+                        className="flex items-center gap-1.5 font-bold text-xs text-foreground hover:text-primary transition-colors cursor-pointer truncate"
                         title="Müşteri ve bölge detaylarını görüntüle"
                       >
-                        <User className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate underline decoration-emerald-500/40 underline-offset-2">
+                        <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="truncate underline decoration-primary/40 underline-offset-2">
                           {s.user_name || "Müşteri / Bayi"}
                         </span>
                       </div>
 
                       {/* Durum Rozeti */}
                       {isTransferred && (
-                        <span className="flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                          YÖNETİCİ BEKLİYOR
+                        <span className="flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+                          BEKLİYOR
                         </span>
                       )}
                       {isActive && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
                           Aktif Görüşme
                         </span>
                       )}
                       {isClosed && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/50 shrink-0">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border shrink-0">
                           Sonlandı
                         </span>
                       )}
                       {s.status === "bot" && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-800 dark:text-sky-300 border border-sky-500/30 shrink-0">
                           AI Bot
                         </span>
                       )}
                     </div>
 
                     {s.user_phone && (
-                      <p className="text-[11px] text-white/60 flex items-center gap-1 mb-1">
-                        <Phone className="h-3 w-3 text-white/40" />
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 mb-1">
+                        <Phone className="h-3 w-3 text-muted-foreground/70" />
                         {s.user_phone}
                       </p>
                     )}
 
-                    <p className="text-xs text-white/80 line-clamp-2 leading-relaxed bg-black/20 p-1.5 rounded-lg border border-white/5">
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed bg-muted/50 p-2 rounded-lg border border-border/40">
                       {s.last_message || "Henüz mesaj yok"}
                     </p>
 
-                    <div className="flex items-center justify-between text-[10px] text-white/40 mt-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-2">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {new Date(s.updated_at).toLocaleTimeString("tr-TR", {
@@ -531,7 +547,7 @@ export function AdminChatPanel() {
                           minute: "2-digit",
                         })}
                       </span>
-                      <span className="font-mono text-[9px] text-white/30 truncate max-w-[100px]">
+                      <span className="font-mono text-[9px] text-muted-foreground/70 truncate max-w-[100px]">
                         ID: {s.id.slice(-6)}
                       </span>
                     </div>
@@ -543,13 +559,13 @@ export function AdminChatPanel() {
         </div>
 
         {/* Sağ Kolon: Mesaj Akışı ve Yanıt Alanı */}
-        <div className="lg:col-span-8 flex flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md overflow-hidden">
+        <div className="lg:col-span-8 flex flex-col rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
           {selectedSessionId && currentSession ? (
             <>
               {/* Sağ Üst Başlık & Eylemler */}
-              <div className="flex items-center justify-between gap-3 p-3.5 border-b border-white/10 bg-black/20">
+              <div className="flex items-center justify-between gap-3 p-3.5 border-b border-border bg-muted/30">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-300 font-bold text-sm">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm">
                     {currentSession.user_name
                       ? currentSession.user_name.charAt(0).toUpperCase()
                       : "M"}
@@ -559,28 +575,28 @@ export function AdminChatPanel() {
                     className="cursor-pointer group/userheader"
                     title="Müşteri ve bölge detay kartını aç"
                   >
-                    <h3 className="text-sm font-bold text-white group-hover/userheader:text-emerald-400 flex items-center gap-2 transition-colors">
-                      <span className="underline decoration-emerald-500/40 underline-offset-2">
+                    <h3 className="text-sm font-bold text-foreground group-hover/userheader:text-primary flex items-center gap-2 transition-colors">
+                      <span className="underline decoration-primary/40 underline-offset-2">
                         {currentSession.user_name || "Müşteri / Bayi"}
                       </span>
-                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded font-normal">
+                      <span className="text-[10px] text-primary bg-primary/10 border border-primary/25 px-1.5 py-0.5 rounded font-normal">
                         Bölge & Üye Detayı
                       </span>
                       {currentSession.status === "transferred" && (
-                        <Badge className="bg-amber-500 text-black text-[10px] font-extrabold">
-                          Yetkili Yanıtı Bekleniyor
+                        <Badge className="bg-amber-500 text-black text-[10px] font-extrabold shadow-xs">
+                          Yanıt Bekleniyor
                         </Badge>
                       )}
                     </h3>
-                    <p className="text-xs text-white/60 flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
                       {currentSession.user_phone && (
-                        <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                        <span className="flex items-center gap-1 text-primary font-medium">
                           <Phone className="h-3 w-3" />
                           {currentSession.user_phone}
                         </span>
                       )}
                       <span>•</span>
-                      <span className="font-mono text-[10px] text-white/40">
+                      <span className="font-mono text-[10px] text-muted-foreground/70">
                         Oturum: {currentSession.id}
                       </span>
                     </p>
@@ -593,7 +609,7 @@ export function AdminChatPanel() {
                       href={`https://wa.me/90${currentSession.user_phone.replace(/\D/g, "").replace(/^0/, "")}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 px-2.5 py-1 text-xs text-emerald-300 font-semibold transition-colors"
+                      className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-300 font-semibold transition-colors"
                       title="Müşteriyle Doğrudan WhatsApp Uygulamasında Aç"
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
@@ -606,56 +622,55 @@ export function AdminChatPanel() {
                       size="sm"
                       onClick={handleCloseSession}
                       disabled={closingSession}
-                      className="h-8 text-xs border-red-500/30 text-red-300 hover:bg-red-500/20 hover:text-white cursor-pointer"
+                      className="h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 cursor-pointer"
                     >
-                      <XCircle className="h-3.5 w-3.5 mr-1 text-red-400" />
+                      <XCircle className="h-3.5 w-3.5 mr-1" />
                       Sohbeti Sonlandır
                     </Button>
                   ) : (
-                    <Badge variant="outline" className="border-white/20 text-white/50 text-xs">
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-400" />
+                    <Badge variant="outline" className="border-border text-muted-foreground text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-primary" />
                       Sonlandırılmış
                     </Badge>
                   )}
                 </div>
               </div>
 
-              {/* Mesaj Listesi (WhatsApp Arka Plan) */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[380px] max-h-[460px] bg-[#0b141a] bg-[radial-gradient(#1f2c34_1px,transparent_1px)] [background-size:16px_16px]">
+              {/* Mesaj Listesi */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[380px] max-h-[460px] bg-muted/15">
                 {messages.length === 0 ? (
-                  <div className="py-16 text-center text-xs text-white/40">
+                  <div className="py-16 text-center text-xs text-muted-foreground">
                     Bu oturumda henüz mesaj bulunmuyor.
                   </div>
                 ) : (
                   messages.map((m, idx) => {
                     const isUser = m.role === "user";
                     const isAdminMsg = m.role === "admin";
-                    const isBot = m.role === "assistant" || m.role === "bot";
 
                     return (
                       <div
                         key={m.id || idx}
                         className={`flex flex-col ${isUser ? "items-start" : "items-end"}`}
                       >
-                        <div className="flex items-center gap-1 text-[10px] text-white/50 mb-1 px-1">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1 px-1">
                           {isUser ? (
                             <>
-                              <User className="h-2.5 w-2.5 text-emerald-400" />
-                              <span className="font-semibold text-emerald-300">
+                              <User className="h-2.5 w-2.5 text-primary" />
+                              <span className="font-semibold text-foreground">
                                 {m.sender_name || "Müşteri"}
                               </span>
                             </>
                           ) : isAdminMsg ? (
                             <>
-                              <Shield className="h-2.5 w-2.5 text-emerald-400" />
-                              <span className="font-bold text-emerald-300">
+                              <Shield className="h-2.5 w-2.5 text-primary" />
+                              <span className="font-bold text-primary">
                                 {m.sender_name || "Yönetici"}
                               </span>
                             </>
                           ) : (
                             <>
-                              <Bot className="h-2.5 w-2.5 text-sky-400" />
-                              <span className="text-sky-300">Ko AI Asistan</span>
+                              <Bot className="h-2.5 w-2.5 text-sky-500" />
+                              <span className="text-sky-600 dark:text-sky-400 font-medium">Ko AI Asistan</span>
                             </>
                           )}
                           <span>•</span>
@@ -665,17 +680,17 @@ export function AdminChatPanel() {
                         <div
                           className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
                             isUser
-                              ? "bg-[#202c33] text-white rounded-tl-sm border border-white/10"
+                              ? "bg-card text-card-foreground rounded-tl-sm border border-border/80 shadow-xs"
                               : isAdminMsg
-                                ? "bg-[#005c4b] text-[#e9edef] rounded-tr-sm shadow-md border border-emerald-600/30"
-                                : "bg-[#202c33] text-sky-100 rounded-tr-sm border border-sky-500/30"
+                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-xs"
+                                : "bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-100 rounded-tr-sm border border-sky-200 dark:border-sky-800/40 shadow-xs"
                           }`}
                         >
                           <p className="whitespace-pre-wrap">{m.content}</p>
                           {isAdminMsg && (
-                            <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-emerald-200/70 font-mono">
+                            <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-primary-foreground/75 font-mono">
                               <span>{formatMsgTime(m.created_at)}</span>
-                              <CheckCheck className="h-3 w-3 text-sky-400" />
+                              <CheckCheck className="h-3 w-3" />
                             </div>
                           )}
                         </div>
@@ -687,7 +702,7 @@ export function AdminChatPanel() {
               </div>
 
               {/* Hızlı Yanıt Şablonları */}
-              <div className="px-3 py-1.5 border-t border-white/10 bg-[#111b21] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <div className="px-3 py-2 border-t border-border bg-muted/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {[
                   "✅ Siparişiniz depoda hazırlanıyor.",
                   "🚚 Servis aracımız bugün marketinize teslim edecek.",
@@ -699,7 +714,7 @@ export function AdminChatPanel() {
                     key={idx}
                     type="button"
                     onClick={() => setReplyText(tmpl)}
-                    className="shrink-0 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300 hover:text-white transition-colors cursor-pointer"
+                    className="shrink-0 rounded-full bg-card hover:bg-accent border border-border px-2.5 py-1 text-[11px] font-medium text-foreground hover:text-primary transition-colors cursor-pointer shadow-xs"
                   >
                     {tmpl}
                   </button>
@@ -707,7 +722,7 @@ export function AdminChatPanel() {
               </div>
 
               {/* Alt Yanıt Yazma Alanı */}
-              <div className="p-3 border-t border-white/10 bg-black/30">
+              <div className="p-3 border-t border-border bg-card">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -720,12 +735,12 @@ export function AdminChatPanel() {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     disabled={sendingReply}
-                    className="flex-1 bg-black/50 border-white/15 text-white placeholder:text-white/40 text-xs h-10 rounded-xl"
+                    className="flex-1 bg-background border-input text-foreground placeholder:text-muted-foreground text-xs h-10 rounded-xl"
                   />
                   <Button
                     type="submit"
                     disabled={sendingReply || !replyText.trim()}
-                    className="h-10 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md gap-1.5"
+                    className="h-10 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-xl cursor-pointer shadow-xs gap-1.5"
                   >
                     <Send className="h-3.5 w-3.5" />
                     <span>Gönder</span>
@@ -734,10 +749,10 @@ export function AdminChatPanel() {
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full py-24 text-center text-white/40">
-              <MessageSquare className="h-12 w-12 text-white/20 mb-3" />
-              <p className="text-sm font-semibold text-white/70">Müşteri Mesajı Seçilmedi</p>
-              <p className="text-xs text-white/40 max-w-sm mt-1">
+            <div className="flex flex-col items-center justify-center h-full py-24 text-center text-muted-foreground">
+              <MessageSquare className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-semibold text-foreground">Müşteri Mesajı Seçilmedi</p>
+              <p className="text-xs text-muted-foreground max-w-sm mt-1">
                 Sol taraftaki listeden bir müşteri sohbetini seçerek konuşma geçmişini görebilir ve
                 doğrudan yanıt yazabilirsiniz.
               </p>

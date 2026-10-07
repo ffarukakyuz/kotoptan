@@ -265,8 +265,13 @@ function AuthPage() {
     <div className="mx-auto w-full max-w-md px-4 py-8">
       {/* Brand Header */}
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#166534] text-white shadow-lg shadow-emerald-950/60 ring-4 ring-emerald-500/20">
-          <Box className="h-7 w-7 stroke-[2.2]" />
+        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white p-1.5 shadow-xl shadow-black/40 ring-4 ring-emerald-500/20">
+          <img
+            src="/kasimogullari-logo.jpg"
+            alt="KasımOğulları Logo"
+            className="h-full w-full object-contain"
+            referrerPolicy="no-referrer"
+          />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-white">
           Kasım<span className="text-[#22c55e]">Oğulları</span> Ltd. Şti.
