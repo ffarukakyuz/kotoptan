@@ -55,11 +55,11 @@ export function WelcomeBanner() {
 
         <div className="flex items-start justify-between gap-3 relative z-10">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black p-0.5 shadow-md overflow-hidden ring-1 ring-emerald-500/30">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md border border-emerald-500/30">
               <img
                 src="/kasimogullari-logo.jpg"
                 alt="KasımOğulları Logo"
-                className="h-full w-full object-contain"
+                className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>

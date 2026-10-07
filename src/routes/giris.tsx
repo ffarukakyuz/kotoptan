@@ -265,11 +265,11 @@ function AuthPage() {
     <div className="mx-auto w-full max-w-md px-4 py-8">
       {/* Brand Header */}
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-black p-1 shadow-xl shadow-black/40 ring-4 ring-emerald-500/20 border border-emerald-500/30">
+        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden shadow-xl shadow-black/40 ring-4 ring-emerald-500/20 border border-emerald-500/30">
           <img
             src="/kasimogullari-logo.jpg"
             alt="KasımOğulları Logo"
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
             referrerPolicy="no-referrer"
           />
         </div>

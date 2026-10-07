@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -52,17 +51,13 @@ export function SplashScreen({
           <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl animate-pulse pointer-events-none" />
 
           {/* Yeni KasımOğulları Logosu */}
-          <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl bg-black p-2 shadow-[0_12px_36px_rgba(16,185,129,0.35)] border border-emerald-500/40 transition-transform duration-700 hover:scale-105">
+          <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl overflow-hidden shadow-[0_12px_36px_rgba(16,185,129,0.35)] border border-emerald-500/40 transition-transform duration-700 hover:scale-105">
             <img
               src="/kasimogullari-logo.jpg"
               alt="KasımOğulları Logo"
-              className="h-full w-full object-contain animate-pulse"
+              className="h-full w-full object-cover animate-pulse"
               referrerPolicy="no-referrer"
             />
-            {/* Parıldayan yıldız rozeti */}
-            <div className="absolute -top-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-black shadow-lg shadow-emerald-500/50">
-              <Sparkles className="h-4 w-4" />
-            </div>
           </div>
         </div>
 
