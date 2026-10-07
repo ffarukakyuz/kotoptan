@@ -73,10 +73,7 @@ import {
   setProductArchivedStatusLocal,
   isProductArchived,
 } from "@/lib/catalog";
-import {
-  extractCoordinates,
-  getGoogleMapsNavigationUrl,
-} from "@/lib/location-utils";
+import { extractCoordinates, getGoogleMapsNavigationUrl } from "@/lib/location-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -577,7 +574,9 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
                         return (
                           <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
                             <MapPin className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                            <span>GPS Konumu: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</span>
+                            <span>
+                              GPS Konumu: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                            </span>
                           </div>
                         );
                       })()}
@@ -691,7 +690,9 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
                         >
                           <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                             <Navigation className="h-4 w-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-                            {coords ? "Google Maps'te Aç / Navigasyon Başlat (GPS)" : "Google Maps'te Aç"}
+                            {coords
+                              ? "Google Maps'te Aç / Navigasyon Başlat (GPS)"
+                              : "Google Maps'te Aç"}
                           </a>
                         </Button>
                       );

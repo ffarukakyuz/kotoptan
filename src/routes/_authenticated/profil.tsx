@@ -105,11 +105,7 @@ function ProfilePage() {
     );
   };
 
-  const handleLocationFromMap = (loc: {
-    lat: number;
-    lng: number;
-    address: string;
-  }) => {
+  const handleLocationFromMap = (loc: { lat: number; lng: number; address: string }) => {
     setSelectedLocation({ lat: loc.lat, lng: loc.lng });
     const fullAddr = `${loc.address} (📍 Konum: ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)})`;
     setForm((prev) => ({
@@ -242,7 +238,9 @@ function ProfilePage() {
             <div className="mt-1.5 flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
               <span className="flex items-center gap-1.5 truncate">
                 <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                <span>Harita Pimi: {selectedLocation.lat.toFixed(5)}, {selectedLocation.lng.toFixed(5)}</span>
+                <span>
+                  Harita Pimi: {selectedLocation.lat.toFixed(5)}, {selectedLocation.lng.toFixed(5)}
+                </span>
               </span>
               <button
                 type="button"

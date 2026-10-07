@@ -397,7 +397,8 @@ function CartPage() {
                     <span className="flex items-center gap-1.5 truncate">
                       <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0" />
                       <span className="truncate">
-                        Harita Pimi: {selectedLocation.lat.toFixed(5)}, {selectedLocation.lng.toFixed(5)}
+                        Harita Pimi: {selectedLocation.lat.toFixed(5)},{" "}
+                        {selectedLocation.lng.toFixed(5)}
                       </span>
                     </span>
                     <button

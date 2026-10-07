@@ -40,8 +40,12 @@ export function WelcomeBanner() {
   if (!visible || !user) return null;
 
   const displayName =
-    profile?.business_name || profile?.full_name || user.email?.split("@")[0] || "Değerli Müşterimiz";
-  const district = profile?.district || (profile?.address?.includes("Tatvan") ? "Tatvan" : "Bitlis");
+    profile?.business_name ||
+    profile?.full_name ||
+    user.email?.split("@")[0] ||
+    "Değerli Müşterimiz";
+  const district =
+    profile?.district || (profile?.address?.includes("Tatvan") ? "Tatvan" : "Bitlis");
 
   return (
     <div className="fixed top-18 right-4 left-4 sm:left-auto sm:right-6 sm:w-96 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -51,7 +55,7 @@ export function WelcomeBanner() {
 
         <div className="flex items-start justify-between gap-3 relative z-10">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-md overflow-hidden ring-1 ring-emerald-500/30">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black p-0.5 shadow-md overflow-hidden ring-1 ring-emerald-500/30">
               <img
                 src="/kasimogullari-logo.jpg"
                 alt="KasımOğulları Logo"
@@ -84,7 +88,8 @@ export function WelcomeBanner() {
         </div>
 
         <p className="mt-2.5 text-xs text-white/75 leading-relaxed relative z-10">
-          KasımOğulları toptan kataloğu hazır. Güncel toptan ürünleri inceleyip hemen sipariş talebi gönderebilirsiniz.
+          KasımOğulları toptan kataloğu hazır. Güncel toptan ürünleri inceleyip hemen sipariş talebi
+          gönderebilirsiniz.
         </p>
 
         <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs relative z-10">

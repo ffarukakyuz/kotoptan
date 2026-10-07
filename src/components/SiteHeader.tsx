@@ -102,7 +102,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo & Name */}
         <Link to="/" className="group flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1 shadow-md shadow-black/50 transition-transform group-hover:scale-105 active:scale-95 overflow-hidden ring-1 ring-white/20">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-black p-0.5 shadow-md shadow-black/50 transition-transform group-hover:scale-105 active:scale-95 overflow-hidden ring-1 ring-emerald-500/30">
             <img
               src="/kasimogullari-logo.jpg"
               alt="KasımOğulları Logo"

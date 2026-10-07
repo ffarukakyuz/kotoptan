@@ -75,7 +75,9 @@ function OrderCard({ order }: { order: OrderRow }) {
           <div className="mt-3 flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-border/50">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md">
               <MapPin className="h-3.5 w-3.5" />
-              <span>Harita Pimi: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</span>
+              <span>
+                Harita Pimi: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              </span>
             </span>
             <Button size="sm" variant="outline" asChild className="h-7 text-xs">
               <a

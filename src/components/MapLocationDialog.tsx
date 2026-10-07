@@ -218,7 +218,8 @@ export function MapLocationDialog({
             Haritadan Konum Seçin
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
-            Dükkanınızın veya deponuzun tam kapı konumunu harita üzerindeki pimi kaydırarak belirleyin.
+            Dükkanınızın veya deponuzun tam kapı konumunu harita üzerindeki pimi kaydırarak
+            belirleyin.
           </DialogDescription>
         </DialogHeader>
 
@@ -274,11 +275,7 @@ export function MapLocationDialog({
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-1">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Vazgeç
           </Button>
           <Button

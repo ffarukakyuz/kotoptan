@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -63,7 +58,9 @@ export function CustomerProfileModal({
 
     async function loadData() {
       const cleanPhone = (userPhone || "").replace(/\D/g, "");
-      const shortPhone = cleanPhone.startsWith("90") ? cleanPhone.slice(2) : cleanPhone.replace(/^0/, "");
+      const shortPhone = cleanPhone.startsWith("90")
+        ? cleanPhone.slice(2)
+        : cleanPhone.replace(/^0/, "");
 
       // 1. Yerel kullanıcı verisinden ara
       const fallback =
@@ -79,7 +76,7 @@ export function CustomerProfileModal({
       let foundPhone = fallback?.phone || userPhone || "";
       let foundAddress = fallback?.address || "";
       let foundDistrict = fallback?.district || initialDistrict || "";
-      let isAdm = fallback?.role === "admin";
+      const isAdm = fallback?.role === "admin";
 
       // 2. Supabase profiles tablosundan ara
       try {
@@ -114,7 +111,8 @@ export function CustomerProfileModal({
         else if (text.includes("güroymak") || text.includes("guroymak")) foundDistrict = "Güroymak";
         else if (text.includes("hizan")) foundDistrict = "Hizan";
         else if (text.includes("mutki")) foundDistrict = "Mutki";
-        else if (text.includes("merkez") || text.includes("bitlis")) foundDistrict = "Bitlis Merkez";
+        else if (text.includes("merkez") || text.includes("bitlis"))
+          foundDistrict = "Bitlis Merkez";
         else foundDistrict = "Tatvan";
       }
 

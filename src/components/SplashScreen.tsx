@@ -38,21 +38,21 @@ export function SplashScreen({
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white text-slate-900 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#060b08] text-white transition-opacity duration-300 ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
       {/* Arka plan yumuşak zümrüt radyal ışık efekti */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,rgba(255,255,255,0)_70%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.18)_0%,rgba(6,11,8,0.95)_75%)] pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-sm">
         {/* Logo ve Animasyon Alanı (Kutu yerine logonun kendisi) */}
         <div className="relative mb-5 flex items-center justify-center">
           {/* Arkadaki yumuşak yeşil parlama */}
-          <div className="absolute -inset-4 rounded-full bg-emerald-500/15 blur-2xl animate-pulse pointer-events-none" />
+          <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl animate-pulse pointer-events-none" />
 
           {/* Yeni KasımOğulları Logosu */}
-          <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl bg-white p-2 shadow-[0_12px_36px_rgba(16,185,129,0.16)] border border-emerald-100 transition-transform duration-700 hover:scale-105">
+          <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl bg-black p-2 shadow-[0_12px_36px_rgba(16,185,129,0.35)] border border-emerald-500/40 transition-transform duration-700 hover:scale-105">
             <img
               src="/kasimogullari-logo.jpg"
               alt="KasımOğulları Logo"
@@ -60,32 +60,34 @@ export function SplashScreen({
               referrerPolicy="no-referrer"
             />
             {/* Parıldayan yıldız rozeti */}
-            <div className="absolute -top-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md">
+            <div className="absolute -top-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-black shadow-lg shadow-emerald-500/50">
               <Sparkles className="h-4 w-4" />
             </div>
           </div>
         </div>
 
         {/* Marka İsmi ve Tipografi */}
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mb-1 flex items-center justify-center gap-1.5">
-          <span>KASIMOĞULLARI</span>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-1 flex items-center justify-center gap-1.5">
+          <span>
+            KASIM<span className="text-[#22c55e]">OĞULLARI</span>
+          </span>
         </h1>
-        <p className="text-xs font-bold tracking-wider uppercase text-emerald-700 mb-6">
+        <p className="text-xs font-bold tracking-wider uppercase text-emerald-400/90 mb-6">
           Ltd. Şti. • Tatvan Dağıtım Merkezi
         </p>
 
         {/* İnce Modern İlerleme Çubuğu */}
-        <div className="w-52 h-2 bg-slate-100 rounded-full overflow-hidden mb-3.5 border border-slate-200/80 shadow-inner">
+        <div className="w-52 h-2 bg-white/10 rounded-full overflow-hidden mb-3.5 border border-white/10 shadow-inner">
           <div
-            className="h-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-full transition-all duration-300 ease-out shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+            className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 rounded-full transition-all duration-300 ease-out shadow-[0_0_14px_rgba(34,197,94,0.6)]"
             style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Durum Metni */}
         <div className="flex items-center justify-center gap-2 mt-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-600 animate-ping" />
-          <p className="text-xs sm:text-sm font-semibold text-emerald-800 tracking-wide">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+          <p className="text-xs sm:text-sm font-semibold text-emerald-300 tracking-wide">
             {message}
           </p>
         </div>

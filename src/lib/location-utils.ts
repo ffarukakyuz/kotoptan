@@ -30,14 +30,7 @@ export function extractCoordinates(text?: string | null): GeoLocation | null {
   if (match) {
     const lat = parseFloat(match[1]);
     const lng = parseFloat(match[2]);
-    if (
-      !isNaN(lat) &&
-      !isNaN(lng) &&
-      lat >= -90 &&
-      lat <= 90 &&
-      lng >= -180 &&
-      lng <= 180
-    ) {
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
       return { lat, lng };
     }
   }
@@ -69,12 +62,7 @@ export async function reverseGeocodeNominatim(
 
   const city = addr.city || addr.province || addr.state || "";
   const district =
-    addr.town ||
-    addr.district ||
-    addr.county ||
-    addr.suburb ||
-    addr.city_district ||
-    "";
+    addr.town || addr.district || addr.county || addr.suburb || addr.city_district || "";
   const neighbourhood = addr.neighbourhood || addr.quarter || addr.suburb || "";
   const road = addr.road || addr.street || addr.pedestrian || "";
   const houseNumber = addr.house_number || "";
@@ -83,15 +71,11 @@ export async function reverseGeocodeNominatim(
   const parts: string[] = [];
   if (neighbourhood) {
     parts.push(
-      neighbourhood.toLowerCase().includes("mah")
-        ? neighbourhood
-        : `${neighbourhood} Mah.`,
+      neighbourhood.toLowerCase().includes("mah") ? neighbourhood : `${neighbourhood} Mah.`,
     );
   }
   if (road) {
-    parts.push(
-      houseNumber ? `${road} No: ${houseNumber}` : road,
-    );
+    parts.push(houseNumber ? `${road} No: ${houseNumber}` : road);
   }
   if (district) {
     parts.push(district);

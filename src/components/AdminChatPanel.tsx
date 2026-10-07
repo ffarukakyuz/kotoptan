@@ -628,7 +628,10 @@ export function AdminChatPanel({ onNavigateToOrders }: AdminChatPanelProps = {})
                       Sohbeti Sonlandır
                     </Button>
                   ) : (
-                    <Badge variant="outline" className="border-border text-muted-foreground text-xs">
+                    <Badge
+                      variant="outline"
+                      className="border-border text-muted-foreground text-xs"
+                    >
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-primary" />
                       Sonlandırılmış
                     </Badge>
@@ -670,7 +673,9 @@ export function AdminChatPanel({ onNavigateToOrders }: AdminChatPanelProps = {})
                           ) : (
                             <>
                               <Bot className="h-2.5 w-2.5 text-sky-500" />
-                              <span className="text-sky-600 dark:text-sky-400 font-medium">Ko AI Asistan</span>
+                              <span className="text-sky-600 dark:text-sky-400 font-medium">
+                                Ko AI Asistan
+                              </span>
                             </>
                           )}
                           <span>•</span>
