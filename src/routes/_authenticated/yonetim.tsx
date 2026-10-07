@@ -28,6 +28,11 @@ import {
   MessageSquare,
   MapPin,
   Navigation,
+  X,
+  Camera,
+  ImagePlus,
+  Eraser,
+  Link2,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -807,12 +812,14 @@ function ProductsPanel({
 }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyProduct });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [productSearch, setProductSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("hepsi");
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   const pickImage = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -825,24 +832,27 @@ function ProductsPanel({
       setForm((f) => ({ ...f, image_url: dataUrl }));
       toast.success("Fotoğraf yüklendi");
 
-      // Yapay zeka ile otomatik ürün analizi ve alanları doldurma
-      toast.info("Yapay zeka görseli analiz ediyor...");
-      const aiResult = await analyzeProductPhoto(dataUrl, "image/jpeg", form.name || undefined);
-      if (aiResult.ok && aiResult.product) {
-        const p = aiResult.product;
-        const validName = !isBogusProductName(p.name) ? p.name : "";
-        setForm((f) => ({
-          ...f,
-          name: f.name ? f.name : validName,
-          category: f.category !== "gida" ? f.category : p.category,
-          unit: f.unit !== "adet" ? f.unit : p.unit,
-          description: f.description ? f.description : p.description,
-          image_url: dataUrl,
-        }));
-        if (validName) {
-          toast.success(`Yapay zeka "${validName}" ürününü tespit etti ve formu doldurdu!`);
-        } else {
-          toast.info("Fotoğraf yüklendi. Lütfen ürün adını yazınız.");
+      // Yalnızca yeni ürün ekleme diyaloğunda AI çalışsın
+      // Var olan ürün düzenlenirken (editingId varsa) kullanıcının mevcut metinlerini ezmeyelim!
+      if (!editingId) {
+        toast.info("Yapay zeka görseli analiz ediyor...");
+        const aiResult = await analyzeProductPhoto(dataUrl, "image/jpeg", form.name || undefined);
+        if (aiResult.ok && aiResult.product) {
+          const p = aiResult.product;
+          const validName = !isBogusProductName(p.name) ? p.name : "";
+          setForm((f) => ({
+            ...f,
+            name: f.name ? f.name : validName,
+            category: f.category !== "gida" ? f.category : p.category,
+            unit: f.unit !== "adet" ? f.unit : p.unit,
+            description: f.description ? f.description : p.description,
+            image_url: dataUrl,
+          }));
+          if (validName) {
+            toast.success(`Yapay zeka "${validName}" ürününü tespit etti ve formu doldurdu!`);
+          } else {
+            toast.info("Fotoğraf yüklendi. Lütfen ürün adını yazınız.");
+          }
         }
       }
     } catch {
@@ -884,10 +894,8 @@ function ProductsPanel({
       toast.info(`"${target.name}" düzenleme için hazırlandı.`);
       setTimeout(() => {
         if (typeof document !== "undefined") {
-          const formEl = document.getElementById("product-edit-form");
-          formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-          const nameInput = document.getElementById("pr-name");
-          nameInput?.focus();
+          const itemEl = document.getElementById(`edit-product-${target.id}`);
+          itemEl?.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }, 150);
     }
@@ -896,10 +904,14 @@ function ProductsPanel({
   const reset = () => {
     setEditingId(null);
     setForm({ ...emptyProduct });
+    setIsAddDialogOpen(false);
+    setShowUrlInput(false);
   };
 
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const submit = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
     const parsed = productSchema.safeParse(form);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Bilgileri kontrol edin");
@@ -954,7 +966,6 @@ function ProductsPanel({
   };
 
   const [productView, setProductView] = useState<"aktif" | "arsiv">("aktif");
-  const [archivingProduct, setArchivingProduct] = useState<Product | null>(null);
   const [restoringProduct, setRestoringProduct] = useState<Product | null>(null);
   const [permanentDeletingProduct, setPermanentDeletingProduct] = useState<Product | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -994,7 +1005,6 @@ function ProductsPanel({
     toast.success(
       `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
     );
-    setArchivingProduct(null);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("catalog_updated"));
     }
@@ -1179,565 +1189,868 @@ function ProductsPanel({
   };
 
   return (
-    <div className="mt-4 grid gap-6 lg:grid-cols-[360px_1fr]">
-      <form
-        id="product-edit-form"
-        onSubmit={submit}
-        className={`h-fit space-y-3 rounded-xl border bg-card p-5 shadow-card transition-all ${
-          editingId ? "border-amber-500/60 ring-2 ring-amber-500/20" : "border-border"
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold">{editingId ? "Ürünü düzenle" : "Yeni ürün"}</h2>
-            {editingId && (
-              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                Düzenleme
-              </span>
-            )}
-          </div>
+    <div className="mt-4 space-y-4">
+      {/* Gizli görsel dosya seçici */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void pickImage(file);
+        }}
+      />
+
+      {/* YENİ ÜRÜN EKLEME MODAL DİYALOĞU */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-emerald-600" />
+              Yeni Ürün Ekle
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Kataloğa yeni ürün eklemek için bilgileri doldurun. Cihazdan fotoğraf yüklerseniz
+              yapay zeka alanları otomatik tamamlar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={submit} className="space-y-3 pt-1">
+            <div className="space-y-1">
+              <Label htmlFor="add-pr-name" className="text-xs font-semibold">
+                Ürün Adı
+              </Label>
+              <Input
+                id="add-pr-name"
+                value={form.name}
+                maxLength={120}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Örn: Çaykur Rize Turist Çay 1000g"
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="add-pr-desc" className="text-xs font-semibold">
+                Paket / Koli İçi Bilgisi
+              </Label>
+              <Textarea
+                id="add-pr-desc"
+                rows={2}
+                placeholder="Örn: Paket içi 6 Adet veya Koli içi 12 Adet"
+                value={form.description}
+                maxLength={500}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Kategori</Label>
+                <Select
+                  value={
+                    PRODUCT_CATEGORIES.some((c) => c.value === form.category)
+                      ? form.category
+                      : "gida"
+                  }
+                  onValueChange={(v) => setForm({ ...form, category: v })}
+                >
+                  <SelectTrigger className="text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="add-pr-unit" className="text-xs font-semibold">
+                  Birim
+                </Label>
+                <Input
+                  id="add-pr-unit"
+                  placeholder="adet, koli, paket..."
+                  value={form.unit}
+                  maxLength={30}
+                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  className="text-xs h-9"
+                />
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {UNITS.map((u) => (
+                    <button
+                      key={u.value}
+                      type="button"
+                      onClick={() => setForm({ ...form, unit: u.value })}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors cursor-pointer ${
+                        form.unit.toLowerCase() === u.value.toLowerCase()
+                          ? "bg-emerald-600 text-white font-bold"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {u.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Görsel Yükleme */}
+            <div className="space-y-1 border-t border-border/60 pt-3">
+              <Label className="text-xs font-semibold">Ürün Fotoğrafı</Label>
+              <div className="flex items-center gap-3">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-white p-1">
+                  <img
+                    src={getPublicProductImageUrl(form.image_url, form.name, form.category)}
+                    alt="Önizleme"
+                    onError={(e) => handleProductImageError(e, form.name, form.category)}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Görsel URL veya dosya yükleyin"
+                      value={
+                        form.image_url.startsWith("data:") ? "(Yüklenen görsel)" : form.image_url
+                      }
+                      onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                      className="text-xs h-8"
+                    />
+                    {form.image_url && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setForm({ ...form, image_url: "" })}
+                        className="h-8 text-xs text-muted-foreground cursor-pointer"
+                      >
+                        Kaldır
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => fileRef.current?.click()}
+                      className="h-7 text-xs gap-1.5 cursor-pointer"
+                    >
+                      <Upload className="h-3 w-3" />
+                      {uploading ? "Yükleniyor..." : "Cihazdan Fotoğraf Seç"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Katalogda görünsün switch */}
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2 bg-muted/30">
+              <Label htmlFor="add-pr-active" className="text-xs font-medium cursor-pointer">
+                Katalogda görünsün (Aktif Ürün)
+              </Label>
+              <Switch
+                id="add-pr-active"
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+              />
+            </div>
+
+            <DialogFooter className="gap-2 border-t border-border/80 pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={reset}
+                disabled={busy}
+                className="cursor-pointer text-xs"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={busy}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer text-xs gap-1.5"
+              >
+                {busy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
+                Ürünü Ekle
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Üst Yönetim Araç Çubuğu */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm">
+        {/* Sol: Sekmeler (Aktif Ürünler / Arşiv) */}
+        <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-xl w-fit border border-border/60">
+          <button
+            type="button"
+            onClick={() => setProductView("aktif")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              productView === "aktif"
+                ? "bg-emerald-600 text-white shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <PackageSearch className="h-3.5 w-3.5" />
+            Aktif Ürünler ({activeProducts.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setProductView("arsiv")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              productView === "arsiv"
+                ? "bg-amber-600 text-white shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Arşiv ({archivedProducts.length})
+          </button>
+        </div>
+
+        {/* Sağ: Yeni Ürün Ekle Butonu & Aksiyonlar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            type="button"
+            onClick={() => {
+              reset();
+              setIsAddDialogOpen(true);
+            }}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-9 px-3.5 text-xs gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Yeni Ürün Ekle</span>
+          </Button>
+
           {onNavigateToDrive && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onNavigateToDrive}
-              className="h-7 gap-1 px-2 text-xs"
+              className="h-9 gap-1.5 text-xs cursor-pointer"
             >
               <Cloud className="h-3.5 w-3.5 text-primary" />
-              Drive Kataloğu
+              <span>Drive Kataloğu</span>
             </Button>
           )}
-        </div>
-        <div>
-          <Label htmlFor="pr-name">Ürün adı</Label>
-          <Input
-            id="pr-name"
-            value={form.name}
-            maxLength={120}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label htmlFor="pr-desc">Paket / Koli içi bilgisi</Label>
-          <Textarea
-            id="pr-desc"
-            rows={2}
-            placeholder="Örn: Paket içi 6 Adet veya Koli içi 12 Adet"
-            value={form.description}
-            maxLength={500}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label>Kategori</Label>
-          <Select
-            value={
-              PRODUCT_CATEGORIES.some((c) => c.value === form.category) ? form.category : "gida"
-            }
-            onValueChange={(v) => setForm({ ...form, category: v })}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={syncAllImagesInDatabase}
+            disabled={syncingImages || isLoading}
+            className="h-9 gap-1.5 text-xs cursor-pointer"
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_CATEGORIES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="pr-unit">Birim</Label>
-          <Input
-            id="pr-unit"
-            placeholder="Seçin ya da yazın (örn: adet, koli, paket)"
-            value={form.unit}
-            maxLength={30}
-            onChange={(e) => setForm({ ...form, unit: e.target.value })}
-          />
-          <div className="mt-2 flex flex-wrap gap-2">
-            {UNITS.map((u) => {
-              const selected = form.unit.toLowerCase() === u.value.toLowerCase();
-              return (
-                <button
-                  key={u.value}
-                  type="button"
-                  onClick={() => setForm({ ...form, unit: u.value })}
-                  className={
-                    selected
-                      ? "rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-                      : "rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary hover:text-foreground"
-                  }
-                >
-                  {u.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div>
-          <Label>Ürün fotoğrafı (public/ dosya yolu veya dosya yükleme)</Label>
-          <div className="mt-1 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-              <img
-                src={getPublicProductImageUrl(form.image_url, form.name, form.category)}
-                alt="Önizleme"
-                onError={(e) => handleProductImageError(e, form.name, form.category)}
-                className="h-full w-full object-contain p-1 bg-white"
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-2 w-full">
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Görsel URL veya cihazdan yükleyin"
-                  value={
-                    form.image_url.startsWith("data:")
-                      ? "(Yüklenen dosya / base64)"
-                      : form.image_url
-                  }
-                  onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                  className="text-xs"
-                />
-                {form.image_url && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setForm({ ...form, image_url: "" })}
-                  >
-                    Kaldır
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) void pickImage(file);
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploading}
-                  onClick={() => fileRef.current?.click()}
-                  className="text-xs"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  {uploading
-                    ? "Yükleniyor..."
-                    : form.image_url
-                      ? "Cihazdan değiştir"
-                      : "Cihazdan dosya yükle"}
-                </Button>
-                <span className="text-[11px] text-muted-foreground">
-                  Görsel URL girebilir veya cihazınızdan doğrudan fotoğraf yükleyebilirsiniz.
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-          <Label htmlFor="pr-active">Katalogda görünsün</Label>
-          <Switch
-            id="pr-active"
-            checked={form.is_active}
-            onCheckedChange={(v) => setForm({ ...form, is_active: v })}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit" disabled={busy}>
-            <Plus className="h-4 w-4" />
-            {editingId ? "Güncelle" : "Ekle"}
+            <RefreshCw className={`h-3.5 w-3.5 ${syncingImages ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Görselleri Depoyla Eşitle</span>
           </Button>
-          {editingId && (
-            <Button type="button" variant="outline" onClick={reset}>
-              Vazgeç
-            </Button>
-          )}
         </div>
-      </form>
+      </div>
 
-      <div>
-        {/* Görünüm Seçimi (Aktif Ürünler / Arşiv) */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-xl w-fit border border-border/60">
-            <button
-              type="button"
-              onClick={() => setProductView("aktif")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                productView === "aktif"
-                  ? "bg-emerald-600 text-white shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <PackageSearch className="h-3.5 w-3.5" />
-              Aktif Ürünler ({activeProducts.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setProductView("arsiv")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                productView === "arsiv"
-                  ? "bg-amber-600 text-white shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Archive className="h-3.5 w-3.5" />
-              Arşiv ({archivedProducts.length})
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={syncAllImagesInDatabase}
-              disabled={syncingImages || isLoading}
-              className="h-8 gap-1.5 text-xs"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${syncingImages ? "animate-spin" : ""}`} />
-              Görselleri Depoyla Eşitle
-            </Button>
+      {/* Arşiv Bilgilendirme Kutusu */}
+      {productView === "arsiv" && (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+          <Archive className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <div className="space-y-1">
+            <p className="font-bold">📦 Ürün Arşivi (Silinmeyen Ürünler)</p>
+            <p className="leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+              Sildiğiniz veya geçici olarak satıştan kaldırdığınız ürünler burada güvenle saklanır.
+              Müşteriler katalogda bu ürünleri göremez. Ürünü tekrar yayına almak için{" "}
+              <strong>"Geri Yükle"</strong> butonuna tıklayabilir veya gerekirse{" "}
+              <strong>"Kalıcı Olarak Sil"</strong> butonunu kullanabilirsiniz.
+            </p>
           </div>
         </div>
+      )}
 
-        {/* Arşiv Bilgilendirme Kutusu */}
-        {productView === "arsiv" && (
-          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-            <Archive className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-            <div className="space-y-1">
-              <p className="font-bold">📦 Ürün Arşivi (Silinmeyen Ürünler)</p>
-              <p className="leading-relaxed text-amber-900/80 dark:text-amber-200/80">
-                Sildiğiniz veya geçici olarak satıştan kaldırdığınız ürünler burada güvenle
-                saklanır. Müşteriler katalogda bu ürünleri göremez. Ürünü tekrar yayına almak için{" "}
-                <strong>"Geri Yükle"</strong> butonuna tıklayabilir veya gerekirse{" "}
-                <strong>"Kalıcı Olarak Sil"</strong> butonunu kullanabilirsiniz.
+      {/* Arama & Kategori Filtresi */}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={
+              productView === "arsiv" ? "Arşivdeki ürünlerde ara..." : "Aktif ürünlerde ara..."
+            }
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            className="pl-8 text-sm"
+          />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hepsi">Tüm Kategoriler</SelectItem>
+            {PRODUCT_CATEGORIES.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading ? (
+        <Skeleton className="h-40 rounded-xl" />
+      ) : filteredProducts.length === 0 ? (
+        <div className="py-12 text-center text-sm text-muted-foreground border border-dashed border-border/80 rounded-2xl bg-card/40">
+          {productView === "arsiv" ? (
+            <div className="flex flex-col items-center gap-2">
+              <Archive className="h-8 w-8 text-muted-foreground/40" />
+              <p className="font-medium">Arşivde ürün bulunmuyor.</p>
+              <p className="text-xs text-muted-foreground/70">
+                Aktif ürünler listesinden sildiğiniz ürünler burada saklanır.
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Arama & Kategori Filtresi */}
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={
-                productView === "arsiv" ? "Arşivdeki ürünlerde ara..." : "Aktif ürünlerde ara..."
-              }
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-              className="pl-8 text-sm"
-            />
-          </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hepsi">Tüm Kategoriler</SelectItem>
-              {PRODUCT_CATEGORIES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          ) : data.length === 0 ? (
+            "Henüz ürün bulunmuyor."
+          ) : (
+            "Aramaya uygun ürün bulunamadı."
+          )}
         </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredProducts.map((p) => {
+            const inStock = isProductInStock(p);
+            const isBusy = togglingStockId === p.id;
+            const isArchived = p.is_active === false;
 
-        {isLoading ? (
-          <Skeleton className="h-40 rounded-xl" />
-        ) : filteredProducts.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground border border-dashed border-border/80 rounded-2xl bg-card/40">
-            {productView === "arsiv" ? (
-              <div className="flex flex-col items-center gap-2">
-                <Archive className="h-8 w-8 text-muted-foreground/40" />
-                <p className="font-medium">Arşivde ürün bulunmuyor.</p>
-                <p className="text-xs text-muted-foreground/70">
-                  Aktif ürünler listesinden sildiğiniz ürünler burada saklanır.
-                </p>
-              </div>
-            ) : data.length === 0 ? (
-              "Henüz ürün bulunmuyor."
-            ) : (
-              "Aramaya uygun ürün bulunamadı."
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredProducts.map((p) => {
-              const inStock = isProductInStock(p);
-              const isBusy = togglingStockId === p.id;
-              const isArchived = p.is_active === false;
-
+            if (editingId === p.id) {
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center justify-between gap-2 rounded-xl border p-2 sm:p-3 shadow-card overflow-hidden transition-all ${
-                    isArchived
-                      ? "border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/10"
-                      : "border-border bg-card"
-                  }`}
+                  id={`edit-product-${p.id}`}
+                  className="rounded-2xl border-2 border-emerald-500 bg-card p-3 sm:p-4 shadow-lg ring-4 ring-emerald-500/10 transition-all space-y-3"
                 >
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                    <div className="flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-                      <img
-                        src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
-                        alt={p.name}
-                        loading="lazy"
-                        onError={(e) => handleProductImageError(e, p.name, p.category)}
-                        className="h-full w-full object-contain p-1 bg-white"
-                      />
+                  <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <Pencil className="h-3.5 w-3.5" />
+                      Ürün Bilgilerini Düzenle
+                    </span>
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                      title="Düzenlemeyi İptal Et"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      <span>Kapat</span>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-start gap-4">
+                    {/* FOTOĞRAF ÜSTÜNDE FOTOĞRAF EKLEME / DEĞİŞTİRME */}
+                    <div className="flex flex-col items-center gap-1.5 shrink-0 self-center md:self-start">
+                      <div
+                        onClick={() => fileRef.current?.click()}
+                        className="relative flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-emerald-500 bg-black/30 p-1 cursor-pointer group shadow-md hover:border-emerald-400 transition-all"
+                        title="Fotoğrafı değiştirmek veya yeni fotoğraf yüklemek için tıklayın"
+                      >
+                        <img
+                          src={getPublicProductImageUrl(
+                            form.image_url || p.image_url,
+                            form.name || p.name,
+                            form.category || p.category,
+                          )}
+                          alt={form.name || p.name}
+                          onError={(e) =>
+                            handleProductImageError(
+                              e,
+                              form.name || p.name,
+                              form.category || p.category,
+                            )
+                          }
+                          className="h-full w-full object-contain"
+                        />
+                        {/* Fotoğraf Üzerinde Foto Ekle Katmanı */}
+                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 flex flex-col items-center justify-center text-white transition-opacity">
+                          <Camera className="h-5 w-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-[10px] font-bold text-emerald-300 mt-1 leading-none text-center px-1">
+                            {uploading ? "Yükleniyor..." : "Foto Ekle"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Fotoğraf Altı Hızlı Butonlar */}
+                      <div className="flex items-center gap-1 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          disabled={uploading}
+                          className="px-2 py-0.5 rounded bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 font-semibold hover:bg-emerald-600/25 border border-emerald-500/30 cursor-pointer flex items-center gap-1"
+                          title="Cihazdan Fotoğraf Seç"
+                        >
+                          <Upload className="h-3 w-3" />
+                          <span>Foto Seç</span>
+                        </button>
+                        {form.image_url && (
+                          <button
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, image_url: "" }))}
+                            className="px-1.5 py-0.5 rounded text-destructive hover:bg-destructive/10 cursor-pointer font-medium"
+                            title="Fotoğrafı Kaldır"
+                          >
+                            Kaldır
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setShowUrlInput(!showUrlInput)}
+                          className="px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="URL ile Fotoğraf Ekle"
+                        >
+                          <Link2 className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {showUrlInput && (
+                        <div className="w-full mt-1">
+                          <Input
+                            placeholder="Görsel linki yapıştırın..."
+                            value={
+                              form.image_url.startsWith("data:")
+                                ? "(Yüklenen dosya)"
+                                : form.image_url
+                            }
+                            onChange={(e) =>
+                              setForm((prev) => ({ ...prev, image_url: e.target.value }))
+                            }
+                            className="h-6 text-[10px] w-36 px-1.5"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs sm:text-sm font-semibold">{p.name}</p>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
-                        <span>
-                          {categoryLabel(p.category)} · {p.unit}
-                        </span>
-                        {extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id) &&
-                          (() => {
-                            const info = extractPackageOrBoxInfo(
-                              p.description,
-                              p.unit,
-                              p.name,
-                              p.id,
-                            )!;
-                            const isPack = info.toLowerCase().startsWith("paket");
-                            return (
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                                  isPack
-                                    ? "text-purple-700 bg-purple-500/10 border-purple-500/30"
-                                    : "text-amber-700 bg-amber-500/10 border-amber-500/30"
-                                }`}
-                              >
-                                {isPack ? (
-                                  <Package className="h-3 w-3 text-purple-600" />
-                                ) : (
-                                  <Boxes className="h-3 w-3 text-amber-600" />
-                                )}
-                                {info}
-                              </span>
-                            );
-                          })()}
-                        {cleanProductDescription(p.description) && (
-                          <span className="text-muted-foreground/80 hidden sm:inline">
-                            · {cleanProductDescription(p.description)}
-                          </span>
-                        )}
-                        {isArchived ? (
-                          <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                            ● Arşivde (Gizli)
-                          </span>
-                        ) : inStock ? (
-                          <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            ● Stokta
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
-                            ● Tükendi
-                          </span>
-                        )}
-                      </p>
+
+                    {/* YAZILAR ÜSTÜNDE SİLME & DÜZELTME ALANLARI */}
+                    <div className="min-w-0 flex-1 space-y-2.5 w-full">
+                      {/* 1. Ürün İsmi (Silme ve Düzeltme Butonlu) */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-semibold text-muted-foreground">
+                            Ürün İsmi
+                          </label>
+                          {form.name && (
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, name: "" }))}
+                              className="text-[10px] text-destructive hover:underline flex items-center gap-0.5 cursor-pointer"
+                              title="Tüm ismi sil"
+                            >
+                              <Eraser className="h-3 w-3" />
+                              <span>İsmi Temizle</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <Input
+                            value={form.name}
+                            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                            placeholder="Ürün adı yazın..."
+                            maxLength={120}
+                            className="h-8 pr-8 text-xs sm:text-sm font-bold bg-background text-foreground border-emerald-500/50 focus:border-emerald-500"
+                            autoFocus
+                          />
+                          {form.name && (
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, name: "" }))}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded"
+                              title="Sil"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2. Paket / Koli İçi Bilgisi */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-semibold text-muted-foreground">
+                            Paket / Koli İçi Bilgisi (Açıklama)
+                          </label>
+                          {form.description && (
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, description: "" }))}
+                              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 cursor-pointer"
+                              title="Açıklamayı temizle"
+                            >
+                              <X className="h-3 w-3" />
+                              <span>Temizle</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <Input
+                            value={form.description}
+                            onChange={(e) =>
+                              setForm((prev) => ({ ...prev, description: e.target.value }))
+                            }
+                            placeholder="Örn: Koli içi 12 Adet veya Paket içi 6 Adet"
+                            maxLength={300}
+                            className="h-7 pr-8 text-[11px] sm:text-xs bg-background text-foreground border-border"
+                          />
+                          {form.description && (
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, description: "" }))}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded"
+                              title="Sil"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        {/* Hızlı Koli / Paket Şablonları */}
+                        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                          <span className="text-[10px] text-muted-foreground">Hızlı ekle:</span>
+                          {[
+                            "Koli içi 12 Adet",
+                            "Koli içi 24 Adet",
+                            "Paket içi 6 Adet",
+                            "1 Koli",
+                          ].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, description: preset }))}
+                              className="px-1.5 py-0.2 rounded text-[10px] bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/60 cursor-pointer"
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3. Kategori ve Birim */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">
+                            Kategori
+                          </label>
+                          <select
+                            value={form.category}
+                            onChange={(e) =>
+                              setForm((prev) => ({ ...prev, category: e.target.value }))
+                            }
+                            className="h-8 w-full px-2 text-xs font-medium rounded-md border border-border bg-background text-foreground cursor-pointer"
+                          >
+                            {PRODUCT_CATEGORIES.map((c) => (
+                              <option key={c.value} value={c.value}>
+                                {c.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">
+                            Birim
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={form.unit}
+                              onChange={(e) =>
+                                setForm((prev) => ({ ...prev, unit: e.target.value }))
+                              }
+                              placeholder="adet, koli..."
+                              maxLength={20}
+                              className="h-8 text-xs bg-background text-foreground border-border"
+                            />
+                            <div className="flex items-center gap-1 shrink-0">
+                              {["adet", "koli", "paket"].map((u) => (
+                                <button
+                                  key={u}
+                                  type="button"
+                                  onClick={() => setForm((prev) => ({ ...prev, unit: u }))}
+                                  className={`px-1.5 py-1 text-[10px] font-medium rounded border cursor-pointer ${
+                                    form.unit.toLowerCase() === u
+                                      ? "bg-emerald-600 text-white border-emerald-600 font-bold"
+                                      : "bg-muted text-muted-foreground hover:bg-muted/80 border-border"
+                                  }`}
+                                >
+                                  {u}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Aksiyon Butonları Grubu */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {isArchived ? (
-                      // ARŞİVDEKİ ÜRÜN İÇİN BUTONLAR: Geri Yükle & Kalıcı Sil
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={actionBusy}
-                          onClick={() => void restoreProduct(p)}
-                          className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 gap-1 cursor-pointer"
-                          title="Ürünü tekrar aktif kataloğa al"
-                        >
-                          <ArchiveRestore className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Geri Yükle</span>
-                        </Button>
+                  {/* ALT ÇUBUK: KAYDET VE VAZGEÇ BUTONLARI */}
+                  <div className="flex items-center justify-end gap-2 border-t border-border/70 pt-2.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={reset}
+                      className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      <span>Vazgeç</span>
+                    </Button>
 
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Kalıcı Sil"
-                          disabled={actionBusy}
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setPermanentDeletingProduct(p)}
-                          title="Veritabanından tamamen sil"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      // AKTİF ÜRÜN İÇİN BUTONLAR: Stok Durumu, Düzenle, Arşive Kaldır (Sil)
-                      <>
-                        {/* STOKTA VAR / YOK BUTONU */}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() => void toggleStockStatus(p)}
-                          className={`h-7 sm:h-8 px-1.5 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                            inStock
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
-                              : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
-                          }`}
-                          title={
-                            inStock
-                              ? "Stokta Var (Tıklayın: Yok yap)"
-                              : "Stokta Yok (Tıklayın: Var yap)"
-                          }
-                        >
-                          {isBusy ? (
-                            <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
-                          ) : inStock ? (
-                            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 dark:text-emerald-400" />
-                          ) : (
-                            <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-600 dark:text-rose-400" />
-                          )}
-                          <span className="ml-1 text-[10.5px] sm:text-xs">
-                            {inStock ? "Var" : "Yok"}
-                          </span>
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Düzenle"
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                          onClick={() => {
-                            setEditingId(p.id);
-                            setForm({
-                              name: p.name || "",
-                              description: cleanProductDescription(p.description),
-                              category: p.category || "gida",
-                              unit: p.unit || "adet",
-                              image_url: p.image_url ?? "",
-                              is_active: p.is_active ?? true,
-                            });
-                            setTimeout(() => {
-                              if (typeof document !== "undefined") {
-                                const formEl = document.getElementById("product-edit-form");
-                                formEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                const nameInput = document.getElementById("pr-name");
-                                nameInput?.focus();
-                              }
-                            }, 50);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Sil / Arşive Kaldır"
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
-                          onClick={() => setArchivingProduct(p)}
-                          title="Arşive Kaldır"
-                        >
-                          <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void submit()}
+                      className="h-8 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      {busy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      )}
+                      <span>Değişiklikleri Kaydet</span>
+                    </Button>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+            }
 
-        {/* ÜRÜNÜ ARŞİVE KALDIRMA ONAY DİYALOĞU */}
-        <AlertDialog
-          open={Boolean(archivingProduct)}
-          onOpenChange={(open) => !open && setArchivingProduct(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <Archive className="h-5 w-5 text-amber-600" />
-                Ürünü Arşive Kaldır
-              </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-2 text-sm">
-                <span>
-                  <strong>"{archivingProduct?.name}"</strong> adlı ürünü arşive kaldırmak
-                  istediğinize emin misiniz?
-                </span>
-                <span className="block text-xs text-muted-foreground bg-muted/60 p-2.5 rounded-lg border border-border/50">
-                  ℹ️ <strong>Tamamen silinmez:</strong> Ürün veritabanında saklanmaya devam eder,
-                  yalnızca müşterilerin gördüğü katalogdan gizlenir. Dilediğiniz zaman "Arşiv"
-                  sekmesinden tek tıkla tekrar kataloğa geri yükleyebilirsiniz.
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={actionBusy}>Vazgeç</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={actionBusy}
-                onClick={() => archivingProduct && void archiveProduct(archivingProduct)}
-                className="bg-amber-600 text-white hover:bg-amber-700"
+            return (
+              <div
+                key={p.id}
+                className={`flex items-center justify-between gap-2 rounded-xl border p-2 sm:p-3 shadow-card overflow-hidden transition-all ${
+                  isArchived
+                    ? "border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/10"
+                    : "border-border bg-card"
+                }`}
               >
-                {actionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Arşive Kaldır"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                    <img
+                      src={getPublicProductImageUrl(p.image_url, p.name, p.category)}
+                      alt={p.name}
+                      loading="lazy"
+                      onError={(e) => handleProductImageError(e, p.name, p.category)}
+                      className="h-full w-full object-contain p-1 bg-white"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-semibold text-foreground">
+                        {p.name}
+                      </span>
+                      {isArchived && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`"${p.name}" ürününü kalıcı sil`}
+                          disabled={actionBusy}
+                          className="h-6 px-1.5 py-0 text-destructive hover:text-white hover:bg-destructive rounded-md shrink-0 inline-flex items-center gap-1 cursor-pointer border border-destructive/30 bg-destructive/10 transition-colors"
+                          onClick={() => setPermanentDeletingProduct(p)}
+                          title={`"${p.name}" ürününü veritabanından tamamen sil`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span className="text-[11px] font-semibold">Sil</span>
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <span>
+                        {categoryLabel(p.category)} · {p.unit}
+                      </span>
+                      {extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id) &&
+                        (() => {
+                          const info = extractPackageOrBoxInfo(
+                            p.description,
+                            p.unit,
+                            p.name,
+                            p.id,
+                          )!;
+                          const isPack = info.toLowerCase().startsWith("paket");
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                isPack
+                                  ? "text-purple-700 bg-purple-500/10 border-purple-500/30"
+                                  : "text-amber-700 bg-amber-500/10 border-amber-500/30"
+                              }`}
+                            >
+                              {isPack ? (
+                                <Package className="h-3 w-3 text-purple-600" />
+                              ) : (
+                                <Boxes className="h-3 w-3 text-amber-600" />
+                              )}
+                              {info}
+                            </span>
+                          );
+                        })()}
+                      {cleanProductDescription(p.description) && (
+                        <span className="text-muted-foreground/80 hidden sm:inline">
+                          · {cleanProductDescription(p.description)}
+                        </span>
+                      )}
+                      {isArchived ? (
+                        <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                          ● Arşivde (Gizli)
+                        </span>
+                      ) : inStock ? (
+                        <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          ● Stokta
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+                          ● Tükendi
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
 
-        {/* KALICI SİLME ONAY DİYALOĞU (Yalnızca Arşivden) */}
-        <AlertDialog
-          open={Boolean(permanentDeletingProduct)}
-          onOpenChange={(open) => !open && setPermanentDeletingProduct(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                <Trash2 className="h-5 w-5" />
-                Ürünü Kalıcı Olarak Sil
-              </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-2 text-sm">
-                <span>
-                  <strong>"{permanentDeletingProduct?.name}"</strong> adlı ürünü veritabanından{" "}
-                  <strong>tamamen silmek</strong> üzeresiniz.
-                </span>
-                <span className="block text-xs text-destructive/90 bg-destructive/10 p-2.5 rounded-lg border border-destructive/20 font-medium">
-                  ⚠️ Bu işlem geri alınamaz. Eğer bu ürün geçmiş sipariş kayıtlarında yer alıyorsa,
-                  sipariş tutarlılığı için silme işlemi engellenecektir.
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={actionBusy}>İptal</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={actionBusy}
-                onClick={() =>
-                  permanentDeletingProduct &&
-                  void permanentlyDeleteProduct(permanentDeletingProduct)
-                }
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {actionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kalıcı Olarak Sil"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+                {/* Aksiyon Butonları Grubu */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {isArchived ? (
+                    // ARŞİVDEKİ ÜRÜN İÇİN: Geri Yükle
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={actionBusy}
+                      onClick={() => void restoreProduct(p)}
+                      className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 gap-1 cursor-pointer"
+                      title="Ürünü tekrar aktif kataloğa al"
+                    >
+                      <ArchiveRestore className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Geri Yükle</span>
+                    </Button>
+                  ) : (
+                    // AKTİF ÜRÜN İÇİN BUTONLAR: Stok Durumu, Düzenle, Arşive Kaldır (Sil)
+                    <>
+                      {/* STOKTA VAR / YOK BUTONU */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => void toggleStockStatus(p)}
+                        className={`h-7 sm:h-8 px-1.5 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                          inStock
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
+                            : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
+                        }`}
+                        title={
+                          inStock
+                            ? "Stokta Var (Tıklayın: Yok yap)"
+                            : "Stokta Yok (Tıklayın: Var yap)"
+                        }
+                      >
+                        {isBusy ? (
+                          <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                        ) : inStock ? (
+                          <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-600 dark:text-rose-400" />
+                        )}
+                        <span className="ml-1 text-[10.5px] sm:text-xs">
+                          {inStock ? "Var" : "Yok"}
+                        </span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Düzenle"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingId(p.id);
+                          setForm({
+                            name: p.name || "",
+                            description: cleanProductDescription(p.description),
+                            category: p.category || "gida",
+                            unit: p.unit || "adet",
+                            image_url: p.image_url ?? "",
+                            is_active: p.is_active ?? true,
+                          });
+                        }}
+                        title="Ürünü Düzenle"
+                      >
+                        <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Arşive Kaldır"
+                        disabled={actionBusy}
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400 cursor-pointer"
+                        onClick={() => void archiveProduct(p)}
+                        title="Doğrudan Arşive Kaldır"
+                      >
+                        <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* KALICI SİLME ONAY DİYALOĞU (Yalnızca Arşivden) */}
+      <AlertDialog
+        open={Boolean(permanentDeletingProduct)}
+        onOpenChange={(open) => !open && setPermanentDeletingProduct(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Ürünü Kalıcı Olarak Sil
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-sm">
+              <span>
+                <strong>"{permanentDeletingProduct?.name}"</strong> adlı ürünü veritabanından{" "}
+                <strong>tamamen silmek</strong> üzeresiniz.
+              </span>
+              <span className="block text-xs text-destructive/90 bg-destructive/10 p-2.5 rounded-lg border border-destructive/20 font-medium">
+                ⚠️ Bu işlem geri alınamaz. Eğer bu ürün geçmiş sipariş kayıtlarında yer alıyorsa,
+                sipariş tutarlılığı için silme işlemi engellenecektir.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionBusy}>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionBusy}
+              onClick={() =>
+                permanentDeletingProduct && void permanentlyDeleteProduct(permanentDeletingProduct)
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kalıcı Olarak Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
