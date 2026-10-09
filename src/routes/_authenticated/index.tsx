@@ -45,12 +45,10 @@ import {
   BakliyatCategoryIcon,
   KisiselCategoryIcon,
 } from "@/components/CategoryIcons";
-import { getCustomProducts } from "@/lib/custom-products";
+import { getAllCatalogProducts } from "@/lib/custom-products";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
-  // AI veya yönetici tarafından fotoğraf yüklenerek eklenen ürünleri 197 sabit ürünün başına bağla
-  const custom = getCustomProducts();
-  return [...custom, ...FALLBACK_PRODUCTS];
+  return getAllCatalogProducts();
 }
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -108,13 +106,13 @@ function Index() {
   } = useQuery({
     queryKey: ["live-supabase-products"],
     queryFn: fetchProductsFromDatabase,
-    initialData: FALLBACK_PRODUCTS,
+    initialData: () => getAllCatalogProducts(),
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
 
   // 2. Direct client-side explicit Supabase call on initial mount
-  const [clientProducts, setClientProducts] = useState<Product[]>(FALLBACK_PRODUCTS);
+  const [clientProducts, setClientProducts] = useState<Product[]>(() => getAllCatalogProducts());
   const [isClientLoading, setIsClientLoading] = useState(false);
 
   useEffect(() => {
@@ -200,7 +198,7 @@ function Index() {
           {/* Hero Call-To-Action Copy & Badges */}
           <div className="mt-8 text-center sm:mt-10">
             {/* Ana Menü / Vitrin Logosu */}
-            <div className="mx-auto mb-3.5 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl overflow-hidden shadow-2xl shadow-black/80 border border-emerald-500/40 ring-4 ring-emerald-500/10">
+            <div className="mx-auto mb-4 flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/60 border border-emerald-500/40 ring-4 ring-emerald-500/15 bg-[#040806] transition-transform duration-300 hover:scale-105">
               <img
                 src="/kasimogullari-logo.jpg"
                 alt="KasımOğulları Logo"

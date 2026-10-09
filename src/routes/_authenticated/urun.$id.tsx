@@ -54,18 +54,16 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
   component: ProductDetail,
 });
 
-import { getCustomProducts } from "@/lib/custom-products";
+import { getAllCatalogProducts, isProductPermanentlyDeleted } from "@/lib/custom-products";
 
 async function fetchSingleProduct(id: string): Promise<Product | null> {
-  const custom = getCustomProducts();
-  const customMatch = custom.find((p) => p.id === id);
-  if (customMatch) {
-    return customMatch;
+  if (isProductPermanentlyDeleted(id)) {
+    return null;
   }
-
-  const localMatch = FALLBACK_PRODUCTS.find((p) => p.id === id);
-  if (localMatch) {
-    return localMatch;
+  const all = getAllCatalogProducts();
+  const match = all.find((p) => p.id === id);
+  if (match) {
+    return match;
   }
 
   try {
@@ -97,7 +95,7 @@ function ProductDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: () => fetchSingleProduct(id),
-    initialData: () => FALLBACK_PRODUCTS.find((p) => p.id === id) ?? undefined,
+    initialData: () => getAllCatalogProducts().find((p) => p.id === id) ?? undefined,
     staleTime: 0,
     refetchOnMount: true,
   });

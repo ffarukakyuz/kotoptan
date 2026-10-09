@@ -51,6 +51,8 @@ import {
   saveCustomProduct,
   deleteCustomProduct,
   isBogusProductName,
+  getAllCatalogProducts,
+  markProductPermanentlyDeleted,
 } from "@/lib/custom-products";
 import { analyzeProductPhoto } from "@/lib/gemini";
 import { ADMIN_MEMBERS, isUserAdmin, GUEST_ACCOUNT } from "@/lib/admin-config";
@@ -167,10 +169,7 @@ type AdminOrder = {
 };
 
 async function fetchAdminProductsList(): Promise<Product[]> {
-  const custom = getCustomProducts();
-  return [...custom, ...FALLBACK_PRODUCTS.map(normalizeProductWithOverrides)].filter(
-    (p) => !p.name.toLowerCase().includes("peos") && !p.name.toLowerCase().includes("peros"),
-  );
+  return getAllCatalogProducts();
 }
 
 function AdminPage() {
@@ -206,7 +205,7 @@ function AdminPage() {
   const { data: allProducts = [], isLoading: isProductsLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
-    initialData: () => FALLBACK_PRODUCTS.map(normalizeProductWithOverrides),
+    initialData: () => getAllCatalogProducts(),
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
@@ -865,7 +864,7 @@ function ProductsPanel({
   const { data: queriedData, isLoading: isQueryLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
-    initialData: () => FALLBACK_PRODUCTS.map(normalizeProductWithOverrides),
+    initialData: () => getAllCatalogProducts(),
     staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
@@ -932,6 +931,7 @@ function ProductsPanel({
       image_url: normalizedImageUrl || null,
     };
     setBusy(true);
+    const isEdit = Boolean(editingId);
     const finalId = editingId || `custom-${Date.now()}`;
     const customProd: Product = {
       id: finalId,
@@ -942,7 +942,7 @@ function ProductsPanel({
       image_url: payload.image_url,
       is_active: payload.is_active,
     };
-    saveCustomProduct(customProd);
+    saveCustomProduct(customProd, isEdit);
 
     try {
       if (editingId) {
@@ -955,7 +955,19 @@ function ProductsPanel({
     }
     setBusy(false);
 
-    toast.success(editingId ? "Ürün güncellendi" : "Ürün eklendi");
+    // Optimistic cache update: Düzenlenen ürünü kendi yerinde güncelle, yeni ürünü başa ekle
+    const updateInCache = (old: Product[] | undefined) => {
+      if (!old) return old;
+      if (isEdit) {
+        return old.map((p) => (p.id === finalId ? { ...p, ...customProd } : p));
+      }
+      return [customProd, ...old];
+    };
+    qc.setQueryData<Product[]>(["admin-products"], updateInCache);
+    qc.setQueryData<Product[]>(["products", "active"], updateInCache);
+    qc.setQueryData<Product[]>(["live-supabase-products"], updateInCache);
+
+    toast.success(isEdit ? "Ürün güncellendi" : "Ürün eklendi");
     reset();
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
@@ -980,7 +992,7 @@ function ProductsPanel({
     const customList = getCustomProducts();
     const targetCustom = customList.find((p) => p.id === product.id);
     if (targetCustom) {
-      saveCustomProduct({ ...targetCustom, is_active: false });
+      saveCustomProduct({ ...targetCustom, is_active: false }, true);
     }
 
     // 3. Supabase'i de güncellemeye çalış
@@ -1002,9 +1014,7 @@ function ProductsPanel({
     qc.setQueryData<Product[]>(["live-supabase-products"], updateInactive);
 
     setActionBusy(false);
-    toast.success(
-      `"${product.name}" arşive kaldırıldı. "Arşiv" sekmesinden dilediğinizde geri yükleyebilirsiniz.`,
-    );
+    toast.success(`"${product.name}" arşive kaldırıldı.`);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("catalog_updated"));
     }
@@ -1023,7 +1033,7 @@ function ProductsPanel({
     const customList = getCustomProducts();
     const targetCustom = customList.find((p) => p.id === product.id);
     if (targetCustom) {
-      saveCustomProduct({ ...targetCustom, is_active: true });
+      saveCustomProduct({ ...targetCustom, is_active: true }, true);
     }
 
     // 3. Supabase'i de güncelle
@@ -1054,8 +1064,7 @@ function ProductsPanel({
 
   const permanentlyDeleteProduct = async (product: Product) => {
     setActionBusy(true);
-    deleteCustomProduct(product.id);
-    setProductArchivedStatusLocal(product.id, true);
+    markProductPermanentlyDeleted(product.id);
 
     // Listeden anında kaldırmak için optimistic güncelleme
     const removeProduct = (old: Product[] | undefined) =>
@@ -1070,7 +1079,7 @@ function ProductsPanel({
       // ignore
     }
     setActionBusy(false);
-    toast.success(`"${product.name}" silindi.`);
+    toast.success(`"${product.name}" kalıcı olarak silindi.`);
     setPermanentDeletingProduct(null);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("catalog_updated"));

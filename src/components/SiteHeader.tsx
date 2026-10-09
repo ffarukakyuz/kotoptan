@@ -101,8 +101,8 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#060b08]/95 text-white backdrop-blur-md transition-colors">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo & Name */}
-        <Link to="/" className="group flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/40 border border-emerald-500/30 transition-transform group-hover:scale-105 active:scale-95">
+        <Link to="/" className="group flex items-center gap-2.5 sm:gap-3">
+          <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/50 border border-emerald-500/40 ring-1 ring-emerald-500/20 bg-[#040806] transition-transform duration-200 group-hover:scale-105 active:scale-95 shrink-0">
             <img
               src="/kasimogullari-logo.jpg"
               alt="KasımOğulları Logo"
@@ -110,9 +110,14 @@ export function SiteHeader() {
               referrerPolicy="no-referrer"
             />
           </span>
-          <span className="text-xl font-extrabold tracking-tight text-white">
-            Kasım<span className="text-[#22c55e]">Oğulları</span>
-          </span>
+          <div className="flex flex-col justify-center">
+            <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none">
+              Kasım<span className="text-[#22c55e]">Oğulları</span>
+            </span>
+            <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 tracking-wider uppercase mt-0.5 leading-none">
+              Toptan Dağıtım
+            </span>
+          </div>
         </Link>
 
         {/* Desktop Nav Links */}

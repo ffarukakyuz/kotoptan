@@ -310,26 +310,43 @@ export default {
             }
           }
 
-          const handler = await getServerEntry();
-          const response = await handler.fetch(request, env, ctx);
-          const ssrResponse = await normalizeCatastrophicSsrResponse(response);
-
-          const newHeaders = new Headers(ssrResponse.headers);
-          newHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          newHeaders.set("Pragma", "no-cache");
-          newHeaders.set("Expires", "0");
-
-          return new Response(ssrResponse.body, {
-            status: ssrResponse.status,
-            statusText: ssrResponse.statusText,
-            headers: newHeaders,
+          return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
+            status: 405,
+            headers: { "content-type": "application/json" },
           });
-        } catch (error) {
-          console.error(error);
-          return new Response(renderErrorPage(), {
+        } catch (chatError: unknown) {
+          console.error("Chat error:", chatError);
+          const errMsg = chatError instanceof Error ? chatError.message : "Internal chat error";
+          return new Response(JSON.stringify({ ok: false, error: errMsg }), {
             status: 500,
-            headers: { "content-type": "text/html; charset=utf-8" },
+            headers: { "content-type": "application/json" },
           });
         }
-      },
-    };
+      }
+
+      const handler = await getServerEntry();
+      const response = await handler.fetch(request, env, ctx);
+      const ssrResponse = await normalizeCatastrophicSsrResponse(response);
+
+      const newHeaders = new Headers(ssrResponse.headers);
+      newHeaders.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      );
+      newHeaders.set("Pragma", "no-cache");
+      newHeaders.set("Expires", "0");
+
+      return new Response(ssrResponse.body, {
+        status: ssrResponse.status,
+        statusText: ssrResponse.statusText,
+        headers: newHeaders,
+      });
+    } catch (error) {
+      console.error(error);
+      return new Response(renderErrorPage(), {
+        status: 500,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
+  },
+};

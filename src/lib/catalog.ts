@@ -247,6 +247,13 @@ export function extractPackageOrBoxInfo(
 export function isProductArchived(product: { is_active?: boolean | null; id?: string }): boolean {
   if (product.id && typeof window !== "undefined") {
     try {
+      const deletedRaw = localStorage.getItem("permanently_deleted_product_ids");
+      if (deletedRaw) {
+        const deletedArr = JSON.parse(deletedRaw);
+        if (Array.isArray(deletedArr) && deletedArr.includes(product.id)) {
+          return false;
+        }
+      }
       const archivedMap = JSON.parse(
         localStorage.getItem("custom_product_archived_status") || "{}",
       );
@@ -258,6 +265,24 @@ export function isProductArchived(product: { is_active?: boolean | null; id?: st
     }
   }
   return product.is_active === false;
+}
+
+export function removeProductArchivedStatusLocal(productId: string) {
+  if (typeof window !== "undefined" && productId) {
+    try {
+      const archivedMap = JSON.parse(
+        localStorage.getItem("custom_product_archived_status") || "{}",
+      );
+      if (archivedMap[productId] !== undefined) {
+        delete archivedMap[productId];
+        localStorage.setItem("custom_product_archived_status", JSON.stringify(archivedMap));
+        window.dispatchEvent(new Event("catalog_updated"));
+        window.dispatchEvent(new Event("storage"));
+      }
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export function setProductArchivedStatusLocal(productId: string, isArchived: boolean) {
