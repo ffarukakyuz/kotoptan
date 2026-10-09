@@ -1,8 +1,13 @@
 name = "kasimogullari-toptan"
 compatibility_date = "2024-04-01"
 pages_build_output_dir = "dist"
+
 [build]
 command = "npm run build"
+
+[build.upload]
+format = "modules"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "kasimogullari-db"
