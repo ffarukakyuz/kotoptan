@@ -51,7 +51,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     try {
       if (typeof window !== "undefined") {
         const keysToRemove = Object.keys(localStorage).filter(
-          (k) => k.startsWith("kasimogullari_") || k.startsWith("ko_customer_chat"),
+          (k) => k.startsWith("kotoptan_") || k.startsWith("ko_customer_chat"),
         );
         for (const k of keysToRemove) {
           localStorage.removeItem(k);
@@ -123,23 +123,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#060b08" },
       { name: "mobile-web-app-capable", content: "yes" },
-      { name: "application-name", content: "KasımOğulları" },
-      { name: "apple-mobile-web-app-title", content: "KasımOğulları" },
+      { name: "application-name", content: "Kotoptan" },
+      { name: "apple-mobile-web-app-title", content: "Kotoptan" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "format-detection", content: "telephone=no" },
-      { title: "KasımOğulları Toptan" },
+      { title: "Kotoptan" },
       {
         name: "description",
         content:
-          "KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+          "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:title", content: "KasımOğulları Toptan" },
+      { property: "og:title", content: "Kotoptan" },
       {
         property: "og:description",
         content:
-          "KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+          "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { httpEquiv: "Cache-Control", content: "no-cache, no-store, must-revalidate" },

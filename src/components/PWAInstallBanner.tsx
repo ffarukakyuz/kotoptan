@@ -106,7 +106,7 @@ export function PWAInstallModal({ isIOS, onClose }: { isIOS: boolean; onClose: (
             </div>
             <div>
               <h3 className="text-base font-bold text-white">Ana Ekrana Kısayol Ekle</h3>
-              <p className="text-xs text-white/60">KasımOğulları Toptan Kataloğu</p>
+              <p className="text-xs text-white/60">Kotoptan Toptan Kataloğu</p>
             </div>
           </div>
           <button
@@ -157,7 +157,7 @@ export function PWAInstallModal({ isIOS, onClose }: { isIOS: boolean; onClose: (
                 </span>
                 <p className="text-xs sm:text-sm">
                   Sağ üst köşedeki <strong className="text-white font-semibold">"Ekle"</strong>{" "}
-                  butonuna dokunun. KasımOğulları logosu telefonunuzun ana ekranında uygulama gibi
+                  butonuna dokunun. Kotoptan logosu telefonunuzun ana ekranında uygulama gibi
                   hazır olacaktır!
                 </p>
               </div>

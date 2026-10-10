@@ -36,10 +36,7 @@ if (fs.existsSync(dalanSoapSrc)) {
   console.log("Copied Dalan soap image to public/");
 }
 
-const previewHosts = [
-  "https://dfe059c8-1284-481c-be64-b6fbbb9d793b.lovableproject.com",
-  "https://id-preview--dfe059c8-1284-481c-be64-b6fbbb9d793b.lovable.app",
-];
+const previewHosts = [];
 
 async function downloadWithFallback(assetUrl) {
   for (const host of previewHosts) {

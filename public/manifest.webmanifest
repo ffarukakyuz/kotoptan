@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "KasımOğulları Toptan",
-  "short_name": "KasımOğulları",
-  "description": "KasımOğulları Ltd. Şti. market ve bakkallar için toptan ürün kataloğu ve hızlı sipariş.",
+  "name": "Kotoptan",
+  "short_name": "Kotoptan",
+  "description": "Kotoptan toptan gıda ve tüketim malları market ve bakkallar için sipariş ve katalog yönetim platformu.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#060b08",

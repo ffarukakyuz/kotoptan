@@ -176,10 +176,10 @@ class ChatErrorBoundary extends Component<
             <button
               onClick={() => {
                 try {
-                  localStorage.removeItem("kasimogullari_ai_chat_session_guest");
+                  localStorage.removeItem("kotoptan_ai_chat_session_guest");
                   const keys = Object.keys(localStorage);
                   for (const k of keys) {
-                    if (k.startsWith("kasimogullari_ai_chat_")) localStorage.removeItem(k);
+                    if (k.startsWith("kotoptan_ai_chat_")) localStorage.removeItem(k);
                   }
                 } catch {
                   // ignore
@@ -321,7 +321,7 @@ function SupportChatInner() {
   // AI Mesajlarını Yerel Depolamadan Yükle veya Karşılama Mesajı Kur
   useEffect(() => {
     if (!sessionId) return;
-    const storageKey = `kasimogullari_ai_chat_${sessionId}`;
+    const storageKey = `kotoptan_ai_chat_${sessionId}`;
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
@@ -344,7 +344,7 @@ function SupportChatInner() {
       setAiMessages([
         {
           role: "assistant",
-          content: `Merhaba Yönetici 👋\nBen Ko, KasımOğulları şirket asistanıyım. ⚡\n\nÜrün ekleme ve operasyonlarınızda size yardımcı olmak için buradayım. Bir ürünün fotoğrafını yüklerseniz ürün adını, kategorisini, koli içi adedini ve toptan birimini otomatik analiz edip doğrudan şirket kataloğumuza ekleyebilirim!`,
+          content: `Merhaba Yönetici 👋\nBen Ko, Kotoptan şirket asistanıyım. ⚡\n\nÜrün ekleme ve operasyonlarınızda size yardımcı olmak için buradayım. Bir ürünün fotoğrafını yüklerseniz ürün adını, kategorisini, koli içi adedini ve toptan birimini otomatik analiz edip doğrudan şirket kataloğumuza ekleyebilirim!`,
         },
       ]);
     } else {
@@ -352,7 +352,7 @@ function SupportChatInner() {
         {
           role: "assistant",
           content:
-            "Merhaba, ben Ko 👋 KasımOğulları Tatvan toptan asistanıyım.\n\nŞirketimizdeki 197 çeşit toptan ürünümüz, koli bilgileri ve teslimat süreçleri hakkında bana dilediğinizi sorabilirsiniz.\n\nYetkili yönetici ile doğrudan görüşmek için yukarıdaki '👤 Yönetici ile Konuş' sekmesine geçebilirsiniz.",
+            "Merhaba, ben Ko 👋 Kotoptan toptan asistanıyım.\n\nŞirketimizdeki toptan ürünlerimiz, koli bilgileri ve teslimat süreçleri hakkında bana dilediğinizi sorabilirsiniz.\n\nYetkili yönetici ile doğrudan görüşmek için yukarıdaki '👤 Yönetici ile Konuş' sekmesine geçebilirsiniz.",
         },
       ]);
     }
@@ -362,7 +362,7 @@ function SupportChatInner() {
   useEffect(() => {
     if (!sessionId || aiMessages.length === 0) return;
     try {
-      localStorage.setItem(`kasimogullari_ai_chat_${sessionId}`, JSON.stringify(aiMessages));
+      localStorage.setItem(`kotoptan_ai_chat_${sessionId}`, JSON.stringify(aiMessages));
     } catch {
       // Storage dolu
     }
@@ -400,7 +400,7 @@ function SupportChatInner() {
             playCustomerNotificationChime();
             if (!open || chatMode !== "admin") {
               setUnreadCustomerAdminCount((c) => c + 1);
-              toast.info("🔔 KasımOğulları Yetkilisinden Yanıt Geldi!", {
+              toast.info("🔔 Kotoptan Yetkilisinden Yanıt Geldi!", {
                 description: latestAdmin.content.slice(0, 90),
               });
             }
@@ -572,7 +572,7 @@ function SupportChatInner() {
     try {
       const ok = await sendAdminReply(
         adminSelectedSessionId,
-        profile?.full_name || "KasımOğulları Yönetici",
+        profile?.full_name || "Kotoptan Yönetici",
         text,
       );
       if (ok) {
@@ -869,7 +869,7 @@ function SupportChatInner() {
                         : "Müşteri Mesajlaşma Merkezi"
                       : "Ko Asistan (Ürün & Firma)"
                     : chatMode === "admin"
-                      ? "KasımOğulları Yetkili Yönetici"
+                      ? "Kotoptan Yetkili Yönetici"
                       : "Ko Depo Asistanı"}
                 </p>
                 {isAdmin &&

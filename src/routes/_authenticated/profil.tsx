@@ -20,9 +20,9 @@ import {
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
     meta: [
-      { title: "Hesap Bilgilerim — KasımOğulları Ltd. Şti." },
+      { title: "Hesap Bilgilerim — Kotoptan" },
       { name: "description", content: "Market bilgilerinizi ve teslimat adresinizi güncelleyin." },
-      { property: "og:title", content: "Hesap Bilgilerim — KasımOğulları Ltd. Şti." },
+      { property: "og:title", content: "Hesap Bilgilerim — Kotoptan" },
       { property: "og:description", content: "İletişim ve teslimat bilgilerinizi güncelleyin." },
     ],
   }),

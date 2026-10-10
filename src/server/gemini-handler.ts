@@ -442,8 +442,8 @@ async function callOpenRouter(
       signal: controller.signal,
       headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://kasimogullari.com",
-        "X-Title": "KasimOgullari Toptan Depo",
+        "HTTP-Referer": "https://kotoptan.com",
+        "X-Title": "Kotoptan Depo",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -613,8 +613,8 @@ Sadece geçerli bir JSON nesnesi döndür, markdown veya başka metin ekleme.`;
           method: "POST",
           headers: {
             Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": "https://kasimogullari.com",
-            "X-Title": "KasimOgullari Toptan",
+            "HTTP-Referer": "https://kotoptan.com",
+            "X-Title": "Kotoptan",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

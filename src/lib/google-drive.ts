@@ -36,14 +36,14 @@ export interface DriveOrder {
 }
 
 export const DRIVE_CONFIG = {
-  appName: "KasımOğulları Toptan",
-  driveFolderName: "KasimOgullari-Depo-Verileri",
+  appName: "Kotoptan Toptan",
+  driveFolderName: "Kotoptan-Depo-Verileri",
 };
 
 export const DRIVE_SCOPES = [] as const;
 
 // In-Memory & Local Backup Registry
-const BACKUP_STORAGE_KEY = "kasimogullari_backup_registry";
+const BACKUP_STORAGE_KEY = "kotoptan_backup_registry";
 
 function getLocalBackups(): DriveFileItem[] {
   if (typeof window === "undefined") return [];
@@ -87,8 +87,8 @@ function downloadFileToClient(fileName: string, content: string, mimeType = "app
  */
 export async function connectGoogleDrive(): Promise<DriveUser> {
   const user: DriveUser = {
-    displayName: "KasımOğulları Yönetici",
-    email: "yonetim@kasimogullari.com",
+    displayName: "Kotoptan Yönetici",
+    email: "yonetim@kotoptan.com",
     photoURL: null,
   };
   return user;
@@ -100,8 +100,8 @@ export async function disconnectGoogleDrive(): Promise<void> {
 
 export function initGoogleDriveAuth(callback: (user: DriveUser | null) => void): () => void {
   callback({
-    displayName: "KasımOğulları Yönetici",
-    email: "yonetim@kasimogullari.com",
+    displayName: "Kotoptan Yönetici",
+    email: "yonetim@kotoptan.com",
     photoURL: null,
   });
   return () => {};
@@ -113,14 +113,14 @@ export function isDriveConnected(): boolean {
 
 export function getDriveUser(): DriveUser | null {
   return {
-    displayName: "KasımOğulları Yönetici",
-    email: "yonetim@kasimogullari.com",
+    displayName: "Kotoptan Yönetici",
+    email: "yonetim@kotoptan.com",
     photoURL: null,
   };
 }
 
 export async function getOrCreateAppFolder(): Promise<string> {
-  return "kasimogullari-yerel-yedek";
+  return "kotoptan-yerel-yedek";
 }
 
 export async function listAppFiles(): Promise<DriveFileItem[]> {
@@ -132,11 +132,11 @@ export async function listAppFiles(): Promise<DriveFileItem[]> {
  */
 export async function syncProductCatalogToDrive(products: Product[]): Promise<DriveFileItem> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = `kasimogullari_katalog_${timestamp}.json`;
+  const fileName = `kotoptan_katalog_${timestamp}.json`;
   const content = JSON.stringify(
     {
       exported_at: new Date().toISOString(),
-      app: "KasımOğulları Toptan",
+      app: "Kotoptan Toptan",
       total_products: products.length,
       products,
     },
@@ -164,11 +164,11 @@ export async function syncProductCatalogToDrive(products: Product[]): Promise<Dr
  */
 export async function syncOrdersToDrive(orders: DriveOrder[]): Promise<DriveFileItem> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = `kasimogullari_siparisler_${timestamp}.json`;
+  const fileName = `kotoptan_siparisler_${timestamp}.json`;
   const content = JSON.stringify(
     {
       exported_at: new Date().toISOString(),
-      app: "KasımOğulları Toptan",
+      app: "Kotoptan Toptan",
       total_orders: orders.length,
       orders,
     },

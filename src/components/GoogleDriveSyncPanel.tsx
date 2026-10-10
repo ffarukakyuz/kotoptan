@@ -314,7 +314,7 @@ export function GoogleDriveSyncPanel({
                 Google Drive Entegrasyonu & Senkronizasyon
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                KasımOğulları ürün kataloğunu ve müşteri siparişlerini Google Drive hesabınızda
+                Kotoptan ürün kataloğunu ve müşteri siparişlerini Google Drive hesabınızda
                 otomatik olarak eşitleyin, yedekleyin ve arşivleyin.
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

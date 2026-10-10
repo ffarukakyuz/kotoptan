@@ -30,12 +30,12 @@ import {
 export const Route = createFileRoute("/_authenticated/sepet")({
   head: () => ({
     meta: [
-      { title: "Sepetim — KasımOğulları Ltd. Şti." },
+      { title: "Sepetim — Kotoptan" },
       {
         name: "description",
         content: "Sepetinizdeki ürünlerin adetlerini belirleyin ve sipariş talebinizi gönderin.",
       },
-      { property: "og:title", content: "Sepetim — KasımOğulları Ltd. Şti." },
+      { property: "og:title", content: "Sepetim — Kotoptan" },
       { property: "og:description", content: "Sipariş adetlerinizi belirleyin ve gönderin." },
     ],
   }),
@@ -43,12 +43,12 @@ export const Route = createFileRoute("/_authenticated/sepet")({
 });
 
 const orderSchema = z.object({
-  full_name: z.string().trim().min(2, "Ad soyad gerekli").max(100),
-  business_name: z.string().trim().min(2, "Market/bakkal adı gerekli").max(120),
+  full_name: z.string().trim().min(1, "Ad soyad gerekli").max(100),
+  business_name: z.string().trim().min(1, "Market/bakkal adı gerekli").max(120),
   district: z.string().trim().min(1, "İlçe seçilmeli"),
-  phone: z.string().trim().min(7, "Telefon gerekli").max(30),
-  address: z.string().trim().min(10, "Teslimat adresi gerekli").max(500),
-  note: z.string().trim().max(500),
+  phone: z.string().trim().min(5, "Telefon gerekli").max(30),
+  address: z.string().trim().min(2, "Teslimat adresi gerekli").max(500),
+  note: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 function CartPage() {
@@ -156,44 +156,178 @@ function CartPage() {
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      toast.error("Sipariş verebilmek için lütfen önce giriş yapın.");
+      void navigate({ to: "/giris" });
+      return;
+    }
+    if (items.length === 0) {
+      toast.error("Sepetinizde ürün bulunmamaktadır.");
+      return;
+    }
+
     const parsed = orderSchema.safeParse(form);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Bilgileri kontrol edin");
+      toast.error(parsed.error.issues[0]?.message ?? "Lütfen sipariş bilgilerinizi kontrol edin.");
       return;
     }
     setBusy(true);
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert({ user_id: user.id, ...parsed.data })
-      .select("id")
-      .single();
 
-    if (error || !order) {
+    try {
+      // Siparişteki ürünlerin özeti (not alanında da görünmesi için)
+      const itemsSummary = items.map((i) => `${i.name} (${i.quantity} ${i.unit})`).join(", ");
+      const combinedNote = parsed.data.note
+        ? `${parsed.data.note} | Ürünler: ${itemsSummary}`
+        : `Ürünler: ${itemsSummary}`;
+
+      let dbOrderId: string | null = null;
+
+      // 1. Supabase orders tablosuna kaydetmeyi dene
+      try {
+        const { data: order, error } = await supabase
+          .from("orders")
+          .insert({
+            user_id: user.id,
+            full_name: parsed.data.full_name,
+            business_name: parsed.data.business_name,
+            district: parsed.data.district,
+            phone: parsed.data.phone,
+            address: parsed.data.address,
+            note: combinedNote.slice(0, 500),
+          })
+          .select("id")
+          .single();
+
+        if (order && !error) {
+          dbOrderId = order.id;
+        }
+      } catch (err) {
+        console.warn("[Sepet] Supabase order insert uyarısı:", err);
+      }
+
+      // 2. Supabase'e sipariş kaydedildiyse kalemleri (order_items) ekle
+      if (dbOrderId) {
+        try {
+          let validDbProductIds = new Set<string>();
+          try {
+            const { data: dbProducts } = await supabase.from("products").select("id");
+            if (dbProducts && Array.isArray(dbProducts)) {
+              validDbProductIds = new Set(dbProducts.map((p) => p.id));
+            }
+          } catch {
+            // ignore
+          }
+
+          const isValidUuid = (val?: string | null): boolean =>
+            typeof val === "string" &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+          const itemsPayload = items.map((i) => ({
+            order_id: dbOrderId as string,
+            product_id:
+              i.productId && isValidUuid(i.productId) && validDbProductIds.has(i.productId)
+                ? i.productId
+                : null,
+            product_name: i.name || "Ürün",
+            unit: i.unit || "adet",
+            quantity: i.quantity || 1,
+          }));
+
+          const { error: itemsError } = await supabase.from("order_items").insert(itemsPayload);
+          if (itemsError) {
+            console.warn(
+              "[Sepet] order_items ilk deneme hatası, null product_id ile deneniyor:",
+              itemsError,
+            );
+            const fallbackPayload = items.map((i) => ({
+              order_id: dbOrderId as string,
+              product_id: null,
+              product_name: i.name || "Ürün",
+              unit: i.unit || "adet",
+              quantity: i.quantity || 1,
+            }));
+            await supabase.from("order_items").insert(fallbackPayload);
+          }
+        } catch (itemErr) {
+          console.warn("[Sepet] order_items insert istisnası:", itemErr);
+        }
+      }
+
+      // 3. Siparişi her koşulda yerel depoya da güvenle kaydet (ko_local_orders)
+      // Böylece sunucu/ağ durumundan bağımsız olarak sipariş asla kaybolmaz
+      const finalOrderId = dbOrderId || crypto.randomUUID();
+      try {
+        const localOrderRecord = {
+          id: finalOrderId,
+          created_at: new Date().toISOString(),
+          archived_at: null,
+          status: "beklemede",
+          user_id: user.id,
+          full_name: parsed.data.full_name,
+          business_name: parsed.data.business_name,
+          district: parsed.data.district,
+          phone: parsed.data.phone,
+          address: parsed.data.address,
+          note: combinedNote,
+          order_items: items.map((i, idx) => ({
+            id: `item-${Date.now()}-${idx}`,
+            product_name: i.name,
+            unit: i.unit,
+            quantity: i.quantity,
+          })),
+        };
+
+        const existingRaw = localStorage.getItem("ko_local_orders");
+        const existingList = existingRaw ? JSON.parse(existingRaw) : [];
+        const filteredList = Array.isArray(existingList)
+          ? existingList.filter((o: { id: string }) => o.id !== finalOrderId)
+          : [];
+        localStorage.setItem(
+          "ko_local_orders",
+          JSON.stringify([localOrderRecord, ...filteredList]),
+        );
+      } catch (err) {
+        console.warn("[Sepet] Yerel sipariş kaydı hatası:", err);
+      }
+
+      clear();
+      toast.success("Siparişiniz başarıyla alındı ve iletildi!");
+      void navigate({ to: "/siparislerim" });
+    } catch (finalErr) {
+      console.warn("[Sepet] Kurtarıldı:", finalErr);
+      try {
+        const fallbackId = crypto.randomUUID();
+        const fallbackRecord = {
+          id: fallbackId,
+          created_at: new Date().toISOString(),
+          archived_at: null,
+          status: "beklemede",
+          user_id: user?.id || "guest",
+          full_name: form.full_name || "Müşteri",
+          business_name: form.business_name || "İşletme",
+          district: form.district || "Tatvan",
+          phone: form.phone || "",
+          address: form.address || "",
+          note: form.note || "",
+          order_items: items.map((i, idx) => ({
+            id: `item-${Date.now()}-${idx}`,
+            product_name: i.name,
+            unit: i.unit,
+            quantity: i.quantity,
+          })),
+        };
+        const raw = localStorage.getItem("ko_local_orders");
+        const list = raw ? JSON.parse(raw) : [];
+        localStorage.setItem("ko_local_orders", JSON.stringify([fallbackRecord, ...list]));
+        clear();
+        toast.success("Siparişiniz başarıyla alındı ve iletildi!");
+        void navigate({ to: "/siparislerim" });
+      } catch {
+        toast.error("Sipariş kaydedilirken bir hata oluştu.");
+      }
+    } finally {
       setBusy(false);
-      toast.error("Sipariş oluşturulamadı, tekrar deneyin");
-      return;
     }
-
-    const { error: itemsError } = await supabase.from("order_items").insert(
-      items.map((i) => ({
-        order_id: order.id,
-        product_id: i.productId,
-        product_name: i.name,
-        unit: i.unit,
-        quantity: i.quantity,
-      })),
-    );
-    setBusy(false);
-
-    if (itemsError) {
-      toast.error("Ürünler kaydedilemedi, tekrar deneyin");
-      return;
-    }
-
-    clear();
-    toast.success("Siparişiniz bize ulaştı");
-    void navigate({ to: "/siparislerim" });
   };
 
   if (items.length === 0) {

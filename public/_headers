@@ -1,4 +1,4 @@
-# Cloudflare Pages HTTP Headers for KasimOgullari Toptan
+# Cloudflare Pages HTTP Headers for Kotoptan
 
 # 1. Hashed Vite assets: cache immutably for speed
 /assets/*
@@ -21,9 +21,9 @@
   Expires: 0
 
 # 4. Logos, Favicon and PWA App Icons: revalidate with server
-/kasimogullari-logo.jpg
+/kotoptan-logo.jpg
   Cache-Control: public, max-age=0, must-revalidate
-/kasimogullari-logo-v2.jpg
+/kotoptan-logo-v2.jpg
   Cache-Control: public, max-age=0, must-revalidate
 /logo.jpg
   Cache-Control: public, max-age=0, must-revalidate

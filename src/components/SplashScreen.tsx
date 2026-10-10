@@ -9,7 +9,7 @@ interface SplashScreenProps {
 
 export function SplashScreen({
   onFinish,
-  message = "KasımOğulları — Oturum açılıyor...",
+  message = "Kotoptan — Oturum açılıyor...",
   minDuration = 800,
 }: SplashScreenProps) {
   const [progress, setProgress] = useState(15);
@@ -51,11 +51,11 @@ export function SplashScreen({
           {/* Arkadaki yumuşak yeşil parlama */}
           <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl animate-pulse pointer-events-none" />
 
-          {/* Yeni KasımOğulları Logosu */}
+          {/* Kotoptan Logosu */}
           <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl overflow-hidden shadow-[0_12px_36px_rgba(16,185,129,0.35)] border border-emerald-500/40 transition-transform duration-700 hover:scale-105">
             <img
               src={BRAND_LOGO_SRC}
-              alt="KasımOğulları Logo"
+              alt="Kotoptan Logo"
               className="h-full w-full object-cover animate-pulse"
               referrerPolicy="no-referrer"
             />
@@ -65,7 +65,7 @@ export function SplashScreen({
         {/* Marka İsmi ve Tipografi */}
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-1 flex items-center justify-center gap-1.5">
           <span>
-            KASIM<span className="text-[#22c55e]">OĞULLARI</span>
+            KOT<span className="text-[#22c55e]">OPTAN</span>
           </span>
         </h1>
         <p className="text-xs font-bold tracking-wider uppercase text-emerald-400/90 mb-6">

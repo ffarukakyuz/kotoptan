@@ -55,16 +55,16 @@ async function fetchProductsFromDatabase(): Promise<Product[]> {
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "KasımOğulları Ltd. Şti. — Tatvan Toptan Satış Kataloğu" },
+      { title: "Kotoptan — Toptan Satış Portalı" },
       {
         name: "description",
         content:
-          "KasımOğulları Tatvan toptan şirketimizin 197 çeşit ürününü inceleyin, adetleri seçin ve siparişinizi oluşturun.",
+          "Kotoptan toptan şirketimizin zengin ürün kataloğunu inceleyin, adetleri seçin ve siparişinizi kolayca oluşturun.",
       },
-      { property: "og:title", content: "KasımOğulları Ltd. Şti. — Tatvan Toptan Satış Kataloğu" },
+      { property: "og:title", content: "Kotoptan — Toptan Satış Portalı" },
       {
         property: "og:description",
-        content: "Tatvan ve çevre ilçelerdeki market ve bakkallar için toptan ürün kataloğu.",
+        content: "Market ve bakkallar için toptan gıda ve tüketim ürünleri kataloğu.",
       },
     ],
   }),
@@ -202,7 +202,7 @@ function Index() {
             <div className="mx-auto mb-4 flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/60 border border-emerald-500/40 ring-4 ring-emerald-500/15 bg-[#040806] transition-transform duration-300 hover:scale-105">
               <img
                 src={BRAND_LOGO_SRC}
-                alt="KasımOğulları Logo"
+                alt="Kotoptan Logo"
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />

@@ -33,10 +33,13 @@ import {
   ImagePlus,
   Eraser,
   Link2,
+  GitBranch,
+  CloudLightning,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
+import { GitHubCloudflareSyncPanel } from "@/components/GitHubCloudflareSyncPanel";
 import { GoogleDriveSyncPanel } from "@/components/GoogleDriveSyncPanel";
 import { AdminChatPanel } from "@/components/AdminChatPanel";
 import { listAdminChatSessions } from "@/lib/chat-service";
@@ -116,7 +119,7 @@ import {
 
 const adminSearchSchema = z
   .object({
-    tab: z.enum(["orders", "products", "drive", "users", "messages"]).optional(),
+    tab: z.enum(["orders", "products", "drive", "sync", "users", "messages"]).optional(),
     edit: z.string().optional(),
   })
   .passthrough();
@@ -125,9 +128,9 @@ export const Route = createFileRoute("/_authenticated/yonetim")({
   validateSearch: (search: Record<string, unknown>) => adminSearchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Yönetim Paneli — KasımOğulları Ltd. Şti." },
+      { title: "Yönetim Paneli — Kotoptan" },
       { name: "description", content: "Ürünleri yönetin ve gelen siparişleri görüntüleyin." },
-      { property: "og:title", content: "Yönetim Paneli — KasımOğulları Ltd. Şti." },
+      { property: "og:title", content: "Yönetim Paneli — Kotoptan" },
       { property: "og:description", content: "Ürün ve sipariş yönetimi." },
     ],
   }),
@@ -177,28 +180,58 @@ function AdminPage() {
   const qc = useQueryClient();
   const search = Route.useSearch();
   const [activeTab, setActiveTab] = useState<string>(
-    search.edit ? "products" : (search.tab ?? "orders"),
+    search.edit ? "products" : search.tab === "drive" ? "sync" : (search.tab ?? "orders"),
   );
+  const [syncSubTab, setSyncSubTab] = useState<"github" | "cloudflare">("github");
 
   useEffect(() => {
     if (search.edit) {
       setActiveTab("products");
     } else if (search.tab) {
-      setActiveTab(search.tab);
+      setActiveTab(search.tab === "drive" ? "sync" : search.tab);
     }
   }, [search.edit, search.tab]);
 
   const { data: allOrders = [] } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
-        )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as AdminOrder[];
+      let remoteOrders: AdminOrder[] = [];
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
+          )
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          remoteOrders = data as AdminOrder[];
+        }
+      } catch (err) {
+        console.warn("[Admin] Supabase fetch orders error:", err);
+      }
+
+      let localOrders: AdminOrder[] = [];
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("ko_local_orders");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              localOrders = parsed as AdminOrder[];
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const remoteIds = new Set(remoteOrders.map((o) => o.id));
+      const combined = [
+        ...remoteOrders,
+        ...localOrders.filter((lo) => lo && lo.id && !remoteIds.has(lo.id)),
+      ];
+      combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return combined;
     },
   });
 
@@ -237,24 +270,39 @@ function AdminPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">Yönetim paneli</h1>
           <p className="text-sm text-muted-foreground">
-            Siparişleri, ürün kataloğunu ve Google Drive senkronizasyonunu yönetin.
+            Siparişleri, ürün kataloğunu, GitHub ve Cloudflare senkronizasyonunu yönetin.
           </p>
         </div>
-        {activeTab !== "drive" && (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveTab("drive")}
-            className="gap-1.5 self-start sm:self-auto"
+            onClick={() => {
+              setActiveTab("sync");
+              setSyncSubTab("github");
+            }}
+            className="gap-1.5 self-start sm:self-auto border-emerald-600/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold cursor-pointer"
           >
-            <Cloud className="h-4 w-4 text-primary" />
-            Google Drive Eşitleme
+            <GitBranch className="h-4 w-4 text-emerald-600" />
+            GitHub Depo Eşitle
           </Button>
-        )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setActiveTab("sync");
+              setSyncSubTab("cloudflare");
+            }}
+            className="gap-1.5 self-start sm:self-auto border-amber-600/30 hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold cursor-pointer"
+          >
+            <CloudLightning className="h-4 w-4 text-amber-500" />
+            Cloudflare Eşitle
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
@@ -288,11 +336,11 @@ function AdminPage() {
             )}
           </TabsTrigger>
           <TabsTrigger
-            value="drive"
+            value="sync"
             className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate"
           >
-            <Cloud className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span>Drive</span>
+            <GitBranch className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span>Depo & Cloudflare</span>
           </TabsTrigger>
           <TabsTrigger
             value="users"
@@ -302,12 +350,12 @@ function AdminPage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="orders">
-          <OrdersPanel onNavigateToDrive={() => setActiveTab("drive")} />
+          <OrdersPanel onNavigateToDrive={() => setActiveTab("sync")} />
         </TabsContent>
         <TabsContent value="products">
           <ProductsPanel
             initialEditId={search.edit}
-            onNavigateToDrive={() => setActiveTab("drive")}
+            onNavigateToDrive={() => setActiveTab("sync")}
             initialProducts={allProducts}
             isLoadingProducts={isProductsLoading}
           />
@@ -315,14 +363,18 @@ function AdminPage() {
         <TabsContent value="messages">
           <AdminChatPanel onNavigateToOrders={() => setActiveTab("orders")} />
         </TabsContent>
-        <TabsContent value="drive">
-          <GoogleDriveSyncPanel
+        <TabsContent value="sync">
+          <GitHubCloudflareSyncPanel
             products={allProducts}
-            orders={allOrders as unknown as DriveOrder[]}
-            onCatalogImported={() => {
-              void qc.invalidateQueries({ queryKey: ["admin-products"] });
-              void qc.invalidateQueries({ queryKey: ["products"] });
-            }}
+            orders={allOrders}
+            defaultSubTab={syncSubTab}
+          />
+        </TabsContent>
+        <TabsContent value="drive">
+          <GitHubCloudflareSyncPanel
+            products={allProducts}
+            orders={allOrders}
+            defaultSubTab={syncSubTab}
           />
         </TabsContent>
         <TabsContent value="users">
@@ -380,14 +432,43 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
-        )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as AdminOrder[];
+      let remoteOrders: AdminOrder[] = [];
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
+          )
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          remoteOrders = data as AdminOrder[];
+        }
+      } catch (err) {
+        console.warn("[Admin] remote orders query error:", err);
+      }
+
+      let localOrders: AdminOrder[] = [];
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("ko_local_orders");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              localOrders = parsed as AdminOrder[];
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const remoteIds = new Set(remoteOrders.map((o) => o.id));
+      const merged = [
+        ...remoteOrders,
+        ...localOrders.filter((lo) => lo && lo.id && !remoteIds.has(lo.id)),
+      ];
+      merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return merged;
     },
   });
 
@@ -481,10 +562,10 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
             variant="outline"
             size="sm"
             onClick={onNavigateToDrive}
-            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            <Cloud className="h-3.5 w-3.5 text-primary" />
-            Drive&apos;a Siparişleri Yedekle
+            <GitBranch className="h-3.5 w-3.5 text-emerald-600" />
+            GitHub & Cloudflare&apos;a Eşitle
           </Button>
         )}
       </div>
@@ -1461,8 +1542,8 @@ function ProductsPanel({
               onClick={onNavigateToDrive}
               className="h-9 gap-1.5 text-xs cursor-pointer"
             >
-              <Cloud className="h-3.5 w-3.5 text-primary" />
-              <span>Drive Kataloğu</span>
+              <GitBranch className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Depo & Cloudflare Eşitle</span>
             </Button>
           )}
 
@@ -2125,7 +2206,7 @@ function UsersPanel() {
               full_name: p.full_name,
               business_name: isGuest
                 ? "Misafir Hesabı"
-                : p.business_name || (admin ? "KasımOğulları Yönetim" : ""),
+                : p.business_name || (admin ? "Kotoptan Yönetim" : ""),
               profile_phone: p.phone,
               address: p.address,
             };
@@ -2145,7 +2226,7 @@ function UsersPanel() {
                 last_sign_in_at: null,
                 is_admin: true,
                 full_name: adm.name,
-                business_name: "KasımOğulları Yönetim",
+                business_name: "Kotoptan Yönetim",
                 profile_phone: adm.phone,
                 address: "Bitlis Merkez Depo",
               });
@@ -2176,7 +2257,7 @@ function UsersPanel() {
           last_sign_in_at: null,
           is_admin: true,
           full_name: adm.name,
-          business_name: "KasımOğulları Yönetim",
+          business_name: "Kotoptan Yönetim",
           profile_phone: adm.phone,
           address: "Bitlis Merkez Depo",
         })),

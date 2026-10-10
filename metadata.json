@@ -1,5 +1,5 @@
 {
-  "name": "KasımOğulları Toptan",
-  "description": "KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
+  "name": "Kotoptan",
+  "description": "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -19,7 +19,7 @@ function AuthenticatedLayout() {
   }, [user, loading, navigate]);
 
   if (loading) {
-    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
+    return <SplashScreen message="Kotoptan — Oturum açılıyor..." />;
   }
 
   if (!user) {

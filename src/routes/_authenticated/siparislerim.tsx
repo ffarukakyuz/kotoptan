@@ -11,9 +11,9 @@ import { extractCoordinates, getGoogleMapsNavigationUrl } from "@/lib/location-u
 export const Route = createFileRoute("/_authenticated/siparislerim")({
   head: () => ({
     meta: [
-      { title: "Siparişlerim — KasımOğulları Ltd. Şti." },
+      { title: "Siparişlerim — Kotoptan" },
       { name: "description", content: "Geçmiş sipariş taleplerinizi ve durumlarını görüntüleyin." },
-      { property: "og:title", content: "Siparişlerim — KasımOğulları Ltd. Şti." },
+      { property: "og:title", content: "Siparişlerim — Kotoptan" },
       { property: "og:description", content: "Sipariş taleplerinizin durumunu takip edin." },
     ],
   }),
@@ -102,14 +102,44 @@ function MyOrders() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          "id, created_at, archived_at, status, note, district, address, order_items(id, product_name, unit, quantity)",
-        )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as OrderRow[];
+      let remoteOrders: OrderRow[] = [];
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            "id, created_at, archived_at, status, note, district, address, order_items(id, product_name, unit, quantity)",
+          )
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          remoteOrders = data as OrderRow[];
+        }
+      } catch (err) {
+        console.warn("[MyOrders] Supabase fetch error:", err);
+      }
+
+      // Yerel sipariş kaydı ile birleştir (müşteri siparişi asla boş görmesin)
+      let localOrders: OrderRow[] = [];
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("ko_local_orders");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              localOrders = parsed as OrderRow[];
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const remoteIds = new Set(remoteOrders.map((o) => o.id));
+      const merged = [
+        ...remoteOrders,
+        ...localOrders.filter((lo) => lo && lo.id && !remoteIds.has(lo.id)),
+      ];
+      merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return merged;
     },
   });
 

@@ -94,8 +94,8 @@ try {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>KasımOğulları Toptan</title>
-    <meta name="description" content="KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin." />
+    <title>Kotoptan</title>
+    <meta name="description" content="Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu." />
     <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
     <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />

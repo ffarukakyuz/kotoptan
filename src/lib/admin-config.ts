@@ -1,5 +1,5 @@
 /**
- * KasımOğulları Ltd. Şti. Yönetici Yapılandırması
+ * Kotoptan Yönetici Yapılandırması
  *
  * Kesin kural: Yalnızca aşağıda tanımlı 5 numara/hesap yönetici yetkisine sahiptir.
  * Başka hiçbir hesap yönetici olamaz.

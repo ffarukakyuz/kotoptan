@@ -119,7 +119,7 @@ export function AdminChatPanel({ onNavigateToOrders }: AdminChatPanelProps = {})
     setBrowserNotifEnabled(granted);
     if (granted) {
       toast.success("Masaüstü bildirimleri aktif edildi! Yeni talepler ekranda belirecek.");
-      sendBrowserNotification("KasımOğulları Yönetici Bildirimleri", {
+      sendBrowserNotification("Kotoptan Yönetici Bildirimleri", {
         body: "Canlı destek bildirimleri başarıyla etkinleştirildi.",
       });
     } else {

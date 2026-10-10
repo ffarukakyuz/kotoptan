@@ -106,14 +106,14 @@ export function SiteHeader() {
           <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/50 border border-emerald-500/40 ring-1 ring-emerald-500/20 bg-[#040806] transition-transform duration-200 group-hover:scale-105 active:scale-95 shrink-0">
             <img
               src={BRAND_LOGO_SRC}
-              alt="KasımOğulları Logo"
+              alt="Kotoptan Logo"
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
             />
           </span>
           <div className="flex flex-col justify-center">
             <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none">
-              Kasım<span className="text-[#22c55e]">Oğulları</span>
+              Kot<span className="text-[#22c55e]">optan</span>
             </span>
             <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 tracking-wider uppercase mt-0.5 leading-none">
               Toptan Dağıtım
@@ -207,17 +207,17 @@ export function SiteHeader() {
             <span className="flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/40 border border-emerald-500/30 shrink-0">
               <img
                 src={BRAND_LOGO_SRC}
-                alt="KasımOğulları Logo"
+                alt="Kotoptan Logo"
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
             </span>
             <div>
               <span className="text-base font-extrabold tracking-tight text-white block">
-                Kasım<span className="text-[#22c55e]">Oğulları</span>
+                Kot<span className="text-[#22c55e]">optan</span>
               </span>
               <span className="text-[11px] font-semibold text-emerald-400 block">
-                Tatvan Toptan Dağıtım Merkezi
+                Toptan Dağıtım Merkezi
               </span>
             </div>
           </div>

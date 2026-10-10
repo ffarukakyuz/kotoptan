@@ -1,4 +1,4 @@
--- Cloudflare D1 Database Schema for KasımOğulları Toptan
+-- Cloudflare D1 Database Schema for Kotoptan (kotoptan-db)
 
 -- 1. Sohbet Oturumları (chat_sessions)
 CREATE TABLE IF NOT EXISTS chat_sessions (

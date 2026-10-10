@@ -35,6 +35,6 @@ export async function callGeminiAI(
   return {
     ok: true,
     reply:
-      "Merhaba! KasımOğulları toptan şirketimize hoş geldiniz. 197 çeşit ürünümüz, koli bilgileri ve sipariş süreçleri için yardımcı olabilirim.",
+      "Merhaba! Kotoptan toptan şirketimize hoş geldiniz. Ürünlerimiz, koli bilgileri ve sipariş süreçleri için yardımcı olabilirim.",
   };
 }

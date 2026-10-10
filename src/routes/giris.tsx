@@ -19,12 +19,12 @@ import { BRAND_LOGO_SRC } from "@/lib/branding";
 export const Route = createFileRoute("/giris")({
   head: () => ({
     meta: [
-      { title: "Giriş / Kayıt — KasımOğulları Ltd. Şti." },
+      { title: "Giriş / Kayıt — Kotoptan" },
       {
         name: "description",
         content: "Telefon numaranızla hesap oluşturun ve toptan sipariş vermeye başlayın.",
       },
-      { property: "og:title", content: "Giriş / Kayıt — KasımOğulları Ltd. Şti." },
+      { property: "og:title", content: "Giriş / Kayıt — Kotoptan" },
       {
         property: "og:description",
         content: "Toptan sipariş vermek için telefon numaranızla giriş yapın.",
@@ -255,7 +255,7 @@ function AuthPage() {
   if (successEntering) {
     return (
       <SplashScreen
-        message="KasımOğulları — Oturum açılıyor..."
+        message="Kotoptan — Oturum açılıyor..."
         minDuration={650}
         onFinish={() => void navigate({ to: "/" })}
       />
@@ -269,13 +269,13 @@ function AuthPage() {
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden shadow-xl shadow-black/40 ring-4 ring-emerald-500/20 border border-emerald-500/30">
           <img
             src={BRAND_LOGO_SRC}
-            alt="KasımOğulları Logo"
+            alt="Kotoptan Logo"
             className="h-full w-full object-cover"
             referrerPolicy="no-referrer"
           />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-white">
-          Kasım<span className="text-[#22c55e]">Oğulları</span> Ltd. Şti.
+          Kot<span className="text-[#22c55e]">optan</span>
         </h1>
         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-400">
           Toptan Satış & Bayi Girişi
