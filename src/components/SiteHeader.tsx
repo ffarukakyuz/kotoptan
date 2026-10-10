@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { PWAInstallModal } from "@/components/PWAInstallBanner";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 export function SiteHeader() {
   const { totalQuantity } = useCart();
@@ -104,7 +105,7 @@ export function SiteHeader() {
         <Link to="/" className="group flex items-center gap-2.5 sm:gap-3">
           <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/50 border border-emerald-500/40 ring-1 ring-emerald-500/20 bg-[#040806] transition-transform duration-200 group-hover:scale-105 active:scale-95 shrink-0">
             <img
-              src="/kasimogullari-logo.jpg"
+              src={BRAND_LOGO_SRC}
               alt="KasımOğulları Logo"
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
@@ -205,7 +206,7 @@ export function SiteHeader() {
           <div className="flex items-center gap-3 pb-3 mb-1 border-b border-white/10">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/40 border border-emerald-500/30 shrink-0">
               <img
-                src="/kasimogullari-logo.jpg"
+                src={BRAND_LOGO_SRC}
                 alt="KasımOğulları Logo"
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"

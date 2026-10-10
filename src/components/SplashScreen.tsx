@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -53,7 +54,7 @@ export function SplashScreen({
           {/* Yeni KasımOğulları Logosu */}
           <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl overflow-hidden shadow-[0_12px_36px_rgba(16,185,129,0.35)] border border-emerald-500/40 transition-transform duration-700 hover:scale-105">
             <img
-              src="/kasimogullari-logo.jpg"
+              src={BRAND_LOGO_SRC}
               alt="KasımOğulları Logo"
               className="h-full w-full object-cover animate-pulse"
               referrerPolicy="no-referrer"

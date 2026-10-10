@@ -21,6 +21,7 @@ import {
   Boxes,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { FALLBACK_PRODUCTS } from "@/data/products";
@@ -200,7 +201,7 @@ function Index() {
             {/* Ana Menü / Vitrin Logosu */}
             <div className="mx-auto mb-4 flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/60 border border-emerald-500/40 ring-4 ring-emerald-500/15 bg-[#040806] transition-transform duration-300 hover:scale-105">
               <img
-                src="/kasimogullari-logo.jpg"
+                src={BRAND_LOGO_SRC}
                 alt="KasımOğulları Logo"
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SplashScreen } from "@/components/SplashScreen";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 export const Route = createFileRoute("/giris")({
   head: () => ({
@@ -267,7 +268,7 @@ function AuthPage() {
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden shadow-xl shadow-black/40 ring-4 ring-emerald-500/20 border border-emerald-500/30">
           <img
-            src="/kasimogullari-logo.jpg"
+            src={BRAND_LOGO_SRC}
             alt="KasımOğulları Logo"
             className="h-full w-full object-cover"
             referrerPolicy="no-referrer"

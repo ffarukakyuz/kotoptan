@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles, X, Store, MapPin, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 export function WelcomeBanner() {
   const { user, profile } = useAuth();
@@ -57,7 +58,7 @@ export function WelcomeBanner() {
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md border border-emerald-500/30">
               <img
-                src="/kasimogullari-logo.jpg"
+                src={BRAND_LOGO_SRC}
                 alt="KasımOğulları Logo"
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"

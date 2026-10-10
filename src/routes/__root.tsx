@@ -19,6 +19,7 @@ import { SupportChat } from "@/components/SupportChat";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { SplashScreen } from "@/components/SplashScreen";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 function NotFoundComponent() {
   return (
@@ -150,12 +151,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
       },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/apple-touch-icon.png" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "icon", sizes: "192x192", type: "image/png", href: "/icon-192x192.png" },
-      { rel: "icon", sizes: "512x512", type: "image/png", href: "/icon-512x512.png" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=20261010-k" },
+      { rel: "icon", type: "image/png", href: "/favicon.png?v=20261010-k" },
+      {
+        rel: "apple-touch-icon",
+        sizes: "180x180",
+        href: "/icons/apple-touch-icon.png?v=20261010-k",
+      },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=20261010-k" },
+      { rel: "icon", sizes: "192x192", type: "image/png", href: "/icon-192x192.png?v=20261010-k" },
+      { rel: "icon", sizes: "512x512", type: "image/png", href: "/icon-512x512.png?v=20261010-k" },
     ],
   }),
   shellComponent: RootShell,
@@ -239,7 +244,7 @@ function RootAppContent() {
         <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md border border-emerald-500/30">
             <img
-              src="/kasimogullari-logo.jpg"
+              src={BRAND_LOGO_SRC}
               alt="KasımOğulları Logo"
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
