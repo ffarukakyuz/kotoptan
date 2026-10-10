@@ -329,12 +329,16 @@ export default {
       const ssrResponse = await normalizeCatastrophicSsrResponse(response);
 
       const newHeaders = new Headers(ssrResponse.headers);
-      newHeaders.set(
-        "Cache-Control",
-        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      );
-      newHeaders.set("Pragma", "no-cache");
-      newHeaders.set("Expires", "0");
+      if (url.pathname.startsWith("/assets/")) {
+        newHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        newHeaders.set(
+          "Cache-Control",
+          "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        );
+        newHeaders.set("Pragma", "no-cache");
+        newHeaders.set("Expires", "0");
+      }
 
       return new Response(ssrResponse.body, {
         status: ssrResponse.status,

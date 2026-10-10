@@ -57,35 +57,48 @@ try {
     console.log("Copied .output into dist/.output");
   }
 
-  // 3. Ensure dist/index.html exists for static hosts / preview
-  const distIndexPath = path.join(distDir, "index.html");
-  if (!fs.existsSync(distIndexPath)) {
-    let scriptTag = "";
-    let styleTag = "";
-
-    const assetsDir = path.join(distDir, "assets");
-    if (fs.existsSync(assetsDir)) {
-      const assetFiles = fs.readdirSync(assetsDir);
-      const jsEntry = assetFiles.find((f) => f.startsWith("index-") && f.endsWith(".js"));
-      const cssEntry = assetFiles.find((f) => f.endsWith(".css"));
-
-      if (cssEntry) {
-        styleTag = `<link rel="stylesheet" href="/assets/${cssEntry}">`;
-      }
-      if (jsEntry) {
-        scriptTag = `<script type="module" src="/assets/${jsEntry}"></script>`;
-      }
+  // 2.5 Ensure public/_headers is always placed in dist/_headers and .output/public/_headers
+  const headersSource = path.join(staticPublicDir, "_headers");
+  if (fs.existsSync(headersSource)) {
+    fs.copyFileSync(headersSource, path.join(distDir, "_headers"));
+    if (fs.existsSync(outputPublicDir)) {
+      fs.copyFileSync(headersSource, path.join(outputPublicDir, "_headers"));
     }
+    console.log("Enforced Cloudflare Pages _headers in dist/ and .output/public");
+  }
 
-    const htmlContent = `<!DOCTYPE html>
+  // 3. Ensure dist/index.html exists and includes anti-cache meta tags for static hosts / preview
+  const distIndexPath = path.join(distDir, "index.html");
+  let scriptTag = "";
+  let styleTag = "";
+
+  const assetsDir = path.join(distDir, "assets");
+  if (fs.existsSync(assetsDir)) {
+    const assetFiles = fs.readdirSync(assetsDir);
+    const jsEntry = assetFiles.find((f) => f.startsWith("index-") && f.endsWith(".js"));
+    const cssEntry = assetFiles.find((f) => f.endsWith(".css"));
+
+    if (cssEntry) {
+      styleTag = `<link rel="stylesheet" href="/assets/${cssEntry}">`;
+    }
+    if (jsEntry) {
+      scriptTag = `<script type="module" src="/assets/${jsEntry}"></script>`;
+    }
+  }
+
+  const htmlContent = `<!DOCTYPE html>
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>KasımOğulları Toptan</title>
-    <meta name="description" content="KasımOğulları depomuzun ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin." />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="description" content="KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin." />
+    <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
+    <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />
     ${styleTag}
   </head>
   <body>
@@ -94,9 +107,8 @@ try {
   </body>
 </html>
 `;
-    fs.writeFileSync(distIndexPath, htmlContent, "utf-8");
-    console.log("Generated dist/index.html");
-  }
+  fs.writeFileSync(distIndexPath, htmlContent, "utf-8");
+  console.log("Updated dist/index.html with anti-cache headers");
 
   const distFilesCount = fs.readdirSync(distDir).length;
   console.log(

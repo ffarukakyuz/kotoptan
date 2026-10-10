@@ -142,6 +142,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "KasımOğulları şirketimizin ürünlerini inceleyin, sepete ekleyin ve sipariş talebinizi iletin.",
       },
       { name: "twitter:card", content: "summary_large_image" },
+      { httpEquiv: "Cache-Control", content: "no-cache, no-store, must-revalidate" },
+      { httpEquiv: "Pragma", content: "no-cache" },
+      { httpEquiv: "Expires", content: "0" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -202,6 +205,32 @@ function RootAppContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const isAuthPage = pathname === "/giris";
+
+  // Mobil önbellek (Safari/Chrome BFCache) ve servis güncelliği koruması
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Mobil Safari BFCache (Geri/İleri tuşunda bayat belleği yükleme) koruması
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
+    // Varsa eski/hatalı service worker kayıtlarını güncelle ve temiz tut
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.update().catch(() => {});
+        }
+      });
+    }
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
 
   // Giriş zorunludur: Giriş yapılmamışsa ve /giris sayfasında değilsek derhal /giris'e yönlendir.
   useEffect(() => {
