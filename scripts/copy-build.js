@@ -96,6 +96,8 @@ try {
     <meta http-equiv="Expires" content="0" />
     <title>Kotoptan</title>
     <meta name="description" content="Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu." />
+    <meta property="og:title" content="Kotoptan" />
+    <meta property="og:description" content="Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu." />
     <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
     <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />

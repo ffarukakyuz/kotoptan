@@ -131,15 +131,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Kotoptan" },
       {
         name: "description",
-        content:
-          "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
+        content: "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
       },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "Kotoptan" },
       {
         property: "og:description",
-        content:
-          "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
+        content: "Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { httpEquiv: "Cache-Control", content: "no-cache, no-store, must-revalidate" },

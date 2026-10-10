@@ -113,7 +113,7 @@ export function SiteHeader() {
           </span>
           <div className="flex flex-col justify-center">
             <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none">
-              Kot<span className="text-[#22c55e]">optan</span>
+              Ko<span className="text-[#22c55e]">toptan</span>
             </span>
             <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 tracking-wider uppercase mt-0.5 leading-none">
               Toptan Dağıtım
@@ -214,7 +214,7 @@ export function SiteHeader() {
             </span>
             <div>
               <span className="text-base font-extrabold tracking-tight text-white block">
-                Kot<span className="text-[#22c55e]">optan</span>
+                Ko<span className="text-[#22c55e]">toptan</span>
               </span>
               <span className="text-[11px] font-semibold text-emerald-400 block">
                 Toptan Dağıtım Merkezi

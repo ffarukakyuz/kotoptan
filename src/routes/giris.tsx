@@ -275,7 +275,7 @@ function AuthPage() {
           />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-white">
-          Kot<span className="text-[#22c55e]">optan</span>
+          Ko<span className="text-[#22c55e]">toptan</span>
         </h1>
         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-400">
           Toptan Satış & Bayi Girişi

@@ -109,8 +109,8 @@ export function WelcomeBanner() {
             </div>
 
             <p className="mt-2.5 text-xs text-white/75 leading-relaxed relative z-10">
-              Kotoptan toptan kataloğuna hoş geldiniz. Hızlı sipariş ve tek tıkla erişim için
-              ana ekrana kısayol ekleyebilirsiniz.
+              Kotoptan toptan kataloğuna hoş geldiniz. Hızlı sipariş ve tek tıkla erişim için ana
+              ekrana kısayol ekleyebilirsiniz.
             </p>
 
             <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs relative z-10">

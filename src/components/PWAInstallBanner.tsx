@@ -157,8 +157,8 @@ export function PWAInstallModal({ isIOS, onClose }: { isIOS: boolean; onClose: (
                 </span>
                 <p className="text-xs sm:text-sm">
                   Sağ üst köşedeki <strong className="text-white font-semibold">"Ekle"</strong>{" "}
-                  butonuna dokunun. Kotoptan logosu telefonunuzun ana ekranında uygulama gibi
-                  hazır olacaktır!
+                  butonuna dokunun. Kotoptan logosu telefonunuzun ana ekranında uygulama gibi hazır
+                  olacaktır!
                 </p>
               </div>
             </>
