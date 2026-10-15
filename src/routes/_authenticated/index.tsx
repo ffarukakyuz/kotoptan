@@ -1,0 +1,930 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Search,
+  Plus,
+  Minus,
+  Check,
+  PackageSearch,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Play,
+  Pause,
+  Zap,
+  ShoppingCart,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Package,
+  Boxes,
+  ShieldCheck,
+} from "lucide-react";
+import { toast } from "sonner";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
+
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
+import { FALLBACK_PRODUCTS } from "@/data/products";
+import {
+  categoryLabel,
+  type Product,
+  isProductInStock,
+  cleanProductDescription,
+  extractPackageOrBoxInfo,
+  setProductStockStatusLocal,
+  normalizeProductWithOverrides,
+} from "@/lib/catalog";
+import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
+import { useCart } from "@/lib/cart";
+import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AllCategoryIcon,
+  TemizlikCategoryIcon,
+  GidaCategoryIcon,
+  BakliyatCategoryIcon,
+  KisiselCategoryIcon,
+} from "@/components/CategoryIcons";
+import {
+  getAllCatalogProducts,
+  isBannedProductName,
+  isProductPermanentlyDeleted,
+} from "@/lib/custom-products";
+
+async function fetchProductsFromDatabase(): Promise<Product[]> {
+  return getAllCatalogProducts();
+}
+
+export const Route = createFileRoute("/_authenticated/")({
+  head: () => ({
+    meta: [
+      { title: "Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı" },
+      {
+        name: "description",
+        content:
+          "Ko Toptan (Kotoptan / KasımOğulları Ltd. Şti.) — Bitlis, Tatvan ve çevre ilçelerdeki bakkal ve marketlere toptan gıda, bakliyat, un, yağ, salça ve temizlik ürünleri dağıtımı. Hızlı sevkiyat ve güvenilir toptan sipariş platformu.",
+      },
+      {
+        name: "keywords",
+        content:
+          "ko toptan, kotoptan, ko toptan gıda, ko toptan market, tatvan toptan, bitlis toptan, kasımoğulları toptan, kasım oğulları gıda, toptan gıda, toptan bakliyat, toptan temizlik, bitlis toptancı, tatvan toptancı, toptan market ürünleri",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Ko Toptan" },
+      { property: "og:url", content: "https://kotoptan.pages.dev" },
+      {
+        property: "og:title",
+        content: "Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı",
+      },
+      {
+        property: "og:description",
+        content:
+          "Ko Toptan — Bitlis, Tatvan, Ahlat, Adilcevaz, Güroymak ve Hizan marketlerine toptan gıda, bakliyat ve temizlik ürünleri doğrudan depo teslimatı.",
+      },
+      { property: "og:image", content: "https://kotoptan.pages.dev/kotoptan-logo-v2.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        name: "twitter:title",
+        content: "Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda Dağıtımı",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Ko Toptan — Bitlis ve Tatvan merkezli bakkal ve marketlere toptan gıda, bakliyat ve temizlik ürünleri dağıtımı.",
+      },
+      { name: "twitter:image", content: "https://kotoptan.pages.dev/kotoptan-logo-v2.jpg" },
+    ],
+  }),
+  component: Index,
+});
+
+const CIRCULAR_CATEGORIES = [
+  { value: "tumu", label: "Tümü", Icon: AllCategoryIcon },
+  { value: "temizlik", label: "Temizlik", Icon: TemizlikCategoryIcon },
+  { value: "gida", label: "Gıda", Icon: GidaCategoryIcon },
+  { value: "bakliyat", label: "Bakliyat", Icon: BakliyatCategoryIcon },
+  { value: "kisisel", label: "Kişisel Bakım", Icon: KisiselCategoryIcon },
+] as const;
+
+function Index() {
+  const { isAdmin } = useAuth();
+  const [category, setCategory] = useState<string>("tumu");
+  const [search, setSearch] = useState("");
+  const [stockTick, setStockTick] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleStockChange = () => setStockTick((t) => t + 1);
+    const handleCatalogUpdate = () => {
+      setStockTick((t) => t + 1);
+      fetchProductsFromDatabase().then((items) => setClientProducts(items));
+    };
+    window.addEventListener("product_stock_status_changed", handleStockChange);
+    window.addEventListener("catalog_updated", handleCatalogUpdate);
+    return () => {
+      window.removeEventListener("product_stock_status_changed", handleStockChange);
+      window.removeEventListener("catalog_updated", handleCatalogUpdate);
+    };
+  }, []);
+
+  // 1. TanStack Query for cache & live updates from live Supabase database
+  const {
+    data: dbProducts,
+    isLoading: isQueryLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["live-supabase-products"],
+    queryFn: fetchProductsFromDatabase,
+    initialData: () => getAllCatalogProducts(),
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: true,
+  });
+
+  // 2. Direct client-side explicit Supabase call on initial mount
+  const [clientProducts, setClientProducts] = useState<Product[]>(() => getAllCatalogProducts());
+  const [isClientLoading, setIsClientLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadClientSide() {
+      try {
+        const items = await fetchProductsFromDatabase();
+        if (active && items.length > 0) {
+          setClientProducts(items);
+        }
+      } catch (err) {
+        console.warn("[Products] Client-side fetch error:", err);
+      } finally {
+        if (active) {
+          setIsClientLoading(false);
+        }
+      }
+    }
+
+    loadClientSide();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const allProducts = useMemo(() => {
+    void stockTick;
+    const base =
+      clientProducts.length > 0
+        ? clientProducts
+        : dbProducts && dbProducts.length > 0
+          ? dbProducts
+          : [];
+    // Soft-deleted/archived products and banned products are completely hidden from customer catalog
+    return base
+      .filter((p) => !isBannedProductName(p.name) && !isProductPermanentlyDeleted(p.id, p.name))
+      .map(normalizeProductWithOverrides)
+      .filter((p) => p.is_active !== false);
+  }, [clientProducts, dbProducts, stockTick]);
+
+  const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLocaleLowerCase("tr");
+    return allProducts.filter(
+      (p) =>
+        (category === "tumu" || p.category === category) &&
+        (q === "" || p.name.toLocaleLowerCase("tr").includes(q)),
+    );
+  }, [allProducts, category, search]);
+
+  const scrollToCatalog = () => {
+    if (typeof document !== "undefined") {
+      const el = document.getElementById("urunler");
+      el?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#060b08] text-white">
+      {/* HERO SECTION: BLACK BASE, DEEP FOREST GREEN ACCENTS, WHITE HIGHLIGHTS */}
+      <section className="relative overflow-hidden px-4 pt-4 pb-12 sm:pt-6 sm:pb-16 bg-gradient-to-b from-[#09150d] via-[#060b08] to-[#040805]">
+        {/* Deep forest ambient glow */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-[#166534]/15 blur-[140px]"
+        />
+
+        <div className="relative mx-auto max-w-4xl">
+          {/* Hero Featured Showcase Card (Pure mockup style: image, arrows, title, unit, pill) */}
+          <div className="mt-2 sm:mt-4">
+            <HeroProductCard
+              products={allProducts}
+              selectedCategory={category}
+              loading={isLoading}
+            />
+          </div>
+
+          {/* Hero Call-To-Action Copy & Badges */}
+          <div className="mt-8 text-center sm:mt-10">
+            {/* Ana Menü / Vitrin Logosu */}
+            <div className="mx-auto mb-4 flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/60 border border-emerald-500/40 ring-4 ring-emerald-500/15 bg-[#040806] transition-transform duration-300 hover:scale-105">
+              <img
+                src={BRAND_LOGO_SRC}
+                alt="Kotoptan Logo"
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#4ade80] shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-pulse" />
+              Toptan & Hızlı Tedarik
+            </div>
+
+            <h1 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight max-w-2xl mx-auto text-balance">
+              Her ürünü ambalajına göre sipariş verin.
+            </h1>
+
+            {/* Sipariş Ambalaj/Birim Rehberi (Paket, Koli, Çuval, Adet) */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 max-w-2xl mx-auto text-xs sm:text-sm">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-purple-400 font-extrabold">🧴 Paket</span>
+                <span className="text-slate-400">bazlılar paketle,</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-amber-400 font-extrabold">📦 Koli</span>
+                <span className="text-slate-400">bazlılar koliyle,</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-emerald-400 font-extrabold">🌾 Çuval</span>
+                <span className="text-slate-400">bazlılar çuvalla,</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+                <span className="text-sky-400 font-extrabold">🏷️ Adet</span>
+                <span className="text-slate-400">ürünler tekil adetle</span>
+              </div>
+            </div>
+
+            <p className="mt-2.5 text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+              İhtiyacınız olan miktarı belirleyin, sepetinizi oluşturup doğrudan siparişinizi
+              tamamlayın.
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={scrollToCatalog}
+                className="flex-1 rounded-xl bg-[#166534] hover:bg-[#14532d] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-black/60 transition-all active:scale-95 cursor-pointer"
+              >
+                Ürünleri incele
+              </button>
+              {isAdmin ? (
+                <Link
+                  to="/yonetim"
+                  className="flex-1 rounded-xl border border-emerald-500/40 bg-emerald-500/20 hover:bg-emerald-500/30 px-6 py-3.5 text-base font-bold text-emerald-300 transition-all active:scale-95 text-center cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                  <span>Yönetim</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/sepet"
+                  className="flex-1 rounded-xl border border-white/20 bg-white/10 hover:bg-white/15 px-6 py-3.5 text-base font-semibold text-white transition-all active:scale-95 text-center cursor-pointer"
+                >
+                  Sepetim
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CATALOG GRID SECTION */}
+      <section id="urunler" className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        {/* Circular Category Navigation (Tümü, Gıda, Bakliyat, Temizlik, Kişisel Bakım) - Mobilde tam sığacak ideal büyüklükte ve şık tasarım */}
+        <div className="mb-8 flex items-start justify-between sm:justify-center gap-1 sm:gap-6 md:gap-8 py-2 px-1 max-w-full">
+          {CIRCULAR_CATEGORIES.map(({ value, label, Icon }) => {
+            const isActive = category === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setCategory(value)}
+                className="group flex flex-1 sm:flex-initial flex-col items-center focus:outline-none cursor-pointer min-w-0 max-w-[68px] sm:max-w-none"
+              >
+                <div
+                  className={`flex h-11 w-11 xs:h-12 xs:w-12 sm:h-16 sm:w-16 md:h-18 md:w-18 items-center justify-center rounded-full bg-white text-slate-800 shadow-md transition-all duration-200 group-hover:scale-105 active:scale-95 shrink-0 ${
+                    isActive
+                      ? "scale-105 ring-[2.5px] sm:ring-4 ring-[#166534] ring-offset-1 sm:ring-offset-2 ring-offset-[#060b08] shadow-[#166534]/40"
+                      : "opacity-90 hover:opacity-100"
+                  }`}
+                >
+                  <Icon className="h-5.5 w-5.5 xs:h-6 xs:w-6 sm:h-8 sm:w-8 md:h-9 md:w-9 text-slate-800 transition-transform group-hover:scale-110" />
+                </div>
+                <span
+                  className={`mt-1.5 text-[10px] xs:text-[11px] sm:text-xs md:text-sm font-semibold tracking-tight transition-colors text-center leading-[1.15] break-words line-clamp-2 max-w-full ${
+                    isActive ? "text-[#22c55e] font-bold" : "text-white/75 group-hover:text-white"
+                  }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search & Filter Header */}
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-white/10 pb-6">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+              {category === "tumu" ? "Tüm Ürünler" : `${categoryLabel(category)} Ürünleri`}
+            </h2>
+            <p className="mt-1 text-sm text-white/60">
+              {isLoading
+                ? "Canlı ürünler yükleniyor..."
+                : `${filteredProducts.length} adet ürün listeleniyor`}
+            </p>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full md:w-80">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+            <Input
+              id="search-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ürün adı veya barkod ara..."
+              className="h-11 w-full rounded-xl border-white/15 bg-white/10 pl-10 pr-9 text-sm text-white placeholder:text-white/40 focus:border-[#166534] focus:ring-1 focus:ring-[#166534]"
+              maxLength={80}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Product Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 animate-pulse"
+              >
+                <div>
+                  <div className="aspect-square w-full rounded-xl bg-white/10 mb-3" />
+                  <div className="h-3 w-16 rounded bg-white/10 mb-2" />
+                  <div className="h-4 w-3/4 rounded bg-white/10 mb-2" />
+                  <div className="h-3 w-1/2 rounded bg-white/10" />
+                </div>
+                <div className="mt-4 pt-2.5 border-t border-white/5">
+                  <div className="h-8 w-full rounded-lg bg-white/10" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="my-16 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/60">
+            <PackageSearch className="h-12 w-12 text-[#22c55e] mb-3" />
+            <p className="text-lg font-semibold text-white">
+              {allProducts.length === 0 ? "Ürünler Yüklenemedi" : "Ürün bulunamadı"}
+            </p>
+            <p className="mt-1 text-sm max-w-sm">
+              {allProducts.length === 0
+                ? "Canlı veritabanından ürünler alınamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin."
+                : search
+                  ? `"${search}" aramasına uygun ürün bulunamadı. Lütfen farklı bir arama deneyin.`
+                  : "Bu kategoride henüz ürün bulunmuyor."}
+            </p>
+            {allProducts.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-4 rounded-xl bg-[#166534] hover:bg-[#14532d] px-5 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-lg"
+              >
+                Tekrar Dene
+              </button>
+            ) : search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/20 transition-colors cursor-pointer"
+              >
+                Aramayı Temizle
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {filteredProducts.map((p) => (
+              <CatalogProductCard key={`${p.id}-${isProductInStock(p)}`} product={p} />
+            ))}
+          </div>
+        )}
+
+        {/* Ko Toptan SEO & Kurumsal Bilgi Bölümü */}
+        <footer className="mt-14 pt-8 border-t border-white/10 text-white/70">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-7 backdrop-blur-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                  Ko Toptan — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı
+                </h2>
+                <p className="text-xs sm:text-sm text-emerald-400 font-medium mt-0.5">
+                  KasımOğulları Gıda ve Tüketim Malları Dağıtım Merkezi
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-lg bg-emerald-500/20 text-emerald-300 px-2.5 py-1 font-semibold">
+                  197 Çeşit Ürün
+                </span>
+                <span className="rounded-lg bg-white/10 text-white/90 px-2.5 py-1 font-semibold">
+                  Depodan Kapıya Teslimat
+                </span>
+                <span className="rounded-lg bg-amber-500/20 text-amber-300 px-2.5 py-1 font-semibold">
+                  Bitlis • 7 İlçe
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs leading-relaxed">
+              <div>
+                <h3 className="font-semibold text-white text-sm mb-2">Ko Toptan Hakkında</h3>
+                <p>
+                  <strong>Ko Toptan</strong> (Kotoptan), Bitlis, Tatvan ve çevre ilçelerdeki bakkal,
+                  market ve süpermarketlere toptan bakliyat, un, yağ, salça, çay, deterjan, temizlik
+                  ve tüketim malları tedarik eden ana toptan satış platformudur.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white text-sm mb-2">Hizmet Verilen İlçeler</h3>
+                <p>
+                  Kendi sevkiyat araç filomuzla düzenli haftalık rotalarımız:{" "}
+                  <strong>Tatvan</strong>, <strong>Bitlis Merkez</strong>, <strong>Ahlat</strong>,{" "}
+                  <strong>Adilcevaz</strong>, <strong>Güroymak</strong>, <strong>Hizan</strong> ve{" "}
+                  <strong>Mutki</strong>. Siparişleriniz doğrudan marketinizin kapısına teslim
+                  edilir.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white text-sm mb-2">Depo & Sipariş İletişim</h3>
+                <p className="space-y-1">
+                  <span>📍 Aydınlar Mahallesi, İstiklal Caddesi, Tatvan / Bitlis</span>
+                  <br />
+                  <span>
+                    📞 <strong>Sipariş Hattı:</strong> 0544 893 13 00
+                  </span>
+                  <br />
+                  <span>
+                    ⏰ <strong>Çalışma Saatleri:</strong> Pazartesi - Cumartesi 07:30 - 19:00
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Featured Hero Product Showcase Card
+ * Faithfully matches the user's mockup image:
+ * Clean white body, image with arrow buttons, category kicker, bold title, pack unit, and counter pill.
+ */
+function HeroProductCard({
+  products,
+  selectedCategory,
+  loading,
+}: {
+  products: Product[];
+  selectedCategory: string;
+  loading: boolean;
+}) {
+  const { add } = useCart();
+  const [justAdded, setJustAdded] = useState(false);
+
+  // Filter slides based on category if selected, or use all
+  const slides = useMemo(() => {
+    const list =
+      selectedCategory === "tumu"
+        ? products
+        : products.filter((p) => p.category === selectedCategory);
+    return list.length > 0 ? list : products;
+  }, [products, selectedCategory]);
+
+  const [index, setIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [tick, setTick] = useState(0);
+
+  // Reset index when category changes
+  useEffect(() => {
+    setIndex(0);
+    setTick((t) => t + 1);
+  }, [selectedCategory]);
+
+  // 3 Saniyede bir otomatik geçiş (Kullanıcı talebi: "allahın hakkı 3 tür 3 sn yap")
+  useEffect(() => {
+    if (!isPlaying || slides.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % slides.length);
+      setTick((t) => t + 1);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, slides.length]);
+
+  const nextSlide = () => {
+    if (slides.length <= 1) return;
+    setIndex((prev) => (prev + 1) % slides.length);
+    setTick((t) => t + 1);
+  };
+
+  const prevSlide = () => {
+    if (slides.length <= 1) return;
+    setIndex((prev) => (prev - 1 + slides.length) % slides.length);
+    setTick((t) => t + 1);
+  };
+
+  if (loading || slides.length === 0) {
+    return (
+      <div className="mx-auto max-w-[340px] sm:max-w-[390px] w-full rounded-[28px] sm:rounded-[32px] bg-white p-5 sm:p-6 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_45px_rgba(34,197,94,0.35)] border-2 border-emerald-500/40 animate-pulse">
+        <div className="aspect-square w-full rounded-2xl bg-slate-100 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-[#166534] animate-spin opacity-40" />
+        </div>
+        <div className="mt-4 flex flex-col items-center">
+          <div className="h-3 w-20 rounded bg-slate-200 mb-2" />
+          <div className="h-5 w-48 rounded-md bg-slate-200 mb-1.5" />
+          <div className="h-4 w-24 rounded bg-slate-100 mb-4" />
+          <div className="h-11 w-full rounded-xl bg-slate-200" />
+        </div>
+      </div>
+    );
+  }
+
+  const current = slides[index] ?? slides[0]!;
+  const inStock = isProductInStock(current);
+  const boxInfo = extractPackageOrBoxInfo(
+    current.description,
+    current.unit,
+    current.name,
+    current.id,
+  );
+
+  const handleQuickAdd = () => {
+    if (!inStock) {
+      toast.error("Bu ürün şu anda stokta bulunmamaktadır.");
+      return;
+    }
+    add(
+      {
+        productId: current.id,
+        name: current.name,
+        unit: current.unit,
+        image_url: current.image_url,
+      },
+      1,
+    );
+    setJustAdded(true);
+    toast.success(`1 ${current.unit} ${current.name} sepete eklendi`);
+    setTimeout(() => setJustAdded(false), 900);
+  };
+
+  return (
+    <div className="relative mx-auto max-w-[340px] sm:max-w-[390px] w-full rounded-[28px] sm:rounded-[32px] bg-white p-5 sm:p-6 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_45px_rgba(34,197,94,0.35)] border-2 border-emerald-500/50 transition-all select-none overflow-hidden group">
+      {/* 3 SANİYELİK DİNAMİK İLERLEME ÇUBUĞU (Hava Civa Efekti) */}
+      {isPlaying && slides.length > 1 && (
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100 overflow-hidden z-20">
+          <div
+            key={tick}
+            className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-[#166534] w-full"
+            style={{
+              animation: "heroProgress 3000ms linear forwards",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Üst Canlı Vitrin ve Oynat/Durdur Barı */}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shadow-sm">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
+          </span>
+          <span className="tracking-wide">CANLI VİTRİN • 3 SN</span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setIsPlaying((p) => !p)}
+            className="flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+            title={isPlaying ? "Durdur" : "Otomatik Başlat"}
+          >
+            {isPlaying ? (
+              <>
+                <Pause className="h-3 w-3 fill-slate-700" />
+                <span>Durdur</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-3 w-3 fill-slate-700" />
+                <span>3sn Başlat</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Product Image Area with Carousel Arrows */}
+      <div className="relative aspect-square w-full rounded-2xl bg-gradient-to-b from-neutral-50 to-neutral-100/70 p-4 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
+        <Link
+          to="/urun/$id"
+          params={{ id: current.id }}
+          className="flex h-full w-full items-center justify-center transition-transform hover:scale-105"
+        >
+          <img
+            key={current.id}
+            src={getPublicProductImageUrl(current, current.name, current.category)}
+            alt={current.name}
+            onError={(e) => handleProductImageError(e, current.name, current.category)}
+            className={`h-full w-full object-contain drop-shadow-md transition-all duration-300 animate-in fade-in zoom-in-95 ${
+              !inStock ? "opacity-75 grayscale-[20%]" : "opacity-100"
+            }`}
+          />
+        </Link>
+
+        {/* Left Arrow Button */}
+        {slides.length > 1 && (
+          <button
+            type="button"
+            onClick={prevSlide}
+            aria-label="Önceki ürün"
+            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/90 text-white shadow-lg transition-transform hover:bg-black active:scale-90 z-10 cursor-pointer"
+          >
+            <ChevronLeft className="h-6 w-6 stroke-[2.5]" />
+          </button>
+        )}
+
+        {/* Right Arrow Button */}
+        {slides.length > 1 && (
+          <button
+            type="button"
+            onClick={nextSlide}
+            aria-label="Sonraki ürün"
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/90 text-white shadow-lg transition-transform hover:bg-black active:scale-90 z-10 cursor-pointer"
+          >
+            <ChevronRight className="h-6 w-6 stroke-[2.5]" />
+          </button>
+        )}
+      </div>
+
+      {/* Product Details matching Mockup */}
+      <div className="mt-4 flex flex-col">
+        {/* Category kicker in uppercase and Interactive Stock Toggle Button (Only active for Admins) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-700">
+              {categoryLabel(current.category)}
+            </span>
+            <span className="text-slate-300">•</span>
+            <span
+              className={`text-[11px] font-semibold ${
+                inStock ? "text-emerald-600" : "text-rose-600 font-bold"
+              }`}
+            >
+              {inStock ? "Stokta Var" : "Stokta Yok"}
+            </span>
+          </div>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600 border border-slate-200/60">
+            {index + 1} / {slides.length}
+          </span>
+        </div>
+
+        {/* Title */}
+        <Link to="/urun/$id" params={{ id: current.id }}>
+          <h2
+            key={`title-${current.id}`}
+            className="mt-1 line-clamp-2 text-2xl sm:text-[26px] font-extrabold tracking-tight text-slate-950 hover:text-[#166534] transition-colors leading-tight animate-in fade-in"
+          >
+            {current.name}
+          </h2>
+        </Link>
+
+        {/* Package / Unit and Quick Add Row */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <p className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
+              {current.unit}
+            </p>
+            {boxInfo && (
+              <span className="text-xs font-semibold text-amber-700 flex items-center gap-1 mt-0.5">
+                {boxInfo.toLowerCase().startsWith("paket") ? (
+                  <Package className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                ) : (
+                  <Boxes className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                )}
+                {boxInfo}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={!inStock}
+            onClick={handleQuickAdd}
+            className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
+              !inStock
+                ? "bg-slate-200 text-slate-500 cursor-not-allowed opacity-80"
+                : justAdded
+                  ? "bg-emerald-600 text-white scale-105"
+                  : "bg-[#166534] hover:bg-[#14532d] text-white"
+            }`}
+          >
+            {!inStock ? (
+              <>
+                <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                Stokta Yok
+              </>
+            ) : justAdded ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                Eklendi!
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="h-3.5 w-3.5" />
+                Hemen Ekle
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Grid Product Card Component for the lower catalog section
+ * Here, quantity stepper and Add to Cart buttons are fully accessible
+ */
+function CatalogProductCard({ product }: { product: Product }) {
+  const { add } = useCart();
+  const [added, setAdded] = useState(false);
+  const [qty, setQty] = useState(1);
+  const inStock = isProductInStock(product);
+  const boxInfo = extractPackageOrBoxInfo(
+    product.description,
+    product.unit,
+    product.name,
+    product.id,
+  );
+
+  const handleAdd = () => {
+    if (!inStock) {
+      toast.error("Bu ürün şu anda stokta bulunmamaktadır.");
+      return;
+    }
+    add(
+      {
+        productId: product.id,
+        name: product.name,
+        unit: product.unit,
+        image_url: product.image_url,
+      },
+      qty,
+    );
+    setAdded(true);
+    toast.success(`${qty} ${product.unit} ${product.name} sepete eklendi`);
+    setTimeout(() => setAdded(false), 1200);
+  };
+
+  return (
+    <article className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-3 sm:p-4 text-slate-900 shadow-md hover:shadow-xl transition-all duration-200 border border-slate-100 relative">
+      <div>
+        <Link
+          to="/urun/$id"
+          params={{ id: product.id }}
+          className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
+        >
+          <img
+            src={getPublicProductImageUrl(product, product.name, product.category)}
+            alt={product.name}
+            loading="lazy"
+            onError={(e) => handleProductImageError(e, product.name, product.category)}
+            className={`h-full w-full object-contain transition-transform duration-300 ${
+              !inStock ? "opacity-75 grayscale-[20%]" : "group-hover:scale-105"
+            }`}
+          />
+        </Link>
+
+        <div className="mt-3 flex flex-col">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#166534]">
+              {categoryLabel(product.category)}
+            </span>
+            <span
+              className={`text-[10px] font-semibold ${
+                inStock ? "text-emerald-600" : "text-rose-600 font-bold"
+              }`}
+            >
+              {inStock ? "● Stokta" : "● Tükendi"}
+            </span>
+          </div>
+
+          <Link to="/urun/$id" params={{ id: product.id }}>
+            <h3 className="mt-0.5 line-clamp-2 text-sm sm:text-base font-bold text-slate-900 group-hover:text-[#166534] transition-colors leading-snug">
+              {product.name}
+            </h3>
+          </Link>
+
+          <div className="mt-1 flex items-center justify-between gap-1 flex-wrap">
+            <p className="text-xs text-slate-500 font-medium">Birim: {product.unit}</p>
+            {boxInfo && (
+              <span
+                className={`text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                  boxInfo.toLowerCase().startsWith("paket")
+                    ? "text-purple-700 bg-purple-50 border border-purple-200/80"
+                    : "text-amber-700 bg-amber-50 border border-amber-200/80"
+                }`}
+              >
+                {boxInfo.toLowerCase().startsWith("paket") ? (
+                  <Package className="h-3 w-3 text-purple-600 shrink-0" />
+                ) : (
+                  <Boxes className="h-3 w-3 text-amber-600 shrink-0" />
+                )}
+                {boxInfo}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 pt-2.5 border-t border-slate-100">
+        <div className="flex items-center gap-1.5">
+          {/* Quantity selector */}
+          <div className="flex items-center rounded-lg bg-slate-100 p-0.5">
+            <button
+              type="button"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              disabled={!inStock || qty <= 1}
+              className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
+            >
+              <Minus className="h-3 w-3" />
+            </button>
+            <span className="w-5 text-center text-xs font-bold tabular-nums text-slate-800">
+              {qty}
+            </span>
+            <button
+              type="button"
+              onClick={() => setQty((q) => q + 1)}
+              disabled={!inStock}
+              className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+
+          {/* Add to Cart button */}
+          <button
+            type="button"
+            disabled={!inStock}
+            onClick={handleAdd}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 px-2 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+              !inStock
+                ? "bg-slate-200 text-slate-500 hover:bg-slate-200 cursor-not-allowed"
+                : added
+                  ? "bg-[#14532d] text-white"
+                  : "bg-[#166534] hover:bg-[#14532d] text-white shadow-sm"
+            }`}
+          >
+            {!inStock ? (
+              <span>Tükendi</span>
+            ) : added ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                <span>Eklendi</span>
+              </>
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5" />
+                <span>Ekle</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
