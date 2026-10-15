@@ -103,7 +103,9 @@ function OrderCard({
       <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm text-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="font-semibold text-slate-900">Sipariş #{String(order.id).slice(0, 8).toUpperCase()}</p>
+            <p className="font-semibold text-slate-900">
+              Sipariş #{String(order.id).slice(0, 8).toUpperCase()}
+            </p>
             <p className="text-xs text-slate-500">
               {new Date(order.created_at).toLocaleString("tr-TR")}
             </p>

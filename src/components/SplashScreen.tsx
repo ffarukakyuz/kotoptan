@@ -72,14 +72,14 @@ export function SplashScreen({
           </div>
         </div>
 
-        {/* Marka İsmi ve Tipografi: KO beyaz, TOPTAN zümrüt yeşili */}
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-1 flex items-center justify-center gap-1.5">
+        {/* Marka İsmi ve Tipografi: Ko beyaz, toptan zümrüt yeşili */}
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-1 flex items-center justify-center">
           <span>
-            KO<span className="text-[#22c55e]">TOPTAN</span>
+            Ko<span className="text-[#22c55e]">toptan</span>
           </span>
         </h1>
-        <p className="text-xs font-bold tracking-wider uppercase text-emerald-400/90 mb-6">
-          Ltd. Şti. • Tatvan Dağıtım Merkezi
+        <p className="text-[11px] sm:text-xs font-semibold text-emerald-400 tracking-wider uppercase mt-1 mb-6">
+          Toptan Dağıtım
         </p>
 
         {/* İnce Modern İlerleme Çubuğu */}

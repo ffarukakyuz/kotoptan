@@ -417,7 +417,7 @@ function AuthPage() {
     // Kullanıcı kayıtlı değilse bile hemen hesabını oluşturup sorunsuz giriş yapmasını sağla
     const userFound = findFallbackUser(identifier);
     if (!userFound) {
-      const autoUser = saveNewLocalUser({
+      const autoUser = saveLocalUser({
         phone: identifier,
         normalizedPhone: normalized || identifier.replace(/\D/g, ""),
         email: identifier.includes("@")
@@ -660,46 +660,57 @@ function AuthPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-8">
+    <div className="relative mx-auto w-full max-w-md px-4 py-8 select-none sm:select-auto">
+      {/* Arka plan koyu yeşil - siyah derin atmosferik ışık efekti (SplashScreen animasyonu ile birebir aynı) */}
+      <div className="fixed inset-0 bg-[#050b07] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.22)_0%,rgba(5,11,7,0.98)_75%)] pointer-events-none" />
+      <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl" />
+
       {/* Brand Header */}
-      <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden shadow-xl shadow-black/40 ring-4 ring-emerald-500/20 border border-emerald-500/30">
-          <img
-            src={BRAND_LOGO_SRC}
-            alt="Kotoptan Logo"
-            className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+      <div className="relative z-10 mb-6 text-center">
+        <div className="relative mb-4 flex items-center justify-center">
+          <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl animate-pulse pointer-events-none" />
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-black/90 border border-emerald-500/40 ring-4 ring-emerald-500/20 bg-[#040806] transition-transform duration-500 hover:scale-105">
+            <img
+              src={BRAND_LOGO_SRC}
+              alt="Kotoptan Logo"
+              className="h-full w-full object-cover animate-pulse"
+              referrerPolicy="no-referrer"
+            />
+          </div>
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">
-          Ko<span className="text-[#22c55e]">toptan</span>
+
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-1 flex items-center justify-center">
+          <span>
+            Ko<span className="text-[#22c55e]">toptan</span>
+          </span>
         </h1>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-400">
-          Toptan Satış & Bayi Girişi
+        <p className="text-[11px] sm:text-xs font-semibold text-emerald-400 tracking-wider uppercase mt-1 mb-4">
+          Toptan Dağıtım
         </p>
       </div>
 
       {/* Mandatory Auth Notice */}
-      <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 text-center text-xs text-emerald-200 backdrop-blur-sm shadow-inner">
+      <div className="relative z-10 mb-5 rounded-2xl border border-emerald-500/35 bg-gradient-to-b from-[#08180e]/90 to-[#040905]/95 p-3.5 text-center text-xs text-emerald-200/90 backdrop-blur-md shadow-lg shadow-black/60">
         <div className="flex items-center justify-center gap-1.5 font-bold text-emerald-300">
-          <Lock className="h-4 w-4" />
+          <Lock className="h-4 w-4 text-emerald-400" />
           <span>Giriş Yapılması Zorunludur</span>
         </div>
-        <p className="mt-1 text-[11px] text-emerald-200/80 leading-relaxed">
+        <p className="mt-1 text-[11px] text-emerald-200/75 leading-relaxed">
           Toptan ürün kataloğumuzu incelemek ve sipariş oluşturmak için lütfen telefon numaranızla
           giriş yapın veya işletme hesabı açın.
         </p>
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div className="mb-6 grid grid-cols-2 rounded-xl bg-white/5 p-1 border border-white/10">
+      <div className="relative z-10 mb-5 grid grid-cols-2 rounded-2xl bg-[#030805]/90 p-1.5 border border-emerald-500/30 shadow-inner shadow-black/80">
         <button
           type="button"
           onClick={() => setMode("login")}
-          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all cursor-pointer ${
             mode === "login"
-              ? "bg-[#166534] text-white shadow-md shadow-black/40"
-              : "text-white/60 hover:text-white"
+              ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-950/90 border border-emerald-400/40"
+              : "text-emerald-300/70 hover:text-white hover:bg-emerald-950/30"
           }`}
         >
           <LogIn className="h-4 w-4" />
@@ -708,10 +719,10 @@ function AuthPage() {
         <button
           type="button"
           onClick={() => setMode("register")}
-          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all cursor-pointer ${
             mode === "register"
-              ? "bg-[#166534] text-white shadow-md shadow-black/40"
-              : "text-white/60 hover:text-white"
+              ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-950/90 border border-emerald-400/40"
+              : "text-emerald-300/70 hover:text-white hover:bg-emerald-950/30"
           }`}
         >
           <UserPlus className="h-4 w-4" />
@@ -719,12 +730,12 @@ function AuthPage() {
         </button>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-md">
+      <div className="relative z-10 rounded-3xl border border-emerald-500/35 bg-gradient-to-b from-[#07150c]/95 via-[#050f08]/95 to-[#030805]/98 p-6 sm:p-7 shadow-2xl shadow-black/90 backdrop-blur-xl ring-1 ring-emerald-500/20">
         {mode === "login" ? (
           <>
             <form className="space-y-4" onSubmit={onSignIn}>
               <div>
-                <Label htmlFor="si-phone" className="text-white/80 text-xs">
+                <Label htmlFor="si-phone" className="text-emerald-200/90 font-semibold text-xs">
                   Telefon Numarası
                 </Label>
                 <Input
@@ -737,13 +748,16 @@ function AuthPage() {
                   required
                   maxLength={60}
                   autoComplete="username"
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/40 focus:border-emerald-500"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="si-password" className="text-white/80 text-xs">
+                  <Label
+                    htmlFor="si-password"
+                    className="text-emerald-200/90 font-semibold text-xs"
+                  >
                     Şifre
                   </Label>
                   <button
@@ -774,13 +788,13 @@ function AuthPage() {
                   maxLength={72}
                   autoComplete="current-password"
                   placeholder="Şifrenizi yazın"
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/40 focus:border-emerald-500"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full bg-[#166534] hover:bg-[#14532d] text-white font-semibold shadow-md cursor-pointer mt-2"
+                className="w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm py-3.5 rounded-xl shadow-[0_4px_24px_rgba(16,185,129,0.35)] border border-emerald-400/40 cursor-pointer transition-all active:scale-[0.98] mt-2"
                 disabled={busy}
               >
                 {busy ? "Giriş yapılıyor..." : "Giriş Yap"}
@@ -791,7 +805,7 @@ function AuthPage() {
           <>
             <form className="space-y-4" onSubmit={onSignUp}>
               <div>
-                <Label htmlFor="su-name" className="text-white/80 text-xs">
+                <Label htmlFor="su-name" className="text-emerald-200/90 font-semibold text-xs">
                   Yetkili Adı Soyadı
                 </Label>
                 <Input
@@ -800,11 +814,11 @@ function AuthPage() {
                   placeholder="Adınız ve Soyadınız"
                   required
                   maxLength={100}
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
               <div>
-                <Label htmlFor="su-business" className="text-white/80 text-xs">
+                <Label htmlFor="su-business" className="text-emerald-200/90 font-semibold text-xs">
                   Market / Bakkal / İşletme Adı
                 </Label>
                 <Input
@@ -813,11 +827,11 @@ function AuthPage() {
                   placeholder="Örn: Güven Market"
                   required
                   maxLength={120}
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
               <div>
-                <Label htmlFor="su-phone" className="text-white/80 text-xs">
+                <Label htmlFor="su-phone" className="text-emerald-200/90 font-semibold text-xs">
                   Cep Telefonu Numarası
                 </Label>
                 <Input
@@ -830,17 +844,20 @@ function AuthPage() {
                   onChange={(e) => setRegisterPhone(e.target.value)}
                   required
                   maxLength={20}
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 
               {/* İlçe Seçimi (Bitlis) */}
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="su-district" className="text-white/80 text-xs font-semibold">
+                  <Label
+                    htmlFor="su-district"
+                    className="text-emerald-200/90 text-xs font-semibold"
+                  >
                     Teslimat İlçesi (Bitlis)
                   </Label>
-                  <span className="text-[11px] text-emerald-400 font-semibold bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] text-emerald-300 font-semibold bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full">
                     {selectedDistrict ? `Seçili: ${selectedDistrict}` : "İlçe seçin"}
                   </span>
                 </div>
@@ -885,11 +902,11 @@ function AuthPage() {
                 >
                   <SelectTrigger
                     id="su-district"
-                    className="mt-1.5 bg-black/40 border-white/15 text-white focus:border-emerald-500 text-xs h-10 cursor-pointer"
+                    className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white focus:border-emerald-400 text-xs h-11 rounded-xl cursor-pointer shadow-inner"
                   >
                     <SelectValue placeholder="İlçe seçin (Tatvan, Bitlis, Ahlat...)" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-white/15 text-white z-[9999]">
+                  <SelectContent className="bg-[#051108] border border-emerald-500/40 text-white z-[9999] shadow-2xl">
                     {DISTRICTS.map((d) => (
                       <SelectItem
                         key={d.value}
@@ -905,7 +922,7 @@ function AuthPage() {
 
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="su-address" className="text-white/80 text-xs font-semibold">
+                  <Label htmlFor="su-address" className="text-emerald-200/90 text-xs font-semibold">
                     Teslimat Konumu & Açık Adres
                   </Label>
                   <div className="flex items-center gap-1.5">
@@ -915,7 +932,7 @@ function AuthPage() {
                       variant="outline"
                       onClick={handleQuickGps}
                       disabled={gpsLoading}
-                      className="h-7 text-[11px] px-2.5 bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 hover:text-white cursor-pointer shadow-xs"
+                      className="h-7 text-[11px] px-2.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-800/60 hover:text-white cursor-pointer shadow-xs"
                       title="Cihazın GPS konumuyla dükkan noktanızı doğrudan kaydeder"
                     >
                       {gpsLoading ? (
@@ -930,7 +947,7 @@ function AuthPage() {
                       size="sm"
                       variant="outline"
                       onClick={handleOpenMap}
-                      className="h-7 text-[11px] px-2.5 bg-white/10 border-white/20 text-white hover:bg-white/15 cursor-pointer shadow-xs"
+                      className="h-7 text-[11px] px-2.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-800/60 hover:text-white cursor-pointer shadow-xs"
                       title="Bitlis haritasında dükkan veya depo kapısını pimi kaydırarak seçin"
                     >
                       <MapPin className="h-3 w-3 mr-1 text-emerald-400" />
@@ -957,11 +974,11 @@ function AuthPage() {
                     const parsedCoords = extractCoordinates(e.target.value);
                     if (parsedCoords) setSelectedLocation(parsedCoords);
                   }}
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500 text-xs"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 text-xs rounded-xl shadow-inner"
                 />
 
                 {selectedLocation && (
-                  <div className="mt-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs text-emerald-300">
+                  <div className="mt-2 rounded-xl bg-emerald-950/80 border border-emerald-500/40 p-2.5 text-xs text-emerald-200">
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 font-bold text-emerald-300">
                         <MapPin className="h-4 w-4 text-emerald-400 shrink-0" />
@@ -988,7 +1005,7 @@ function AuthPage() {
 
                 {/* Doğrudan kayıt formunda açılabilen interaktif Bitlis harita seçicisi */}
                 {showInlineMap && (
-                  <div className="mt-2 rounded-xl overflow-hidden border border-white/20 shadow-md">
+                  <div className="mt-2 rounded-xl overflow-hidden border border-emerald-500/40 shadow-md">
                     <BitlisMapPicker
                       value={selectedLocation}
                       onChange={handleLocationFromMap}
@@ -1008,7 +1025,10 @@ function AuthPage() {
               />
               <div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="su-password" className="text-white/80 text-xs">
+                  <Label
+                    htmlFor="su-password"
+                    className="text-emerald-200/90 font-semibold text-xs"
+                  >
                     Şifre (En az 6 karakter)
                   </Label>
                   <button
@@ -1036,12 +1056,12 @@ function AuthPage() {
                   required
                   maxLength={72}
                   placeholder="En az 6 haneli şifre belirleyin"
-                  className="mt-1.5 bg-black/40 border-white/15 text-white placeholder:text-white/30 focus:border-emerald-500"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full bg-[#166534] hover:bg-[#14532d] text-white font-semibold shadow-md cursor-pointer"
+                className="w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm py-3.5 rounded-xl shadow-[0_4px_24px_rgba(16,185,129,0.35)] border border-emerald-400/40 cursor-pointer transition-all active:scale-[0.98]"
                 disabled={busy}
               >
                 {busy ? "Hesap açılıyor..." : "İşletme Hesabı Oluştur"}
@@ -1049,7 +1069,7 @@ function AuthPage() {
             </form>
             <button
               type="button"
-              className="mt-5 w-full text-center text-xs font-medium text-emerald-400 hover:text-emerald-300 underline underline-offset-4 cursor-pointer"
+              className="mt-5 w-full text-center text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 cursor-pointer"
               onClick={() => setMode("login")}
             >
               Zaten hesabınız var mı? Giriş yapın

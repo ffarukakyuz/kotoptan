@@ -429,14 +429,14 @@ function Index() {
         )}
 
         {/* Ko Toptan SEO & Kurumsal Bilgi Bölümü */}
-        <footer className="mt-14 pt-8 border-t border-white/10 text-white/70">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-7 backdrop-blur-sm">
+        <footer className="mt-14 pt-8 border-t border-white/10 text-zinc-300">
+          <div className="rounded-2xl border border-white/15 bg-black p-5 sm:p-7 shadow-2xl">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
                   Ko Toptan — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı
                 </h2>
-                <p className="text-xs sm:text-sm text-emerald-400 font-medium mt-0.5">
+                <p className="text-xs sm:text-sm text-emerald-400 font-bold mt-0.5">
                   KasımOğulları Gıda ve Tüketim Malları Dağıtım Merkezi
                 </p>
               </div>

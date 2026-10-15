@@ -777,40 +777,25 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePurgeTestOrders}
-            disabled={isPurgingOrders}
-            className="gap-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 cursor-pointer"
-            title="Tüm deneme ve test siparişlerini temizler"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {isPurgingOrders ? "Siliniyor..." : "Deneme Siparişlerini Sil"}
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSeedDistrictOrders}
-            disabled={isSeedingOrders}
-            className="gap-1.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 cursor-pointer shadow-xs"
-            title="6 ilçenin her biri için 10 adet (toplam 60) gerçek GPS koordinatlı deneme siparişi oluşturur"
-          >
-            <RouteIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            {isSeedingOrders
-              ? "Siparişler Oluşturuluyor..."
-              : "6 İlçe İçin 10'ar Sipariş Oluştur (60 Rota Siparişi)"}
-          </Button>
-
           <Link
             to="/siparisler"
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
             title="Sadece ilçeler, siparişler ve rota haritasının olduğu ayrı ekrana git"
           >
             <RouteIcon className="h-3.5 w-3.5" />
-            <span>Ayrı İlçe & Rota Ekranına Git</span>
+            <span>Sevkiyat & İlçe Haritası Ekranı (/siparisler) →</span>
           </Link>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            className="gap-1.5 text-xs border-border hover:bg-muted cursor-pointer"
+            title="Sipariş listesini yenile"
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Yenile</span>
+          </Button>
 
           {onNavigateToDrive && (
             <Button
@@ -820,7 +805,7 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
               className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <GitBranch className="h-3.5 w-3.5 text-emerald-600" />
-              GitHub & Cloudflare&apos;a Eşitle
+              Depo & Eşitle
             </Button>
           )}
         </div>
@@ -1097,16 +1082,24 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
               : "Aktif sevkiyat bekleyen sipariş bulunmuyor."}
           </p>
           {view === "aktif" && (
-            <Button
-              onClick={handleSeedDistrictOrders}
-              disabled={isSeedingOrders}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs cursor-pointer gap-2"
-            >
-              <RouteIcon className="h-4 w-4" />
-              {isSeedingOrders
-                ? "Siparişler Ekleniyor..."
-                : "7 İlçe İçin 10'ar Rota Siparişi Oluştur (Toplam 70 Sipariş)"}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refresh}
+                className="gap-1.5 text-xs cursor-pointer"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Listeyi Yenile</span>
+              </Button>
+              <Link
+                to="/siparisler"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+              >
+                <RouteIcon className="h-3.5 w-3.5" />
+                <span>Harita ve Sevkiyat Ekranına Git</span>
+              </Link>
+            </div>
           )}
         </div>
       ) : (

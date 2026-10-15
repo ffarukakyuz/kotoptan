@@ -74,40 +74,77 @@ export function SiteHeader() {
         Ürünler
       </Link>
 
-      {user && !isAdmin && (
-        <Link
-          to="/siparislerim"
-          className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-          onClick={() => setOpen(false)}
-        >
-          <Package className="mr-1.5 inline h-4 w-4" />
-          Siparişlerim
-        </Link>
+      {/* Müşteri Hesabı Sekmeleri: Ürünler, Sepet, Siparişlerim */}
+      {!isAdmin && (
+        <>
+          <Link
+            to="/sepet"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white flex items-center gap-1.5"
+            onClick={() => setOpen(false)}
+          >
+            <ShoppingCart className="h-4 w-4 text-emerald-400" />
+            <span>Sepet</span>
+            {totalQuantity > 0 && (
+              <span className="ml-1 rounded-full bg-[#166534] px-1.5 py-0.2 text-[10px] font-bold text-white">
+                {totalQuantity}
+              </span>
+            )}
+          </Link>
+
+          {user && (
+            <Link
+              to="/siparislerim"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white flex items-center gap-1.5"
+              onClick={() => setOpen(false)}
+            >
+              <Package className="h-4 w-4 text-emerald-400" />
+              <span>Siparişlerim</span>
+            </Link>
+          )}
+        </>
       )}
 
-      <Link
-        to="/siparisler"
-        className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white flex items-center gap-1.5"
-        onClick={() => setOpen(false)}
-      >
-        <Package className="h-4 w-4 text-emerald-400" />
-        <span>Siparişler</span>
-      </Link>
+      {/* Yönetici Hesabı Sekmeleri: Siparişler ve Yönetim */}
+      {isAdmin && (
+        <>
+          <Link
+            to="/siparisler"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white flex items-center gap-1.5"
+            onClick={() => setOpen(false)}
+          >
+            <Package className="h-4 w-4 text-emerald-400" />
+            <span>Siparişler</span>
+          </Link>
 
-      {/* Yönetim Butonu */}
-      <Link
-        to="/yonetim"
-        className="rounded-lg px-3 py-2 text-sm font-bold text-[#22c55e] transition-colors hover:bg-white/10 hover:text-[#4ade80] flex items-center gap-1.5"
-        onClick={() => setOpen(false)}
-      >
-        <ShieldCheck className="h-4 w-4 text-emerald-400" />
-        <span>Yönetim</span>
-      </Link>
+          <Link
+            to="/yonetim"
+            className="rounded-lg px-3 py-2 text-sm font-bold text-[#22c55e] transition-colors hover:bg-white/10 hover:text-[#4ade80] flex items-center gap-1.5"
+            onClick={() => setOpen(false)}
+          >
+            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+            <span>Yönetim</span>
+          </Link>
+
+          <Link
+            to="/sepet"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white flex items-center gap-1.5"
+            onClick={() => setOpen(false)}
+          >
+            <ShoppingCart className="h-4 w-4 text-emerald-400" />
+            <span>Sepet</span>
+            {totalQuantity > 0 && (
+              <span className="ml-1 rounded-full bg-[#166534] px-1.5 py-0.2 text-[10px] font-bold text-white">
+                {totalQuantity}
+              </span>
+            )}
+          </Link>
+        </>
+      )}
     </>
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#060b08]/95 text-white backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-black text-white backdrop-blur-md pt-[env(safe-area-inset-top,0px)] transition-colors">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo & Name */}
         <Link to="/" className="group flex items-center gap-2.5 sm:gap-3">
@@ -132,8 +169,8 @@ export function SiteHeader() {
         {/* Desktop Nav Links */}
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
-        {/* Header Actions (Search, Cart, Yönetim, User, Çıkış, Menu) */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Header Actions (Search, Siparişler, Yönetim, Cart, User, Çıkış, Menu) */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {/* Search Button */}
           <button
             type="button"
@@ -145,15 +182,39 @@ export function SiteHeader() {
             <Search className="h-4.5 w-4.5 stroke-[2]" />
           </button>
 
-          {/* Yönetim Paneli Butonu (Masaüstü ve Mobil) */}
-          <Link
-            to="/yonetim"
-            aria-label="Yönetim Paneli"
-            className="flex h-9 w-9 items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors active:scale-95 cursor-pointer"
-            title="Yönetim Paneli"
-          >
-            <ShieldCheck className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
-          </Link>
+          {/* YÖNETİCİ HESABI: Siparişler Kısayolu ve Yönetim Paneli */}
+          {isAdmin && (
+            <>
+              <Link
+                to="/siparisler"
+                aria-label="Siparişler"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/95 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
+                title="Siparişler & Sevkiyat (Yönetici)"
+              >
+                <Package className="h-5 w-5 text-white stroke-[2.2]" />
+              </Link>
+              <Link
+                to="/yonetim"
+                aria-label="Yönetim Paneli"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-400 hover:text-emerald-300 hover:bg-white/10 transition-colors active:scale-95 cursor-pointer"
+                title="Yönetim Paneli"
+              >
+                <ShieldCheck className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
+              </Link>
+            </>
+          )}
+
+          {/* MÜŞTERİ HESABI: Yalnızca kendi siparişlerim kısayolu (Yönetim ve Siparişler asla görünmez) */}
+          {user && !isAdmin && (
+            <Link
+              to="/siparislerim"
+              aria-label="Siparişlerim"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
+              title="Siparişlerim"
+            >
+              <Package className="h-5 w-5 text-white stroke-[2.2]" />
+            </Link>
+          )}
 
           {/* Sepet */}
           <Link

@@ -122,12 +122,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
       },
-      { name: "theme-color", content: "#10b981" },
+      { name: "theme-color", content: "#000000" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "application-name", content: "Kotoptan" },
       { name: "apple-mobile-web-app-title", content: "Kotoptan" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "format-detection", content: "telephone=no" },
       { title: "Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı" },
       {
@@ -206,11 +206,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className="bg-black">
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased font-sans">
+      <body className="min-h-screen bg-black text-foreground antialiased font-sans">
         <div id="root">
           <GlobalErrorBoundary>{children}</GlobalErrorBoundary>
         </div>
@@ -299,11 +299,13 @@ function RootAppContent() {
 
   if (isAuthPage) {
     return (
-      <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-        <main className="flex flex-1 items-center justify-center p-4">
+      <div className="flex min-h-screen flex-col bg-[#050b07] font-sans text-white pt-[env(safe-area-inset-top,0px)] relative overflow-x-hidden">
+        {/* Splash screen animasyonu ile birebir aynı atmosferik koyu yeşil - siyah radyal derin ışık */}
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.22)_0%,rgba(5,11,7,0.98)_75%)]" />
+        <main className="flex flex-1 items-center justify-center p-4 relative z-10">
           <Outlet />
         </main>
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" richColors theme="dark" />
       </div>
     );
   }
@@ -316,7 +318,7 @@ function RootAppContent() {
   // Kullanıcı giriş yapmamışsa yönlendirme tamamlanana kadar yönlendirme ekranı göster
   if (!user) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-black text-white">
         <SplashScreen message="Giriş ekranına yönlendiriliyor..." />
       </div>
     );
@@ -331,9 +333,9 @@ function RootAppContent() {
         {/* Required: nested routes render here. */}
         <Outlet />
       </main>
-      <footer className="mt-auto border-t border-border bg-card py-8 text-muted-foreground">
+      <footer className="mt-auto border-t border-white/10 bg-black py-8 text-zinc-400">
         <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-emerald-500/30 bg-emerald-500/10">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-white/20 bg-zinc-900">
             <img
               src={BRAND_LOGO_SRC}
               alt="KasımOğulları Logo"
@@ -342,8 +344,8 @@ function RootAppContent() {
             />
           </span>
           <div>
-            <p className="font-semibold text-foreground">KasımOğulları Ltd. Şti.</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
+            <p className="mt-0.5 text-xs text-zinc-400">
               Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır, ödeme
               teslimat sırasında yapılır.
             </p>

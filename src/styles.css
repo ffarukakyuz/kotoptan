@@ -165,6 +165,7 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    background-color: #000000;
   }
 
   body {
@@ -313,7 +314,8 @@
 }
 
 @keyframes dark-glow-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.45;
     transform: scale(1) translate3d(0, 0, 0);
   }
@@ -324,7 +326,8 @@
 }
 
 @keyframes dark-glow-pulse-reverse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.35;
     transform: scale(1.1) translate3d(0, 0, 0);
   }

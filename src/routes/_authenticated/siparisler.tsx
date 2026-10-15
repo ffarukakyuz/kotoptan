@@ -190,7 +190,9 @@ function AdminOrdersRoutePage() {
 
   // Rotaya dahil edilecek siparişler (yalnızca aktifte)
   const routedOrders = useMemo(() => {
-    const activeInDistrict = activeOrders.filter((o) => matchesDistrictFilter(o.district, district));
+    const activeInDistrict = activeOrders.filter((o) =>
+      matchesDistrictFilter(o.district, district),
+    );
     if (routeMode === "hepsi") {
       return activeInDistrict;
     }
@@ -339,6 +341,29 @@ function AdminOrdersRoutePage() {
     );
   }
 
+  // Müşteri hesabı doğrudan /siparisler linkine gelse dahi yönetici yetkilendirmesi zorunludur
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-12">
+        <AdminUnlockCard
+          onSuccess={() => {
+            void qc.invalidateQueries({ queryKey: ["admin-orders"] });
+          }}
+          title="Yönetici Sipariş & Sevkiyat Paneli"
+          description="Tüm toptan siparişleri ve dağıtım rotalarını görüntülemek için yetkili şifrenizi girin."
+        />
+        <div className="mt-4 text-center">
+          <Link
+            to="/siparislerim"
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline"
+          >
+            ← Kendi siparişlerinizi görüntülemek için tıklayın
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-16">
       <div className="mx-auto max-w-5xl px-3 sm:px-6 py-6 sm:py-8 space-y-5">
@@ -360,8 +385,8 @@ function AdminOrdersRoutePage() {
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              İlçe bazlı toptan siparişler, Tatvan Ana Depo çıkışlı akıllı sevkiyat haritası, sipariş
-              arşivleme ve silme paneli.
+              İlçe bazlı toptan siparişler, Tatvan Ana Depo çıkışlı akıllı sevkiyat haritası,
+              sipariş arşivleme ve silme paneli.
             </p>
           </div>
 
@@ -386,7 +411,9 @@ function AdminOrdersRoutePage() {
               className="h-8.5 px-3 text-xs gap-1.5 font-semibold bg-white border-slate-200 hover:bg-slate-100 text-slate-800 cursor-pointer shadow-xs"
               title="Siparişleri yenile"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin text-emerald-600" : ""}`} />
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${isFetching ? "animate-spin text-emerald-600" : ""}`}
+              />
               <span>Yenile</span>
             </Button>
 
@@ -493,9 +520,7 @@ function AdminOrdersRoutePage() {
                   <span>{d.label}</span>
                   <span
                     className={`rounded-full px-1.5 py-0.2 text-[10px] font-extrabold ${
-                      isSelected
-                        ? "bg-emerald-900 text-emerald-100"
-                        : "bg-slate-200 text-slate-700"
+                      isSelected ? "bg-emerald-900 text-emerald-100" : "bg-slate-200 text-slate-700"
                     }`}
                   >
                     {count}
@@ -601,8 +626,8 @@ function AdminOrdersRoutePage() {
                   >
                     <Truck className="h-3 w-3" />
                     <span>
-                      Sadece Yoldakiler (
-                      {districtOrders.filter((o) => o.status === "yolda").length})
+                      Sadece Yoldakiler ({districtOrders.filter((o) => o.status === "yolda").length}
+                      )
                     </span>
                   </button>
                   <button
@@ -746,7 +771,8 @@ function AdminOrdersRoutePage() {
                                       {stopInfo.stopNumber}
                                     </span>
                                     <span>
-                                      {stopInfo.stopNumber}. Durak ({stopInfo.distanceFromDepotKm} km)
+                                      {stopInfo.stopNumber}. Durak ({stopInfo.distanceFromDepotKm}{" "}
+                                      km)
                                     </span>
                                   </>
                                 ) : (
@@ -783,7 +809,10 @@ function AdminOrdersRoutePage() {
                             </span>
                           )}
 
-                          <Badge variant="secondary" className="text-xs font-semibold bg-slate-100 text-slate-800">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs font-semibold bg-slate-100 text-slate-800"
+                          >
                             {districtLabel(o.district)}
                           </Badge>
                         </div>
@@ -873,7 +902,9 @@ function AdminOrdersRoutePage() {
                               key={item.id}
                               className="flex items-center justify-between py-1.5 text-xs"
                             >
-                              <span className="font-medium text-slate-800">{item.product_name}</span>
+                              <span className="font-medium text-slate-800">
+                                {item.product_name}
+                              </span>
                               <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 {item.quantity} {item.unit}
                               </span>
@@ -890,7 +921,10 @@ function AdminOrdersRoutePage() {
                     {/* Not ve Düzenleme Alanı */}
                     {isEditing ? (
                       <div className="mt-2 space-y-1.5">
-                        <Label htmlFor={`note-${o.id}`} className="text-xs font-semibold text-slate-700">
+                        <Label
+                          htmlFor={`note-${o.id}`}
+                          className="text-xs font-semibold text-slate-700"
+                        >
                           Sipariş Notunu Güncelle:
                         </Label>
                         <Textarea
@@ -1088,7 +1122,10 @@ function AdminOrdersRoutePage() {
         </div>
 
         {/* Sipariş Kalıcı Silme Onay Modalı */}
-        <AlertDialog open={Boolean(orderToDelete)} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+        <AlertDialog
+          open={Boolean(orderToDelete)}
+          onOpenChange={(open) => !open && setOrderToDelete(null)}
+        >
           <AlertDialogContent className="bg-white text-slate-900 border-slate-200 max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
@@ -1097,9 +1134,14 @@ function AdminOrdersRoutePage() {
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-2 text-sm text-slate-600">
                 <span>
-                  <strong>#{String(orderToDelete?.id || "").slice(0, 8).toUpperCase()}</strong> numaralı (
-                  {orderToDelete?.business_name || orderToDelete?.full_name || "Müşteri"}) siparişini veritabanından{" "}
-                  <strong>tamamen silmek</strong> üzeresiniz.
+                  <strong>
+                    #
+                    {String(orderToDelete?.id || "")
+                      .slice(0, 8)
+                      .toUpperCase()}
+                  </strong>{" "}
+                  numaralı ({orderToDelete?.business_name || orderToDelete?.full_name || "Müşteri"})
+                  siparişini veritabanından <strong>tamamen silmek</strong> üzeresiniz.
                 </span>
                 <span className="block text-xs text-rose-700 bg-rose-50 p-2.5 rounded-lg border border-rose-200 font-medium">
                   ⚠️ Bu işlem geri alınamaz. Sipariş sistemden tamamen yok edilecektir.
@@ -1118,7 +1160,11 @@ function AdminOrdersRoutePage() {
                 }}
                 className="bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
               >
-                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : "Kalıcı Olarak Sil"}
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  "Kalıcı Olarak Sil"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
