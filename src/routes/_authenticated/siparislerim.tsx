@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { statusLabel, districtLabel } from "@/lib/catalog";
+import { statusLabel, districtLabel, formatUnitLabel } from "@/lib/catalog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, XCircle, Trash2, Loader2 } from "lucide-react";
@@ -145,8 +145,14 @@ function OrderCard({
           {(order.order_items || []).map((i) => (
             <li key={i.id} className="flex justify-between border-b border-slate-100 py-1">
               <span className="text-slate-800">{i.product_name}</span>
-              <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
-                {i.quantity} {i.unit}
+              <span
+                className={`font-bold px-2 py-0.5 rounded border text-xs ${
+                  i.unit?.toLowerCase() === "adet"
+                    ? "text-blue-600 bg-blue-50 border-blue-200"
+                    : "text-emerald-800 bg-emerald-50 border-emerald-200"
+                }`}
+              >
+                {i.quantity} {formatUnitLabel(i.unit)}
               </span>
             </li>
           ))}

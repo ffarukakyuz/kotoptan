@@ -20,6 +20,7 @@ import {
   Package,
   Boxes,
   ShieldCheck,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BRAND_LOGO_SRC } from "@/lib/branding";
@@ -34,6 +35,7 @@ import {
   extractPackageOrBoxInfo,
   setProductStockStatusLocal,
   normalizeProductWithOverrides,
+  formatUnitLabel,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -247,21 +249,21 @@ function Index() {
 
             {/* Sipariş Ambalaj/Birim Rehberi (Paket, Koli, Çuval, Adet) */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 max-w-2xl mx-auto text-xs sm:text-sm">
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-slate-300">
                 <span className="text-purple-400 font-extrabold">🧴 Paket</span>
                 <span className="text-slate-400">bazlılar paketle,</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
-                <span className="text-amber-400 font-extrabold">📦 Koli</span>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-slate-300">
+                <span className="text-red-400 font-extrabold">📦 Koli</span>
                 <span className="text-slate-400">bazlılar koliyle,</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-slate-300">
                 <span className="text-emerald-400 font-extrabold">🌾 Çuval</span>
                 <span className="text-slate-400">bazlılar çuvalla,</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">
-                <span className="text-sky-400 font-extrabold">🏷️ Adet</span>
-                <span className="text-slate-400">ürünler tekil adetle</span>
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-slate-300">
+                <span className="text-blue-400 font-extrabold">🏷️ Adet</span>
+                <span className="text-slate-400">adetli ürünler</span>
               </div>
             </div>
 
@@ -511,6 +513,7 @@ function HeroProductCard({
   loading: boolean;
 }) {
   const { add } = useCart();
+  const { isAdmin } = useAuth();
   const [justAdded, setJustAdded] = useState(false);
 
   // Filter slides based on category if selected, or use all
@@ -649,6 +652,36 @@ function HeroProductCard({
 
       {/* Product Image Area with Carousel Arrows */}
       <div className="relative aspect-square w-full rounded-2xl bg-gradient-to-b from-neutral-50 to-neutral-100/70 p-4 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
+        {/* SOL ÜSTTE: Koli İçi (Kırmızı) / Paket İçi (Mor) / Adet (Mavi) Rozeti */}
+        <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1 pointer-events-none">
+          {boxInfo && (
+            <span
+              className={`text-xs font-bold px-2.5 py-1 rounded-lg border shadow-xs flex items-center gap-1.5 backdrop-blur-xs ${
+                boxInfo.toLowerCase().startsWith("paket")
+                  ? "text-purple-700 bg-purple-50/95 border-purple-200"
+                  : "text-red-600 bg-red-50/95 border border-red-200"
+              }`}
+            >
+              {boxInfo.toLowerCase().startsWith("paket") ? (
+                <Package className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+              ) : (
+                <Boxes className="h-3.5 w-3.5 text-red-600 shrink-0" />
+              )}
+              <span>{boxInfo}</span>
+            </span>
+          )}
+          {current.unit.toLowerCase() === "adet" && (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50/95 text-blue-600 shadow-xs flex items-center gap-1.5 backdrop-blur-xs">
+              <span>Adet</span>
+            </span>
+          )}
+          {!boxInfo && current.unit.toLowerCase() !== "adet" && (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-200 bg-white/95 text-slate-700 shadow-xs flex items-center gap-1.5 backdrop-blur-xs">
+              <span>{formatUnitLabel(current.unit)}</span>
+            </span>
+          )}
+        </div>
+
         <Link
           to="/urun/$id"
           params={{ id: current.id }}
@@ -723,19 +756,30 @@ function HeroProductCard({
         </Link>
 
         {/* Package / Unit and Quick Add Row */}
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex flex-col">
             <p className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
-              {current.unit}
+              Birim:{" "}
+              {current.unit.toLowerCase() === "adet" ? (
+                <span className="text-blue-600 font-extrabold">Adet</span>
+              ) : (
+                <span>{formatUnitLabel(current.unit)}</span>
+              )}
             </p>
             {boxInfo && (
-              <span className="text-xs font-semibold text-amber-700 flex items-center gap-1 mt-0.5">
+              <span
+                className={`text-xs font-bold flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg border shadow-xs ${
+                  boxInfo.toLowerCase().startsWith("paket")
+                    ? "text-purple-700 bg-purple-50 border-purple-200"
+                    : "text-red-600 bg-red-50 border border-red-200"
+                }`}
+              >
                 {boxInfo.toLowerCase().startsWith("paket") ? (
                   <Package className="h-3.5 w-3.5 text-purple-600 shrink-0" />
                 ) : (
-                  <Boxes className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <Boxes className="h-3.5 w-3.5 text-red-600 shrink-0" />
                 )}
-                {boxInfo}
+                <span>{boxInfo}</span>
               </span>
             )}
           </div>
@@ -755,17 +799,17 @@ function HeroProductCard({
             {!inStock ? (
               <>
                 <XCircle className="h-3.5 w-3.5 text-rose-500" />
-                Stokta Yok
+                <span>Stokta Yok</span>
               </>
             ) : justAdded ? (
               <>
                 <Check className="h-3.5 w-3.5" />
-                Eklendi!
+                <span>Eklendi</span>
               </>
             ) : (
               <>
                 <ShoppingCart className="h-3.5 w-3.5" />
-                Hemen Ekle
+                <span>Hemen Ekle</span>
               </>
             )}
           </button>
@@ -781,6 +825,7 @@ function HeroProductCard({
  */
 function CatalogProductCard({ product }: { product: Product }) {
   const { add } = useCart();
+  const { isAdmin } = useAuth();
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
   const inStock = isProductInStock(product);
@@ -818,6 +863,36 @@ function CatalogProductCard({ product }: { product: Product }) {
           params={{ id: product.id }}
           className="block aspect-square w-full overflow-hidden rounded-xl bg-neutral-50 p-2 relative"
         >
+          {/* SOL ÜSTTE: Koli İçi (Kırmızı) / Paket İçi (Mor) / Adet (Mavi) Rozeti */}
+          <div className="absolute top-2 left-2 z-10 flex flex-col items-start gap-1 pointer-events-none">
+            {boxInfo && (
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-md border shadow-xs flex items-center gap-1 backdrop-blur-xs ${
+                  boxInfo.toLowerCase().startsWith("paket")
+                    ? "text-purple-700 bg-purple-50/95 border-purple-200"
+                    : "text-red-600 bg-red-50/95 border border-red-200"
+                }`}
+              >
+                {boxInfo.toLowerCase().startsWith("paket") ? (
+                  <Package className="h-3 w-3 text-purple-600 shrink-0" />
+                ) : (
+                  <Boxes className="h-3 w-3 text-red-600 shrink-0" />
+                )}
+                <span>{boxInfo}</span>
+              </span>
+            )}
+            {product.unit.toLowerCase() === "adet" && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border border-blue-200 bg-blue-50/95 text-blue-600 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                <span>Adet</span>
+              </span>
+            )}
+            {!boxInfo && product.unit.toLowerCase() !== "adet" && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border border-slate-200 bg-white/95 text-slate-700 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                <span>{formatUnitLabel(product.unit)}</span>
+              </span>
+            )}
+          </div>
+
           <img
             src={getPublicProductImageUrl(product, product.name, product.category)}
             alt={product.name}
@@ -850,19 +925,26 @@ function CatalogProductCard({ product }: { product: Product }) {
           </Link>
 
           <div className="mt-1 flex items-center justify-between gap-1 flex-wrap">
-            <p className="text-xs text-slate-500 font-medium">Birim: {product.unit}</p>
+            <p className="text-xs text-slate-500 font-medium">
+              Birim:{" "}
+              {product.unit.toLowerCase() === "adet" ? (
+                <span className="text-blue-600 font-extrabold">Adet</span>
+              ) : (
+                <span className="text-slate-800 font-bold">{formatUnitLabel(product.unit)}</span>
+              )}
+            </p>
             {boxInfo && (
               <span
-                className={`text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs border ${
                   boxInfo.toLowerCase().startsWith("paket")
-                    ? "text-purple-700 bg-purple-50 border border-purple-200/80"
-                    : "text-amber-700 bg-amber-50 border border-amber-200/80"
+                    ? "text-purple-700 bg-purple-50 border-purple-200"
+                    : "text-red-600 bg-red-50 border border-red-200"
                 }`}
               >
                 {boxInfo.toLowerCase().startsWith("paket") ? (
                   <Package className="h-3 w-3 text-purple-600 shrink-0" />
                 ) : (
-                  <Boxes className="h-3 w-3 text-amber-600 shrink-0" />
+                  <Boxes className="h-3 w-3 text-red-600 shrink-0" />
                 )}
                 {boxInfo}
               </span>

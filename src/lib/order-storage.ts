@@ -291,6 +291,70 @@ export async function purgeAllTestOrders(): Promise<number> {
 /**
  * Mevcut tüm deneme ve test siparişlerini hem yerel depodan hem de veritabanından tamamen yok eder.
  */
+/**
+ * Sipariş içindeki bir ürünün miktarını günceller (hem local hem supabase)
+ */
+export async function updateOrderItemQuantity(
+  orderId: string,
+  itemId: string,
+  quantity: number,
+): Promise<void> {
+  if (typeof window === "undefined" || !orderId || !itemId || quantity < 1) return;
+
+  try {
+    const local = getLocalOrders();
+    const orderIdx = local.findIndex((o) => o.id === orderId);
+    if (orderIdx >= 0) {
+      const items = local[orderIdx]?.order_items || [];
+      const itemIdx = items.findIndex((i) => i.id === itemId);
+      if (itemIdx >= 0 && items[itemIdx]) {
+        items[itemIdx].quantity = quantity;
+        local[orderIdx]!.order_items = [...items];
+        localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(local));
+      }
+    }
+  } catch (err) {
+    console.warn("[updateOrderItemQuantity] local error:", err);
+  }
+
+  try {
+    await supabase.from("order_items").update({ quantity }).eq("id", itemId);
+  } catch (err) {
+    console.warn("[updateOrderItemQuantity] Supabase update warning:", err);
+  }
+
+  window.dispatchEvent(new Event("orders_updated"));
+  window.dispatchEvent(new Event("storage"));
+}
+
+/**
+ * Sipariş içindeki bir ürünü çıkarır (hem local hem supabase)
+ */
+export async function removeOrderItem(orderId: string, itemId: string): Promise<void> {
+  if (typeof window === "undefined" || !orderId || !itemId) return;
+
+  try {
+    const local = getLocalOrders();
+    const orderIdx = local.findIndex((o) => o.id === orderId);
+    if (orderIdx >= 0) {
+      const items = (local[orderIdx]?.order_items || []).filter((i) => i.id !== itemId);
+      local[orderIdx]!.order_items = items;
+      localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(local));
+    }
+  } catch (err) {
+    console.warn("[removeOrderItem] local error:", err);
+  }
+
+  try {
+    await supabase.from("order_items").delete().eq("id", itemId);
+  } catch (err) {
+    console.warn("[removeOrderItem] Supabase delete warning:", err);
+  }
+
+  window.dispatchEvent(new Event("orders_updated"));
+  window.dispatchEvent(new Event("storage"));
+}
+
 export async function purgeAllOrders(): Promise<void> {
   if (typeof window === "undefined") return;
 

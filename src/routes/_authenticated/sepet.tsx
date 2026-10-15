@@ -1,6 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { Minus, Plus, Trash2, ShoppingCart, MapPin, Navigation, Loader2 } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  Trash2,
+  ShoppingCart,
+  MapPin,
+  Navigation,
+  Loader2,
+  ShieldCheck,
+  Package,
+} from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -18,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DISTRICTS, districtLabel } from "@/lib/catalog";
+import { DISTRICTS, districtLabel, formatUnitLabel } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { MapLocationDialog } from "@/components/MapLocationDialog";
 import { BitlisMapPicker } from "@/components/BitlisMapPicker";
@@ -58,7 +68,7 @@ const orderSchema = z.object({
 
 function CartPage() {
   const { items, setQuantity, remove, clear } = useCart();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
@@ -425,6 +435,35 @@ function CartPage() {
     }
   };
 
+  if (isAdmin) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-20 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500 mb-4 border border-emerald-500/30">
+          <ShieldCheck className="h-9 w-9 stroke-[2.2]" />
+        </div>
+        <h1 className="text-2xl font-extrabold text-foreground">Yönetici Hesabı</h1>
+        <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+          Yönetici hesabında alışveriş sepeti kullanılmamaktadır. Bakkal ve marketlerden gelen
+          toptan siparişleri ve dağıtım rotasını incelemek için Siparişler paneline gidebilirsiniz.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Button
+            asChild
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5"
+          >
+            <Link to="/siparisler">
+              <Package className="h-4 w-4" />
+              <span>Siparişler & Sevkiyat</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/yonetim">Yönetim Paneli</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-20 text-center">
@@ -451,7 +490,7 @@ function CartPage() {
               key={item.productId}
               className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-card"
             >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-[#030704] p-1">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1">
                 <img
                   src={getPublicProductImageUrl(item.image_url, item.name)}
                   alt={item.name}
@@ -467,7 +506,18 @@ function CartPage() {
                 >
                   {item.name}
                 </Link>
-                <p className="text-xs text-muted-foreground">Birim: {item.unit}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Birim:{" "}
+                  {item.unit?.toLowerCase() === "adet" ? (
+                    <span className="text-blue-600 dark:text-blue-400 font-extrabold bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded text-[11px]">
+                      Adet
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-foreground">
+                      {formatUnitLabel(item.unit)}
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-1 rounded-lg border border-border">
                 <Button

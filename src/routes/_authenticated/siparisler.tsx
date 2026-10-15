@@ -43,6 +43,7 @@ import {
   matchesDistrictFilter,
   districtLabel,
   statusLabel,
+  formatUnitLabel,
   ORDER_STATUSES,
 } from "@/lib/catalog";
 import {
@@ -905,8 +906,14 @@ function AdminOrdersRoutePage() {
                               <span className="font-medium text-slate-800">
                                 {item.product_name}
                               </span>
-                              <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                {item.quantity} {item.unit}
+                              <span
+                                className={`font-bold px-2 py-0.5 rounded border text-xs ${
+                                  item.unit?.toLowerCase() === "adet"
+                                    ? "text-blue-600 bg-blue-50 border-blue-200"
+                                    : "text-emerald-800 bg-emerald-50 border-emerald-200"
+                                }`}
+                              >
+                                {item.quantity} {formatUnitLabel(item.unit)}
                               </span>
                             </div>
                           ))

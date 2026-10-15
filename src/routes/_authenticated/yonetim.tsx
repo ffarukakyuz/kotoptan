@@ -72,6 +72,8 @@ import {
   applyOrderPatch,
   permanentlyDeleteOrder,
   purgeAllTestOrders,
+  updateOrderItemQuantity,
+  removeOrderItem,
   isArchivedOrder as isArchivedOrderStorage,
 } from "@/lib/order-storage";
 import { analyzeProductPhoto } from "@/lib/gemini";
@@ -96,6 +98,7 @@ import {
   UNITS,
   categoryLabel,
   statusLabel,
+  formatUnitLabel,
   DISTRICTS,
   districtLabel,
   ADMIN_DISTRICT_FILTERS,
@@ -255,7 +258,21 @@ function AdminPage() {
 
       return mergeOrdersWithLocal<AdminOrder>(remoteOrders, null, true);
     },
+    refetchInterval: 4000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    const handleOrdersUpdated = () => {
+      void qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    };
+    window.addEventListener("orders_updated", handleOrdersUpdated);
+    window.addEventListener("storage", handleOrdersUpdated);
+    return () => {
+      window.removeEventListener("orders_updated", handleOrdersUpdated);
+      window.removeEventListener("storage", handleOrdersUpdated);
+    };
+  }, [qc]);
 
   const { data: allProducts = [], isLoading: isProductsLoading } = useQuery({
     queryKey: ["admin-products"],
@@ -511,41 +528,60 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
         console.warn("[Admin] remote orders query error:", err);
       }
 
-      return mergeOrdersWithLocal<AdminOrder>(remoteOrders);
+      return mergeOrdersWithLocal<AdminOrder>(remoteOrders, null, true);
     },
+    refetchInterval: 4000,
+    refetchOnWindowFocus: true,
   });
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["admin-orders"] });
   }, [qc]);
 
+  useEffect(() => {
+    const handleOrdersUpdated = () => {
+      refresh();
+    };
+    window.addEventListener("orders_updated", handleOrdersUpdated);
+    window.addEventListener("storage", handleOrdersUpdated);
+    return () => {
+      window.removeEventListener("orders_updated", handleOrdersUpdated);
+      window.removeEventListener("storage", handleOrdersUpdated);
+    };
+  }, [refresh]);
+
   const patchOrder = async (
     id: string,
     patch: { status?: string; archived_at?: string | null; note?: string },
     okMessage: string,
   ) => {
-    await applyOrderPatch(id, patch);
-    toast.success(okMessage);
-    refresh();
+    try {
+      await applyOrderPatch(id, patch);
+      toast.success(okMessage);
+      refresh();
+    } catch {
+      toast.error("Sipariş güncellenemedi.");
+    }
   };
 
-  const setItemQuantity = async (itemId: string, quantity: number) => {
+  const setItemQuantity = async (orderId: string, itemId: string, quantity: number) => {
     if (quantity < 1) return;
-    const { error } = await supabase.from("order_items").update({ quantity }).eq("id", itemId);
-    if (error) {
-      toast.error("Adet güncellenemedi");
-      return;
+    try {
+      await updateOrderItemQuantity(orderId, itemId, quantity);
+      toast.success("Ürün miktarı güncellendi");
+    } catch {
+      // ignore
     }
     refresh();
   };
 
-  const removeItem = async (itemId: string) => {
-    const { error } = await supabase.from("order_items").delete().eq("id", itemId);
-    if (error) {
-      toast.error("Ürün silinemedi");
-      return;
+  const removeItem = async (orderId: string, itemId: string) => {
+    try {
+      await removeOrderItem(orderId, itemId);
+      toast.success("Ürün siparişten çıkarıldı");
+    } catch {
+      // ignore
     }
-    toast.success("Ürün siparişten çıkarıldı");
     refresh();
   };
 
@@ -614,26 +650,6 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
       setIsPurgingOrders(false);
     }
   };
-
-  // Kullanıcı "sil yaptıgın deneme siparisleri" dediği için tüm deneme siparişlerini temizle
-  const purgeDoneRef = useRef(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || purgeDoneRef.current) return;
-    purgeDoneRef.current = true;
-    try {
-      const hasPurgedUserRequested = localStorage.getItem("ko_user_requested_purge_test_v5");
-      if (!hasPurgedUserRequested) {
-        localStorage.setItem("ko_user_requested_purge_test_v5", "true");
-        void purgeAllTestOrders()
-          .then(() => {
-            refresh();
-          })
-          .catch(() => {});
-      }
-    } catch {
-      // ignore storage restriction
-    }
-  }, [refresh]);
 
   const all = data ?? [];
   const scopedActive = all.filter((o) => !isArchivedOrder(o));
@@ -1283,49 +1299,65 @@ function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) 
                   </div>
 
                   <ul className="mt-3 space-y-1 text-sm">
-                    {o.order_items.map((i) => (
-                      <li
-                        key={i.id}
-                        className="flex items-center justify-between gap-2 border-b border-border/60 py-1"
-                      >
-                        <span>{i.product_name}</span>
-                        {editing ? (
-                          <span className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Azalt"
-                              onClick={() => void setItemQuantity(i.id, i.quantity - 1)}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="w-14 text-center font-semibold">
-                              {i.quantity} {i.unit}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Artır"
-                              onClick={() => void setItemQuantity(i.id, i.quantity + 1)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Ürünü çıkar"
-                              onClick={() => void removeItem(i.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </span>
-                        ) : (
-                          <span className="font-semibold">
-                            {i.quantity} {i.unit}
-                          </span>
-                        )}
+                    {(o.order_items || []).length > 0 ? (
+                      (o.order_items || []).map((i) => {
+                        const unitName =
+                          (i.unit || "").toLowerCase() === "adet" ? "Adet" : i.unit || "Adet";
+                        return (
+                          <li
+                            key={i.id}
+                            className="flex items-center justify-between gap-2 border-b border-border/60 py-1.5"
+                          >
+                            <span className="font-medium text-foreground">{i.product_name}</span>
+                            {editing ? (
+                              <span className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Azalt"
+                                  onClick={() => void setItemQuantity(o.id, i.id, i.quantity - 1)}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="w-14 text-center font-semibold text-xs">
+                                  {i.quantity} {unitName}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Artır"
+                                  onClick={() => void setItemQuantity(o.id, i.id, i.quantity + 1)}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Ürünü çıkar"
+                                  onClick={() => void removeItem(o.id, i.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <span
+                                className={`font-bold text-xs px-2 py-0.5 rounded border ${
+                                  (i.unit || "").toLowerCase() === "adet"
+                                    ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/70 border-blue-200 dark:border-blue-800"
+                                    : "text-foreground bg-muted/60 border-border"
+                                }`}
+                              >
+                                {i.quantity} {unitName}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li className="py-1 text-xs italic text-muted-foreground">
+                        Ürün kalemi bulunmuyor.
                       </li>
-                    ))}
+                    )}
                   </ul>
 
                   {editing ? (
@@ -2623,8 +2655,15 @@ function ProductsPanel({
                       )}
                     </div>
                     <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
-                      <span>
-                        {categoryLabel(p.category)} · {p.unit}
+                      <span className="flex items-center gap-1">
+                        {categoryLabel(p.category)} ·{" "}
+                        {p.unit?.toLowerCase() === "adet" ? (
+                          <span className="text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 px-1.5 py-0.2 rounded text-[10px]">
+                            Adet
+                          </span>
+                        ) : (
+                          <span>{formatUnitLabel(p.unit)}</span>
+                        )}
                       </span>
                       {extractPackageOrBoxInfo(p.description, p.unit, p.name, p.id) &&
                         (() => {
@@ -2637,16 +2676,16 @@ function ProductsPanel({
                           const isPack = info.toLowerCase().startsWith("paket");
                           return (
                             <span
-                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border shadow-xs ${
                                 isPack
-                                  ? "text-purple-700 bg-purple-500/10 border-purple-500/30"
-                                  : "text-amber-700 bg-amber-500/10 border-amber-500/30"
+                                  ? "text-purple-700 bg-purple-50 border-purple-200 dark:bg-purple-950 dark:text-purple-300"
+                                  : "text-red-600 bg-red-50 border border-red-200 dark:bg-red-950 dark:text-red-400"
                               }`}
                             >
                               {isPack ? (
                                 <Package className="h-3 w-3 text-purple-600" />
                               ) : (
-                                <Boxes className="h-3 w-3 text-amber-600" />
+                                <Boxes className="h-3 w-3 text-red-600 dark:text-red-400" />
                               )}
                               {info}
                             </span>

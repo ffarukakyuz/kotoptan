@@ -27,6 +27,7 @@ import {
   cleanProductDescription,
   extractPackageOrBoxInfo,
   normalizeProductWithOverrides,
+  formatUnitLabel,
 } from "@/lib/catalog";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
 import { useCart } from "@/lib/cart";
@@ -187,54 +188,6 @@ function ProductDetail() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      {/* Yönetici İşlem Bannerı */}
-      {isAdmin && (
-        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:px-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
-              <Pencil className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-foreground">Yönetici Paneli Kısayolu</p>
-              <p className="text-xs text-muted-foreground">
-                Stok durumunu hızlıca değiştirebilir veya ürün düzenleme formunu açabilirsiniz.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={togglingStock}
-              onClick={() => void toggleStock()}
-              className={`flex-1 sm:flex-initial text-xs font-semibold ${
-                inStock
-                  ? "border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
-                  : "border-rose-500 text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300"
-              }`}
-            >
-              {togglingStock ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : inStock ? (
-                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-              ) : (
-                <XCircle className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              {inStock ? "Stokta Var (Yok Yap)" : "Stokta Yok (Var Yap)"}
-            </Button>
-            <Button
-              asChild
-              className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
-            >
-              <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Ürünü Düzenle
-              </Link>
-            </Button>
-          </div>
-        </div>
-      )}
-
       <Link
         to="/"
         className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -244,13 +197,64 @@ function ProductDetail() {
       </Link>
 
       <div className="mt-5 grid gap-8 md:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-card relative group">
-          <div className="aspect-square w-full">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm relative group">
+          {/* SOL ÜSTTE: Koli İçi (Kırmızı) / Paket İçi (Mor) / Adet (Mavi) Rozeti */}
+          <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1 pointer-events-none">
+            {extractPackageOrBoxInfo(
+              product.description,
+              product.unit,
+              product.name,
+              product.id,
+            ) &&
+              (() => {
+                const info = extractPackageOrBoxInfo(
+                  product.description,
+                  product.unit,
+                  product.name,
+                  product.id,
+                )!;
+                const isPack = info.toLowerCase().startsWith("paket");
+                return (
+                  <span
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs backdrop-blur-xs ${
+                      isPack
+                        ? "bg-purple-50/95 border-purple-200 text-purple-700 dark:bg-purple-950/90 dark:text-purple-300 dark:border-purple-800"
+                        : "bg-red-50/95 border border-red-200 text-red-600 dark:bg-red-950/90 dark:text-red-400 dark:border-red-800"
+                    }`}
+                  >
+                    {isPack ? (
+                      <Package className="h-3.5 w-3.5 text-purple-600" />
+                    ) : (
+                      <Boxes className="h-3.5 w-3.5 text-red-600" />
+                    )}
+                    <strong>{info}</strong>
+                  </span>
+                );
+              })()}
+            {product.unit.toLowerCase() === "adet" && (
+              <span className="rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs backdrop-blur-xs bg-blue-50/95 border-blue-200 text-blue-600 dark:bg-blue-950/90 dark:text-blue-400 dark:border-blue-800">
+                <strong>Adet</strong>
+              </span>
+            )}
+            {!extractPackageOrBoxInfo(
+              product.description,
+              product.unit,
+              product.name,
+              product.id,
+            ) &&
+              product.unit.toLowerCase() !== "adet" && (
+                <span className="rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs backdrop-blur-xs bg-white/95 border-slate-200 text-slate-700 dark:bg-slate-900/90 dark:text-slate-300">
+                  <span>{formatUnitLabel(product.unit)}</span>
+                </span>
+              )}
+          </div>
+
+          <div className="aspect-square w-full bg-white flex items-center justify-center">
             <img
               src={getPublicProductImageUrl(product, product.name, product.category)}
               alt={product.name}
               onError={(e) => handleProductImageError(e, product.name, product.category)}
-              className={`h-full w-full object-contain p-4 bg-[#030704] transition-opacity ${
+              className={`h-full w-full object-contain p-4 bg-white transition-opacity ${
                 !inStock ? "opacity-70" : "opacity-100"
               }`}
             />
@@ -280,7 +284,7 @@ function ProductDetail() {
               <Link
                 to="/yonetim"
                 search={{ tab: "products", edit: product.id }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
               >
                 <Pencil className="h-3 w-3" />
                 <span>Düzenle</span>
@@ -294,7 +298,12 @@ function ProductDetail() {
 
           <div className="mt-3 flex items-center gap-3 flex-wrap">
             <span className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
-              Birim: <strong>{product.unit}</strong>
+              Birim:{" "}
+              {product.unit.toLowerCase() === "adet" ? (
+                <strong className="text-blue-600 font-extrabold">Adet</strong>
+              ) : (
+                <strong>{formatUnitLabel(product.unit)}</strong>
+              )}
             </span>
             {extractPackageOrBoxInfo(product.description, product.unit, product.name, product.id) &&
               (() => {
@@ -307,16 +316,16 @@ function ProductDetail() {
                 const isPack = info.toLowerCase().startsWith("paket");
                 return (
                   <span
-                    className={`rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border ${
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs ${
                       isPack
-                        ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-400"
-                        : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                        ? "bg-purple-50/90 border-purple-200 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800"
+                        : "bg-red-50/90 border border-red-200 text-red-600 dark:bg-red-950/70 dark:text-red-400 dark:border-red-800"
                     }`}
                   >
                     {isPack ? (
-                      <Package className="h-3.5 w-3.5 text-purple-600" />
+                      <Package className="h-3.5 w-3.5 text-purple-600 dark:text-purple-300" />
                     ) : (
-                      <Boxes className="h-3.5 w-3.5 text-amber-600" />
+                      <Boxes className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                     )}
                     <strong>{info}</strong>
                   </span>
@@ -339,7 +348,7 @@ function ProductDetail() {
             </p>
           )}
 
-          {inStock ? (
+          {!isAdmin && inStock ? (
             <div className="mt-6 flex items-center gap-3">
               <div className="flex items-center rounded-lg border border-border">
                 <Button
@@ -360,9 +369,15 @@ function ProductDetail() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <span className="text-sm text-muted-foreground">{product.unit}</span>
+              <span className="text-sm font-semibold">
+                {product.unit.toLowerCase() === "adet" ? (
+                  <span className="text-blue-600 font-bold">Adet</span>
+                ) : (
+                  <span className="text-muted-foreground">{formatUnitLabel(product.unit)}</span>
+                )}
+              </span>
             </div>
-          ) : (
+          ) : !inStock ? (
             <div className="mt-6 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-800 dark:text-rose-300 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>
@@ -370,35 +385,96 @@ function ProductDetail() {
                 güncellenecektir.
               </span>
             </div>
-          )}
+          ) : null}
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              size="lg"
-              disabled={!inStock}
-              onClick={onAdd}
-              className={!inStock ? "opacity-60 cursor-not-allowed" : ""}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {inStock ? "Sepete ekle" : "Stokta Yok"}
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/sepet">Sepete git</Link>
-            </Button>
-            {isAdmin && (
+          {/* Aksiyon Butonları: Yöneticide Sepet Kesinlikle Yoktur, Ürünü Düzenle & Stokta Var/Yok Yan Yana (Yeşil) */}
+          {isAdmin ? (
+            <div className="mt-6 flex flex-wrap items-center gap-2.5">
+              <Button
+                asChild
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm"
+              >
+                <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
+                  <Pencil className="h-4 w-4" />
+                  <span>Ürünü Düzenle</span>
+                </Link>
+              </Button>
+
+              {/* Stokta Var / Stokta Yok Yan Yana Butonları */}
+              <Button
+                type="button"
+                size="lg"
+                disabled={togglingStock}
+                onClick={() => {
+                  if (!inStock) void toggleStock();
+                }}
+                className={`font-bold gap-1.5 transition-all ${
+                  inStock
+                    ? "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800"
+                    : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200"
+                }`}
+              >
+                {togglingStock ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                <span>Stokta Var</span>
+              </Button>
+
+              <Button
+                type="button"
+                size="lg"
+                disabled={togglingStock}
+                onClick={() => {
+                  if (inStock) void toggleStock();
+                }}
+                className={`font-bold gap-1.5 transition-all ${
+                  !inStock
+                    ? "bg-rose-600 text-white shadow-sm hover:bg-rose-700"
+                    : "bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700 border border-slate-200"
+                }`}
+              >
+                {togglingStock ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                <span>Stokta Yok</span>
+              </Button>
+
+              <Button asChild size="lg" variant="outline">
+                <Link to="/yonetim">Yönetim Paneli</Link>
+              </Button>
               <Button
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 font-semibold"
+                className="text-emerald-700 border-emerald-500/30 hover:bg-emerald-50"
               >
-                <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
-                  <Pencil className="h-4 w-4" />
-                  Yönetim Paneline Git
+                <Link to="/siparisler">
+                  <Package className="h-4 w-4 mr-1.5" />
+                  Siparişler & Sevkiyat
                 </Link>
               </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                size="lg"
+                disabled={!inStock}
+                onClick={onAdd}
+                className={!inStock ? "opacity-60 cursor-not-allowed" : ""}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {inStock ? "Sepete ekle" : "Stokta Yok"}
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link to="/sepet">Sepete git</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

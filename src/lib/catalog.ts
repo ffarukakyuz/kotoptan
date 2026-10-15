@@ -19,6 +19,17 @@ export const UNITS = [
   { value: "çuval", label: "Çuval" },
 ] as const;
 
+export function formatUnitLabel(unit?: string | null): string {
+  if (!unit) return "Adet";
+  const trimmed = unit.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "adet") return "Adet";
+  if (lower === "paket") return "Paket";
+  if (lower === "koli") return "Koli";
+  if (lower === "çuval") return "Çuval";
+  return trimmed.charAt(0).toLocaleUpperCase("tr") + trimmed.slice(1);
+}
+
 export const ORDER_STATUSES = [
   { value: "yeni", label: "Yeni" },
   { value: "hazirlaniyor", label: "Hazırlanıyor" },

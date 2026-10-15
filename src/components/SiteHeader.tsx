@@ -104,7 +104,7 @@ export function SiteHeader() {
         </>
       )}
 
-      {/* Yönetici Hesabı Sekmeleri: Siparişler ve Yönetim */}
+      {/* Yönetici Hesabı Sekmeleri: Siparişler ve Yönetim (Yöneticide Sepet Olmaz) */}
       {isAdmin && (
         <>
           <Link
@@ -123,20 +123,6 @@ export function SiteHeader() {
           >
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
             <span>Yönetim</span>
-          </Link>
-
-          <Link
-            to="/sepet"
-            className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white flex items-center gap-1.5"
-            onClick={() => setOpen(false)}
-          >
-            <ShoppingCart className="h-4 w-4 text-emerald-400" />
-            <span>Sepet</span>
-            {totalQuantity > 0 && (
-              <span className="ml-1 rounded-full bg-[#166534] px-1.5 py-0.2 text-[10px] font-bold text-white">
-                {totalQuantity}
-              </span>
-            )}
           </Link>
         </>
       )}
@@ -169,67 +155,46 @@ export function SiteHeader() {
         {/* Desktop Nav Links */}
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
-        {/* Header Actions (Search, Siparişler, Yönetim, Cart, User, Çıkış, Menu) */}
+        {/* Header Actions (Siparişler Kutu Logosu Kısayolu, Yönetim, Cart (yalnızca müşteri), User, Çıkış, Menu) */}
         <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Search Button */}
-          <button
-            type="button"
-            onClick={handleSearchClick}
-            aria-label="Ürün Ara"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer"
-            title="Ürün Ara"
+          {/* Siparişler Kısayol Kutu Logosu (Mobilde ve masaüstünde sağdaki arama butonu yerine 1-tıkla siparişlere erişim) */}
+          <Link
+            to={isAdmin ? "/siparisler" : user ? "/siparislerim" : "/giris"}
+            aria-label={isAdmin ? "Siparişler & Sevkiyat" : "Siparişlerim"}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white/95 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
+            title={isAdmin ? "Siparişler & Sevkiyat (Yönetici)" : "Siparişlerim"}
           >
-            <Search className="h-4.5 w-4.5 stroke-[2]" />
-          </button>
+            <Package className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
+          </Link>
 
-          {/* YÖNETİCİ HESABI: Siparişler Kısayolu ve Yönetim Paneli */}
+          {/* YÖNETİCİ HESABI: Yönetim Paneli Rozeti */}
           {isAdmin && (
-            <>
-              <Link
-                to="/siparisler"
-                aria-label="Siparişler"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/95 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
-                title="Siparişler & Sevkiyat (Yönetici)"
-              >
-                <Package className="h-5 w-5 text-white stroke-[2.2]" />
-              </Link>
-              <Link
-                to="/yonetim"
-                aria-label="Yönetim Paneli"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-400 hover:text-emerald-300 hover:bg-white/10 transition-colors active:scale-95 cursor-pointer"
-                title="Yönetim Paneli"
-              >
-                <ShieldCheck className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
-              </Link>
-            </>
-          )}
-
-          {/* MÜŞTERİ HESABI: Yalnızca kendi siparişlerim kısayolu (Yönetim ve Siparişler asla görünmez) */}
-          {user && !isAdmin && (
             <Link
-              to="/siparislerim"
-              aria-label="Siparişlerim"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
-              title="Siparişlerim"
+              to="/yonetim"
+              aria-label="Yönetim Paneli"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-400 hover:text-emerald-300 hover:bg-white/10 transition-colors active:scale-95 cursor-pointer"
+              title="Yönetim Paneli"
             >
-              <Package className="h-5 w-5 text-white stroke-[2.2]" />
+              <ShieldCheck className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
             </Link>
           )}
 
-          {/* Sepet */}
-          <Link
-            to="/sepet"
-            aria-label="Sepetim"
-            className="relative flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
-            title="Sepetim"
-          >
-            <ShoppingCart className="h-4.5 w-4.5 stroke-[2]" />
-            {totalQuantity > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#166534] px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#060b08]">
-                {totalQuantity}
-              </span>
-            )}
-          </Link>
+          {/* Sepet (Yalnızca Müşteri Hesabında Görünür - Yönetici Hesabında Kesinlikle Görünmez) */}
+          {!isAdmin && (
+            <Link
+              to="/sepet"
+              aria-label="Sepetim"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+              title="Sepetim"
+            >
+              <ShoppingCart className="h-4.5 w-4.5 stroke-[2]" />
+              {totalQuantity > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#166534] px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#060b08]">
+                  {totalQuantity}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* User & Çıkış Bölümü */}
           {user ? (
