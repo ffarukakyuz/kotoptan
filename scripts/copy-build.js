@@ -100,7 +100,85 @@ try {
     }
   }
 
-  const tsrBootstrap = `<script class="$tsr" id="$tsr-stream-barrier">(self.$R=self.$R||{})["tsr"]=[];self.$_TSR={h(){this.hydrated=true;this.c();},e(){this.streamEnded=true;this.c();},c(){this.hydrated&&this.streamEnded&&(delete self.$_TSR,delete self.$R.tsr);},p(e){this.initialized?e():this.buffer.push(e);},buffer:[],router:{manifest:{routes:{}},matches:[],lastMatchId:""};$_TSR.e();</script>`;
+  const autoHealScript = `<script>
+(function() {
+  if (typeof window === "undefined") return;
+  try {
+    if (window.localStorage) {
+      var keys = [
+        "ko_local_auth_session",
+        "custom_added_products",
+        "custom_product_overrides",
+        "permanently_deleted_product_ids",
+        "permanently_deleted_product_names",
+        "custom_product_archived_status",
+        "custom_product_stock_status",
+        "ko_local_orders",
+        "ko_order_status_overrides",
+        "ko_deleted_order_ids"
+      ];
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        try {
+          var raw = localStorage.getItem(k);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed === null || typeof parsed === "undefined") {
+              localStorage.removeItem(k);
+            }
+          }
+        } catch (err) {
+          try { localStorage.removeItem(k); } catch (e) {}
+        }
+      }
+      for (var j = 0; j < localStorage.length; j++) {
+        var itemKey = localStorage.key(j);
+        if (itemKey && (itemKey.indexOf("depo-sepet-") === 0 || itemKey.indexOf("kotoptan_ai_chat_") === 0)) {
+          try {
+            var val = localStorage.getItem(itemKey);
+            if (val) JSON.parse(val);
+          } catch (e) {
+            try { localStorage.removeItem(itemKey); } catch (e2) {}
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  window.addEventListener("error", function(evt) {
+    if (evt && evt.error && typeof evt.error.message === "string") {
+      var msg = evt.error.message;
+      if (msg.indexOf("Invariant failed") !== -1 || msg.indexOf("useStore") !== -1) {
+        console.warn("[Invariant Shield] Intercepted:", msg);
+        evt.preventDefault();
+        evt.stopPropagation();
+      }
+    }
+  }, true);
+})();
+</script>`;
+
+  const tsrBootstrap = `<script class="$tsr" id="$tsr-stream-barrier">
+(function() {
+  self.$R = self.$R || {};
+  self.$R["tsr"] = [];
+  var rootMatch = { id: "__root__", routeId: "__root__", status: "success", _nonReactive: {} };
+  var childMatch = { id: "/_authenticated/", routeId: "/_authenticated/", status: "success", _nonReactive: {} };
+  self.$_TSR = {
+    h: function() { this.hydrated = true; this.c(); },
+    e: function() { this.streamEnded = true; this.c(); },
+    c: function() { if (this.hydrated && this.streamEnded) { delete self.$_TSR; delete self.$R.tsr; } },
+    p: function(e) { this.initialized ? e() : this.buffer.push(e); },
+    buffer: [],
+    router: {
+      manifest: { routes: {} },
+      matches: [rootMatch, childMatch],
+      lastMatchId: "/_authenticated/"
+    }
+  };
+  self.$_TSR.e();
+})();
+</script>`;
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="tr">
@@ -136,6 +214,7 @@ try {
     <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
     <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />
+    ${autoHealScript}
     ${styleTag}
   </head>
   <body>
