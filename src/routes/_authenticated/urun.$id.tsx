@@ -387,21 +387,10 @@ function ProductDetail() {
             </div>
           ) : null}
 
-          {/* Aksiyon Butonları: Yöneticide Sepet Kesinlikle Yoktur, Ürünü Düzenle & Stokta Var/Yok Yan Yana (Yeşil) */}
+          {/* Aksiyon Butonları: Yöneticide Sepet Kesinlikle Yoktur, Solda Stokta Var/Yok ve Ürünü Düzenle Yan Yana */}
           {isAdmin ? (
             <div className="mt-6 flex flex-wrap items-center gap-2.5">
-              <Button
-                asChild
-                size="lg"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm"
-              >
-                <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
-                  <Pencil className="h-4 w-4" />
-                  <span>Ürünü Düzenle</span>
-                </Link>
-              </Button>
-
-              {/* Stokta Var / Stokta Yok Yan Yana Butonları */}
+              {/* Solda: Stokta Var / Stokta Yok Butonları */}
               <Button
                 type="button"
                 size="lg"
@@ -442,6 +431,18 @@ function ProductDetail() {
                   <XCircle className="h-4 w-4" />
                 )}
                 <span>Stokta Yok</span>
+              </Button>
+
+              {/* Sağında: Ürünü Düzenle Butonu */}
+              <Button
+                asChild
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm"
+              >
+                <Link to="/yonetim" search={{ tab: "products", edit: product.id }}>
+                  <Pencil className="h-4 w-4" />
+                  <span>Ürünü Düzenle</span>
+                </Link>
               </Button>
 
               <Button asChild size="lg" variant="outline">

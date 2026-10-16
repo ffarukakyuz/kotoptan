@@ -517,7 +517,9 @@ function HeroProductCard({
 }) {
   const { add } = useCart();
   const { isAdmin } = useAuth();
+  const qc = useQueryClient();
   const [justAdded, setJustAdded] = useState(false);
+  const [togglingHeroStock, setTogglingHeroStock] = useState(false);
 
   // Filter slides based on category if selected, or use all
   const slides = useMemo(() => {
@@ -586,6 +588,41 @@ function HeroProductCard({
     current.name,
     current.id,
   );
+
+  const handleToggleHeroStock = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newStatus = !inStock;
+    setTogglingHeroStock(true);
+    setProductStockStatusLocal(current.id, newStatus);
+
+    const baseDesc = cleanProductDescription(current.description);
+    const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
+    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === current.id ? { ...p, description: newDescription } : p));
+    });
+    qc.setQueryData<Product[]>(["admin-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === current.id ? { ...p, description: newDescription } : p));
+    });
+
+    try {
+      await supabase.from("products").update({ description: newDescription }).eq("id", current.id);
+    } catch (err) {
+      console.warn("Supabase stock update error:", err);
+    }
+
+    toast.success(
+      newStatus
+        ? `"${current.name}" stokta olarak işaretlendi.`
+        : `"${current.name}" stokta yok olarak işaretlendi.`,
+    );
+    setTogglingHeroStock(false);
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+  };
 
   const handleQuickAdd = () => {
     if (!inStock) {
@@ -787,35 +824,76 @@ function HeroProductCard({
             )}
           </div>
 
-          <button
-            type="button"
-            disabled={!inStock}
-            onClick={handleQuickAdd}
-            className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
-              !inStock
-                ? "bg-slate-200 text-slate-500 cursor-not-allowed opacity-80"
-                : justAdded
-                  ? "bg-emerald-600 text-white scale-105"
-                  : "bg-[#166534] hover:bg-[#14532d] text-white"
-            }`}
-          >
-            {!inStock ? (
-              <>
-                <XCircle className="h-3.5 w-3.5 text-rose-500" />
-                <span>Stokta Yok</span>
-              </>
-            ) : justAdded ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                <span>Eklendi</span>
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="h-3.5 w-3.5" />
-                <span>Hemen Ekle</span>
-              </>
-            )}
-          </button>
+          {isAdmin ? (
+            <div className="flex items-center gap-2">
+              {/* Solda: Stokta Var / Yok Butonu */}
+              <button
+                type="button"
+                disabled={togglingHeroStock}
+                onClick={handleToggleHeroStock}
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all border shadow-xs active:scale-95 cursor-pointer ${
+                  inStock
+                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
+                    : "bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300"
+                }`}
+                title={
+                  inStock
+                    ? "Stok durumu: Stokta Var (Tıklayarak Stokta Yok yapabilirsiniz)"
+                    : "Stok durumu: Stokta Yok (Tıklayarak Stokta Var yapabilirsiniz)"
+                }
+              >
+                {togglingHeroStock ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : inStock ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                )}
+                <span>{inStock ? "Stokta Var" : "Stokta Yok"}</span>
+              </button>
+
+              {/* Sağında: Ürünü Düzenle Butonu */}
+              <Link
+                to="/yonetim"
+                search={{ tab: "products", edit: current.id }}
+                className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold bg-[#166534] hover:bg-[#14532d] text-white shadow-md transition-all active:scale-95 cursor-pointer"
+                title="Ürün bilgilerini düzenle"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span>Ürünü Düzenle</span>
+              </Link>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={!inStock}
+              onClick={handleQuickAdd}
+              className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
+                !inStock
+                  ? "bg-slate-200 text-slate-500 cursor-not-allowed opacity-80"
+                  : justAdded
+                    ? "bg-emerald-600 text-white scale-105"
+                    : "bg-[#166534] hover:bg-[#14532d] text-white"
+              }`}
+            >
+              {!inStock ? (
+                <>
+                  <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                  <span>Stokta Yok</span>
+                </>
+              ) : justAdded ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Eklendi</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  <span>Hemen Ekle</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -829,8 +907,10 @@ function HeroProductCard({
 function CatalogProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const { isAdmin } = useAuth();
+  const qc = useQueryClient();
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
+  const [togglingStock, setTogglingStock] = useState(false);
   const inStock = isProductInStock(product);
   const boxInfo = extractPackageOrBoxInfo(
     product.description,
@@ -838,6 +918,41 @@ function CatalogProductCard({ product }: { product: Product }) {
     product.name,
     product.id,
   );
+
+  const handleToggleStock = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newStatus = !inStock;
+    setTogglingStock(true);
+    setProductStockStatusLocal(product.id, newStatus);
+
+    const baseDesc = cleanProductDescription(product.description);
+    const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
+    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
+    });
+    qc.setQueryData<Product[]>(["admin-products"], (old) => {
+      if (!old) return old;
+      return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
+    });
+
+    try {
+      await supabase.from("products").update({ description: newDescription }).eq("id", product.id);
+    } catch (err) {
+      console.warn("Supabase stock update error:", err);
+    }
+
+    toast.success(
+      newStatus
+        ? `"${product.name}" stokta olarak işaretlendi.`
+        : `"${product.name}" stokta yok olarak işaretlendi.`,
+    );
+    setTogglingStock(false);
+    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["admin-products"] });
+  };
 
   const handleAdd = () => {
     if (!inStock) {
@@ -957,58 +1072,101 @@ function CatalogProductCard({ product }: { product: Product }) {
       </div>
 
       <div className="mt-3 pt-2.5 border-t border-slate-100">
-        <div className="flex items-center gap-1.5">
-          {/* Quantity selector */}
-          <div className="flex items-center rounded-lg bg-slate-100 p-0.5">
+        {isAdmin ? (
+          <div className="flex items-center gap-1.5 w-full">
+            {/* Solda: Stokta Var / Yok Butonu */}
             <button
               type="button"
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
-              disabled={!inStock || qty <= 1}
-              className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
+              disabled={togglingStock}
+              onClick={handleToggleStock}
+              className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 px-1.5 text-xs font-bold transition-all border shadow-xs active:scale-95 cursor-pointer ${
+                inStock
+                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
+                  : "bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300"
+              }`}
+              title={
+                inStock
+                  ? "Stok durumu: Stokta Var (Tıklayarak Stokta Yok yapabilirsiniz)"
+                  : "Stok durumu: Stokta Yok (Tıklayarak Stokta Var yapabilirsiniz)"
+              }
             >
-              <Minus className="h-3 w-3" />
+              {togglingStock ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+              ) : inStock ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+              )}
+              <span className="truncate text-[11px] sm:text-xs">
+                {inStock ? "Stokta Var" : "Stokta Yok"}
+              </span>
             </button>
-            <span className="w-5 text-center text-xs font-bold tabular-nums text-slate-800">
-              {qty}
-            </span>
+
+            {/* Sağında: Ürünü Düzenle Butonu */}
+            <Link
+              to="/yonetim"
+              search={{ tab: "products", edit: product.id }}
+              className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 px-1.5 text-xs font-bold bg-[#166534] hover:bg-[#14532d] text-white shadow-xs transition-all active:scale-95 text-center cursor-pointer"
+              title="Ürün bilgilerini düzenle"
+            >
+              <Pencil className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate text-[11px] sm:text-xs">Ürünü Düzenle</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            {/* Quantity selector */}
+            <div className="flex items-center rounded-lg bg-slate-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                disabled={!inStock || qty <= 1}
+                className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
+              >
+                <Minus className="h-3 w-3" />
+              </button>
+              <span className="w-5 text-center text-xs font-bold tabular-nums text-slate-800">
+                {qty}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQty((q) => q + 1)}
+                disabled={!inStock}
+                className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Add to Cart button */}
             <button
               type="button"
-              onClick={() => setQty((q) => q + 1)}
               disabled={!inStock}
-              className="flex h-7 w-6 items-center justify-center rounded text-slate-600 hover:bg-white disabled:opacity-25 cursor-pointer"
+              onClick={handleAdd}
+              className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 px-2 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                !inStock
+                  ? "bg-slate-200 text-slate-500 hover:bg-slate-200 cursor-not-allowed"
+                  : added
+                    ? "bg-[#14532d] text-white"
+                    : "bg-[#166534] hover:bg-[#14532d] text-white shadow-sm"
+              }`}
             >
-              <Plus className="h-3 w-3" />
+              {!inStock ? (
+                <span>Tükendi</span>
+              ) : added ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Eklendi</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Ekle</span>
+                </>
+              )}
             </button>
           </div>
-
-          {/* Add to Cart button */}
-          <button
-            type="button"
-            disabled={!inStock}
-            onClick={handleAdd}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 px-2 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
-              !inStock
-                ? "bg-slate-200 text-slate-500 hover:bg-slate-200 cursor-not-allowed"
-                : added
-                  ? "bg-[#14532d] text-white"
-                  : "bg-[#166534] hover:bg-[#14532d] text-white shadow-sm"
-            }`}
-          >
-            {!inStock ? (
-              <span>Tükendi</span>
-            ) : added ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                <span>Eklendi</span>
-              </>
-            ) : (
-              <>
-                <Plus className="h-3.5 w-3.5" />
-                <span>Ekle</span>
-              </>
-            )}
-          </button>
-        </div>
+        )}
       </div>
     </article>
   );
