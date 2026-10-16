@@ -488,29 +488,123 @@ export default {
             `📝 Güncelleme: "${commitMsg}"`,
           ];
 
+          // 1. Eğer ürün listesi gönderildiyse yerel disk dosyalarını güncelle
+          if (Array.isArray(body.products) && body.products.length > 0) {
+            try {
+              const fs = await import("node:fs");
+              const path = await import("node:path");
+              const productsPath = path.resolve(process.cwd(), "src/data/products.ts");
+              const source = `import type { Product } from "@/lib/catalog";\n\nexport const FALLBACK_PRODUCTS: Product[] = ${JSON.stringify(body.products, null, 2)};\n`;
+              fs.writeFileSync(productsPath, source, "utf-8");
+              logs.push(`✅ src/data/products.ts dosyası ${body.products.length} ürün ile güncellendi.`);
+            } catch (fsErr) {
+              console.warn("Dosya yazma uyarısı:", fsErr);
+            }
+          }
+
+          if (body.permanentlyDeleted) {
+            try {
+              const fs = await import("node:fs");
+              const path = await import("node:path");
+              const delPath = path.resolve(process.cwd(), "src/data/permanently-deleted.json");
+              fs.writeFileSync(delPath, JSON.stringify(body.permanentlyDeleted, null, 2), "utf-8");
+              logs.push(`✅ src/data/permanently-deleted.json güncellendi.`);
+            } catch (fsErr) {
+              console.warn("Silinenler yazma uyarısı:", fsErr);
+            }
+          }
+
           if (token) {
             try {
-              const ghRes = await fetch(`https://api.github.com/repos/${repo}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  Accept: "application/vnd.github+json",
-                  "User-Agent": "Kotoptan-Sync-Bot",
-                },
+              const ghHeaders = {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json",
+                "User-Agent": "Kotoptan-Sync-Bot",
+                "Content-Type": "application/json",
+              };
+
+              // Get HEAD
+              const refRes = await fetch(`https://api.github.com/repos/${repo}/git/ref/heads/main`, {
+                headers: ghHeaders,
               });
-              if (ghRes.ok) {
-                logs.push(`✅ GitHub deposuna (${repo}) erişim sağlandı.`);
-                logs.push(`🚀 Kodlar ve katalog ana dal (main) ile başarıyla eşitlendi.`);
-                return new Response(
-                  JSON.stringify({
-                    ok: true,
-                    commitHash: "HEAD",
-                    logs,
-                    lastSyncedAt: new Date().toISOString(),
-                  }),
-                  { headers: jsonHeaders },
-                );
+
+              if (refRes.ok) {
+                const refData = (await refRes.json()) as any;
+                const commitSha = refData.object.sha;
+
+                // Get commit
+                const cRes = await fetch(`https://api.github.com/repos/${repo}/git/commits/${commitSha}`, {
+                  headers: ghHeaders,
+                });
+                const cData = (await cRes.json()) as any;
+                const baseTreeSha = cData.tree.sha;
+
+                // Build tree items
+                const treeItems: any[] = [];
+                if (Array.isArray(body.products) && body.products.length > 0) {
+                  const source = `import type { Product } from "@/lib/catalog";\n\nexport const FALLBACK_PRODUCTS: Product[] = ${JSON.stringify(body.products, null, 2)};\n`;
+                  treeItems.push({
+                    path: "src/data/products.ts",
+                    mode: "100644",
+                    type: "blob",
+                    content: source,
+                  });
+                }
+                if (body.permanentlyDeleted) {
+                  treeItems.push({
+                    path: "src/data/permanently-deleted.json",
+                    mode: "100644",
+                    type: "blob",
+                    content: JSON.stringify(body.permanentlyDeleted, null, 2),
+                  });
+                }
+
+                if (treeItems.length > 0) {
+                  const tRes = await fetch(`https://api.github.com/repos/${repo}/git/trees`, {
+                    method: "POST",
+                    headers: ghHeaders,
+                    body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+                  });
+                  if (tRes.ok) {
+                    const tData = (await tRes.json()) as any;
+                    const newTreeSha = tData.sha;
+
+                    const ncRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
+                      method: "POST",
+                      headers: ghHeaders,
+                      body: JSON.stringify({
+                        message: commitMsg,
+                        tree: newTreeSha,
+                        parents: [commitSha],
+                      }),
+                    });
+
+                    if (ncRes.ok) {
+                      const ncData = (await ncRes.json()) as any;
+                      const newCommitSha = ncData.sha;
+
+                      await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, {
+                        method: "PATCH",
+                        headers: ghHeaders,
+                        body: JSON.stringify({ sha: newCommitSha, force: false }),
+                      });
+
+                      logs.push(`✅ GitHub deposuna (${repo}) doğrudan push edildi! Commit: ${newCommitSha.slice(0, 7)}`);
+                      logs.push(`🚀 Cloudflare Pages otomatik dağıtımı tetiklendi.`);
+
+                      return new Response(
+                        JSON.stringify({
+                          ok: true,
+                          commitHash: newCommitSha.slice(0, 7),
+                          logs,
+                          lastSyncedAt: new Date().toISOString(),
+                        }),
+                        { headers: jsonHeaders },
+                      );
+                    }
+                  }
+                }
               }
-              logs.push(`⚠️ Token ile GitHub erişimi sağlanamadı (HTTP ${ghRes.status}).`);
             } catch (err: unknown) {
               const msg = err instanceof Error ? err.message : "Hata";
               logs.push(`⚠️ API uyarısı: ${msg}`);
