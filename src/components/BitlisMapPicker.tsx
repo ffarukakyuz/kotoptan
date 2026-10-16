@@ -212,7 +212,7 @@ export function BitlisMapPicker({
           const rawLng = pos.coords.longitude;
           const clamped = clampToBitlis(rawLat, rawLng);
 
-          if (clamped.isClamped) {
+          if (clamped.isOutsideBitlis) {
             setIsOutsideWarning(true);
             toast.warning(
               "Cihazınızın GPS konumu Bitlis sınırları dışında. Dağıtım ağımız yalnızca Bitlis ili içerisindedir; harita Tatvan ana depoya odaklandı.",
@@ -230,7 +230,19 @@ export function BitlisMapPicker({
               BITLIS_CENTER_COORDS.lng,
               true,
             );
+          } else if (clamped.isInLake) {
+            setIsOutsideWarning(false);
+            setSelectedCoords({ lat: clamped.lat, lng: clamped.lng });
+            if (destinationMarkerRef.current) {
+              destinationMarkerRef.current.setLatLng([clamped.lat, clamped.lng]);
+            }
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.panTo([clamped.lat, clamped.lng], { animate: true });
+            }
+            void updateAddressForCoordsRef.current(clamped.lat, clamped.lng, true);
+            toast.info("GPS konumu sahil şeridine hizalandı.");
           } else {
+            // Göle sıfır işletmeler ve sahil şeridindeki tüm dükkanlar doğrudan kabul edilir
             setIsOutsideWarning(false);
             setSelectedCoords({ lat: rawLat, lng: rawLng });
             if (destinationMarkerRef.current) {
@@ -426,12 +438,15 @@ export function BitlisMapPicker({
             if (!mapInstanceRef.current || isCancelled) return;
             const pos = destMarker.getLatLng();
             const clamped = clampToBitlis(pos.lat, pos.lng);
-            if (clamped.isClamped) {
+            if (clamped.isOutsideBitlis) {
               destMarker.setLatLng([clamped.lat, clamped.lng]);
               toast.warning("Konum Bitlis il sınırları içerisine hizalandı.");
+            } else if (clamped.isInLake) {
+              destMarker.setLatLng([clamped.lat, clamped.lng]);
+              toast.info("Konum sahil şeridine hizalandı.");
             }
             setSelectedCoords({ lat: clamped.lat, lng: clamped.lng });
-            setIsOutsideWarning(clamped.isClamped);
+            setIsOutsideWarning(clamped.isOutsideBitlis);
             void updateAddressForCoordsRef.current(clamped.lat, clamped.lng, true);
           });
 
@@ -440,12 +455,18 @@ export function BitlisMapPicker({
             if (!mapInstanceRef.current || isCancelled) return;
             const { lat, lng } = e.latlng;
             const clamped = clampToBitlis(lat, lng);
-            if (clamped.isClamped) {
+            if (clamped.isOutsideBitlis) {
               destMarker.setLatLng([clamped.lat, clamped.lng]);
               setSelectedCoords({ lat: clamped.lat, lng: clamped.lng });
               setIsOutsideWarning(true);
               toast.warning("Yalnızca Bitlis ili sınırları içerisinden nokta seçebilirsiniz.");
+            } else if (clamped.isInLake) {
+              destMarker.setLatLng([clamped.lat, clamped.lng]);
+              setSelectedCoords({ lat: clamped.lat, lng: clamped.lng });
+              setIsOutsideWarning(false);
+              toast.info("Konum sahil şeridine hizalandı.");
             } else {
+              // Göle sıfır işletmeler ve kıyı şeridindeki tüm dükkanlar tam seçilen noktada kalır
               destMarker.setLatLng([lat, lng]);
               setSelectedCoords({ lat, lng });
               setIsOutsideWarning(false);
