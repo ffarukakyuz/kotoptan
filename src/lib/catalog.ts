@@ -8,8 +8,9 @@ export const CATEGORIES = [
 
 export const PRODUCT_CATEGORIES = CATEGORIES.filter((c) => c.value !== "tumu");
 
-export function categoryLabel(value: string) {
-  return CATEGORIES.find((c) => c.value === value)?.label ?? value;
+export function categoryLabel(value?: string | null): string {
+  if (!value) return "";
+  return CATEGORIES.find((c) => c.value === value)?.label ?? String(value || "");
 }
 
 export const UNITS = [
@@ -21,13 +22,13 @@ export const UNITS = [
 
 export function formatUnitLabel(unit?: string | null): string {
   if (!unit) return "Adet";
-  const trimmed = unit.trim();
+  const trimmed = String(unit || "").trim();
   const lower = trimmed.toLowerCase();
   if (lower === "adet") return "Adet";
   if (lower === "paket") return "Paket";
   if (lower === "koli") return "Koli";
   if (lower === "çuval") return "Çuval";
-  return trimmed.charAt(0).toLocaleUpperCase("tr") + trimmed.slice(1);
+  return trimmed ? trimmed.charAt(0).toLocaleUpperCase("tr") + trimmed.slice(1) : "Adet";
 }
 
 export const ORDER_STATUSES = [
@@ -38,8 +39,9 @@ export const ORDER_STATUSES = [
   { value: "iptal", label: "İptal" },
 ] as const;
 
-export function statusLabel(value: string) {
-  return ORDER_STATUSES.find((s) => s.value === value)?.label ?? value;
+export function statusLabel(value?: string | null): string {
+  if (!value) return "";
+  return ORDER_STATUSES.find((s) => s.value === value)?.label ?? String(value || "");
 }
 
 export const DISTRICTS = [
@@ -53,7 +55,7 @@ export const DISTRICTS = [
 
 export function districtLabel(value?: string | null): string {
   if (!value) return "Tatvan";
-  const trimmed = value.trim();
+  const trimmed = String(value || "").trim();
   const lower = trimmed.toLowerCase();
   if (lower === "ahlat_adilcevaz" || lower === "ahlat-adilcevaz" || lower === "ahlat & adilcevaz") {
     return "Ahlat & Adilcevaz";
@@ -67,7 +69,7 @@ export function districtLabel(value?: string | null): string {
       d.label.toLowerCase() === lower ||
       (lower === "bitlis" && d.value === "bitlis"),
   );
-  return found ? found.label : trimmed;
+  return found ? found.label : (trimmed || "Tatvan");
 }
 
 // Yönetim siparişler ekranı için ilçe filtreleri (Ahlat ve Adilcevaz aynı gün sevkiyat rotasında birleşik gösterilir)
@@ -115,7 +117,7 @@ export type Product = {
 
 export function cleanProductDescription(desc?: string | null): string {
   if (!desc) return "";
-  return desc.replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+  return String(desc || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
 }
 
 /**
@@ -242,12 +244,13 @@ export function normalizeProductWithOverrides(product: Product): Product {
     };
   }
 
+  const safeName = String(product.name || "");
   // Name based shampoo fallback if new shampoo products are added
   if (
-    /şampuan|sampuan/i.test(product.name) &&
-    /clear|dalin|elidor|blendax|pantene|head.*shoulder/i.test(product.name)
+    /şampuan|sampuan/i.test(safeName) &&
+    /clear|dalin|elidor|blendax|pantene|head.*shoulder/i.test(safeName)
   ) {
-    const isClear = /clear/i.test(product.name);
+    const isClear = /clear/i.test(safeName);
     const count = isClear ? 5 : 6;
     return {
       ...product,
@@ -278,26 +281,28 @@ export function extractPackageOrBoxInfo(
     return PRODUCT_PACKAGING_CUSTOM_OVERRIDES[productId].badge!;
   }
 
+  const safeProdName = String(productName || "");
   // Şampuanlar için otomatik Paket İçi kuralı
-  if (productName && /şampuan|sampuan/i.test(productName)) {
-    if (/clear/i.test(productName)) return "Paket İçi: 5 Adet";
-    if (/dalin/i.test(productName)) return "Paket İçi: 6 Adet";
-    if (/elidor/i.test(productName)) return "Paket İçi: 6 Adet";
-    if (/blendax/i.test(productName)) return "Paket İçi: 6 Adet";
-    if (/pantene/i.test(productName)) return "Paket İçi: 6 Adet";
-    if (/head.*shoulder/i.test(productName)) return "Paket İçi: 6 Adet";
+  if (safeProdName && /şampuan|sampuan/i.test(safeProdName)) {
+    if (/clear/i.test(safeProdName)) return "Paket İçi: 5 Adet";
+    if (/dalin/i.test(safeProdName)) return "Paket İçi: 6 Adet";
+    if (/elidor/i.test(safeProdName)) return "Paket İçi: 6 Adet";
+    if (/blendax/i.test(safeProdName)) return "Paket İçi: 6 Adet";
+    if (/pantene/i.test(safeProdName)) return "Paket İçi: 6 Adet";
+    if (/head.*shoulder/i.test(safeProdName)) return "Paket İçi: 6 Adet";
   }
 
   // Özel kural: Akel Yerli Pilavlık Pirinç koli içi 4 adettir
-  if (productName && /akel.*pirin[cç]/i.test(productName)) {
+  if (safeProdName && /akel.*pirin[cç]/i.test(safeProdName)) {
     return "Koli İçi: 4 Adet";
   }
 
   const text = cleanProductDescription(desc);
+  const safeUnit = String(unit || "");
 
   if (!text) {
-    if (unit && /(?:koli|paket|kutu)/i.test(unit) && /\d+/.test(unit)) {
-      return unit.trim();
+    if (safeUnit && /(?:koli|paket|kutu)/i.test(safeUnit) && /\d+/.test(safeUnit)) {
+      return safeUnit.trim();
     }
     return null;
   }
@@ -308,8 +313,8 @@ export function extractPackageOrBoxInfo(
     const packMatch = text.match(
       /(?:paket\s*içi|paket\s*ici)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane)?)/i,
     );
-    if (packMatch) {
-      return packMatch[0].trim().replace(/^paket/i, "Paket");
+    if (packMatch && packMatch[0]) {
+      return String(packMatch[0]).trim().replace(/^paket/i, "Paket");
     }
   }
 

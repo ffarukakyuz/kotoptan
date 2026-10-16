@@ -256,9 +256,9 @@ export function CustomerProfileModal({
 
             {/* Hızlı Eylemler */}
             <div className="grid grid-cols-2 gap-2 pt-1">
-              {details.phone && (
+              {details?.phone && (
                 <a
-                  href={`tel:${details.phone.replace(/\s+/g, "")}`}
+                  href={`tel:${String(details.phone || "").replace(/\s+/g, "")}`}
                   className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-black/80 hover:bg-emerald-950/40 border border-emerald-950/80 px-3 py-2 text-xs font-bold text-white transition-colors"
                 >
                   <Phone className="h-3.5 w-3.5 text-emerald-400" />

@@ -254,8 +254,8 @@ export async function reverseGeocodeNominatim(
     console.warn("Nominatim adres servisi uyarısı:", err);
   }
 
-  const normalizeTr = (str: string) =>
-    str
+  const normalizeTr = (str?: string | null) =>
+    String(str || "")
       .toLowerCase()
       .replace(/ı/g, "i")
       .replace(/ğ/g, "g")

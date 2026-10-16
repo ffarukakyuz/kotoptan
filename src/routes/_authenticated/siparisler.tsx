@@ -824,11 +824,11 @@ function AdminOrdersRoutePage() {
                           </span>
                           <span>•</span>
                           <a
-                            href={`tel:${o.phone}`}
+                            href={`tel:${String(o.phone || "").replace(/\s+/g, "")}`}
                             className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
                           >
                             <Phone className="h-3 w-3" />
-                            {o.phone}
+                            {o.phone || ""}
                           </a>
                           <span>•</span>
                           <span>#{String(o.id).slice(0, 8).toUpperCase()}</span>

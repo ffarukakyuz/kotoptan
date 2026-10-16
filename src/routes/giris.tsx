@@ -74,9 +74,10 @@ export const Route = createFileRoute("/giris")({
 });
 
 /** Telefon numarasını sadece rakamlara indirger ve standart 10 haneli formata dönüştürür. */
-function normalizePhone(raw: string) {
-  let digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("90") && digits.length === 12) {
+function normalizePhone(raw?: string | null) {
+  if (!raw) return "";
+  let digits = String(raw || "").replace(/\D/g, "");
+  if (digits.startsWith("90") && digits.length >= 12) {
     digits = digits.slice(2);
   }
   if (digits.startsWith("0")) {
@@ -86,8 +87,10 @@ function normalizePhone(raw: string) {
 }
 
 /** Telefon numarasından sabit bir giriş kimliği üretir. */
-function phoneIdentity(raw: string) {
-  return `${normalizePhone(raw)}@kotoptan.local`;
+function phoneIdentity(raw?: string | null) {
+  if (!raw) return "";
+  const norm = normalizePhone(raw);
+  return norm ? `${norm}@kotoptan.local` : "";
 }
 
 const signUpSchema = z.object({

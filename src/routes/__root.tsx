@@ -280,6 +280,20 @@ function RootAppContent() {
     };
     window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
+    // replaceAll, Invariant veya useStore hatalarının ekranı beyaz ekrana düşürmesini engelle
+    const handleError = (event: ErrorEvent) => {
+      const msg = event?.message || (event?.error && event.error.message) || "";
+      if (
+        typeof msg === "string" &&
+        (msg.includes("replaceAll") || msg.includes("useStore") || msg.includes("Invariant"))
+      ) {
+        console.warn("[Root Shield] Intercepted runtime error:", msg);
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("error", handleError, true);
+
     // Varsa eski/bozuk service worker kayıtlarını temizleyip bayat JS/CSS çakışmasını engelle
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -295,6 +309,7 @@ function RootAppContent() {
     return () => {
       window.removeEventListener("pageshow", handlePageShow);
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      window.removeEventListener("error", handleError, true);
     };
   }, [router]);
 

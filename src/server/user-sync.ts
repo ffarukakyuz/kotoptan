@@ -103,16 +103,18 @@ export function getAllServerUsers(): StoredServerUser[] {
 export function registerOrUpdateServerUser(
   data: Partial<StoredServerUser> & { phone: string },
 ): StoredServerUser {
-  const digits = data.phone.replace(/\D/g, "");
+  const digits = String(data.phone || "").replace(/\D/g, "");
   const normalized = digits.startsWith("0") ? digits.slice(1) : digits;
 
   // Yeniden kayıt olunuyorsa silinenler listesinden çıkar
   const deletedSet = loadDeletedUserSet();
-  if (deletedSet.has(data.phone) || deletedSet.has(digits) || deletedSet.has(normalized)) {
+  if (deletedSet.has(data.phone) || (digits && deletedSet.has(digits)) || (normalized && deletedSet.has(normalized))) {
     deletedSet.delete(data.phone);
-    deletedSet.delete(digits);
-    deletedSet.delete(normalized);
-    deletedSet.delete(`0${normalized}`);
+    if (digits) deletedSet.delete(digits);
+    if (normalized) {
+      deletedSet.delete(normalized);
+      deletedSet.delete(`0${normalized}`);
+    }
     saveDeletedUserSet(deletedSet);
   }
 
@@ -122,7 +124,7 @@ export function registerOrUpdateServerUser(
     (u) =>
       (u.id && data.id && u.id === data.id) ||
       (u.normalizedPhone && u.normalizedPhone === normalized) ||
-      (u.phone && data.phone && u.phone.replace(/\D/g, "") === digits),
+      (u.phone && data.phone && String(u.phone || "").replace(/\D/g, "") === digits),
   );
 
   const now = new Date().toISOString();
@@ -164,9 +166,10 @@ export function registerOrUpdateServerUser(
   return savedUser;
 }
 
-export function deleteServerUser(idOrPhone: string): boolean {
+export function deleteServerUser(idOrPhone?: string | null): boolean {
+  if (!idOrPhone) return false;
   const deletedSet = loadDeletedUserSet();
-  const digits = idOrPhone.replace(/\D/g, "");
+  const digits = String(idOrPhone || "").replace(/\D/g, "");
   deletedSet.add(idOrPhone);
   if (digits) {
     deletedSet.add(digits);
@@ -180,7 +183,7 @@ export function deleteServerUser(idOrPhone: string): boolean {
     if (u.role === "admin") return true;
     if (u.id === idOrPhone) return false;
     if (u.phone === idOrPhone) return false;
-    if (digits && u.phone && u.phone.replace(/\D/g, "") === digits) return false;
+    if (digits && u.phone && String(u.phone || "").replace(/\D/g, "") === digits) return false;
     return true;
   });
   inMemoryUsers = filtered;

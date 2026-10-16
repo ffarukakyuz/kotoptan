@@ -2914,7 +2914,7 @@ function UsersPanel() {
 
       const normalizePhoneDigits = (ph?: string | null) => {
         if (!ph) return "";
-        const d = ph.replace(/\D/g, "");
+        const d = String(ph || "").replace(/\D/g, "");
         return d.startsWith("0") ? d.slice(1) : d;
       };
 

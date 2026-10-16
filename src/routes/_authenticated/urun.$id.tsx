@@ -231,7 +231,7 @@ function ProductDetail() {
                   </span>
                 );
               })()}
-            {product.unit.toLowerCase() === "adet" && (
+            {(product.unit || "").toLowerCase() === "adet" && (
               <span className="rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs backdrop-blur-xs bg-blue-50/95 border-blue-200 text-blue-600 dark:bg-blue-950/90 dark:text-blue-400 dark:border-blue-800">
                 <strong>Adet</strong>
               </span>
@@ -242,7 +242,7 @@ function ProductDetail() {
               product.name,
               product.id,
             ) &&
-              product.unit.toLowerCase() !== "adet" && (
+              (product.unit || "").toLowerCase() !== "adet" && (
                 <span className="rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs backdrop-blur-xs bg-white/95 border-slate-200 text-slate-700 dark:bg-slate-900/90 dark:text-slate-300">
                   <span>{formatUnitLabel(product.unit)}</span>
                 </span>
@@ -299,7 +299,7 @@ function ProductDetail() {
           <div className="mt-3 flex items-center gap-3 flex-wrap">
             <span className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
               Birim:{" "}
-              {product.unit.toLowerCase() === "adet" ? (
+              {(product.unit || "").toLowerCase() === "adet" ? (
                 <strong className="text-blue-600 font-extrabold">Adet</strong>
               ) : (
                 <strong>{formatUnitLabel(product.unit)}</strong>
@@ -313,7 +313,7 @@ function ProductDetail() {
                   product.name,
                   product.id,
                 )!;
-                const isPack = info.toLowerCase().startsWith("paket");
+                const isPack = (info || "").toLowerCase().startsWith("paket");
                 return (
                   <span
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 border shadow-xs ${
@@ -370,7 +370,7 @@ function ProductDetail() {
                 </Button>
               </div>
               <span className="text-sm font-semibold">
-                {product.unit.toLowerCase() === "adet" ? (
+                {(product.unit || "").toLowerCase() === "adet" ? (
                   <span className="text-blue-600 font-bold">Adet</span>
                 ) : (
                   <span className="text-muted-foreground">{formatUnitLabel(product.unit)}</span>

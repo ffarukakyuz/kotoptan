@@ -660,12 +660,12 @@ function HeroProductCard({
           {boxInfo && (
             <span
               className={`text-xs font-bold px-2.5 py-1 rounded-lg border shadow-xs flex items-center gap-1.5 backdrop-blur-xs ${
-                boxInfo.toLowerCase().startsWith("paket")
+                (boxInfo || "").toLowerCase().startsWith("paket")
                   ? "text-purple-700 bg-purple-50/95 border-purple-200"
                   : "text-red-600 bg-red-50/95 border border-red-200"
               }`}
             >
-              {boxInfo.toLowerCase().startsWith("paket") ? (
+              {(boxInfo || "").toLowerCase().startsWith("paket") ? (
                 <Package className="h-3.5 w-3.5 text-purple-600 shrink-0" />
               ) : (
                 <Boxes className="h-3.5 w-3.5 text-red-600 shrink-0" />
@@ -673,12 +673,12 @@ function HeroProductCard({
               <span>{boxInfo}</span>
             </span>
           )}
-          {current.unit.toLowerCase() === "adet" && (
+          {(current.unit || "").toLowerCase() === "adet" && (
             <span className="text-xs font-bold px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50/95 text-blue-600 shadow-xs flex items-center gap-1.5 backdrop-blur-xs">
               <span>Adet</span>
             </span>
           )}
-          {!boxInfo && current.unit.toLowerCase() !== "adet" && (
+          {!boxInfo && (current.unit || "").toLowerCase() !== "adet" && (
             <span className="text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-200 bg-white/95 text-slate-700 shadow-xs flex items-center gap-1.5 backdrop-blur-xs">
               <span>{formatUnitLabel(current.unit)}</span>
             </span>
@@ -763,7 +763,7 @@ function HeroProductCard({
           <div className="flex flex-col">
             <p className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
               Birim:{" "}
-              {current.unit.toLowerCase() === "adet" ? (
+              {(current.unit || "").toLowerCase() === "adet" ? (
                 <span className="text-blue-600 font-extrabold">Adet</span>
               ) : (
                 <span>{formatUnitLabel(current.unit)}</span>
@@ -772,12 +772,12 @@ function HeroProductCard({
             {boxInfo && (
               <span
                 className={`text-xs font-bold flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg border shadow-xs ${
-                  boxInfo.toLowerCase().startsWith("paket")
+                  (boxInfo || "").toLowerCase().startsWith("paket")
                     ? "text-purple-700 bg-purple-50 border-purple-200"
                     : "text-red-600 bg-red-50 border border-red-200"
                 }`}
               >
-                {boxInfo.toLowerCase().startsWith("paket") ? (
+                {(boxInfo || "").toLowerCase().startsWith("paket") ? (
                   <Package className="h-3.5 w-3.5 text-purple-600 shrink-0" />
                 ) : (
                   <Boxes className="h-3.5 w-3.5 text-red-600 shrink-0" />
@@ -871,12 +871,12 @@ function CatalogProductCard({ product }: { product: Product }) {
             {boxInfo && (
               <span
                 className={`text-[11px] font-bold px-2 py-0.5 rounded-md border shadow-xs flex items-center gap-1 backdrop-blur-xs ${
-                  boxInfo.toLowerCase().startsWith("paket")
+                  (boxInfo || "").toLowerCase().startsWith("paket")
                     ? "text-purple-700 bg-purple-50/95 border-purple-200"
                     : "text-red-600 bg-red-50/95 border border-red-200"
                 }`}
               >
-                {boxInfo.toLowerCase().startsWith("paket") ? (
+                {(boxInfo || "").toLowerCase().startsWith("paket") ? (
                   <Package className="h-3 w-3 text-purple-600 shrink-0" />
                 ) : (
                   <Boxes className="h-3 w-3 text-red-600 shrink-0" />
@@ -884,12 +884,12 @@ function CatalogProductCard({ product }: { product: Product }) {
                 <span>{boxInfo}</span>
               </span>
             )}
-            {product.unit.toLowerCase() === "adet" && (
+            {(product.unit || "").toLowerCase() === "adet" && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border border-blue-200 bg-blue-50/95 text-blue-600 shadow-xs flex items-center gap-1 backdrop-blur-xs">
                 <span>Adet</span>
               </span>
             )}
-            {!boxInfo && product.unit.toLowerCase() !== "adet" && (
+            {!boxInfo && (product.unit || "").toLowerCase() !== "adet" && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border border-slate-200 bg-white/95 text-slate-700 shadow-xs flex items-center gap-1 backdrop-blur-xs">
                 <span>{formatUnitLabel(product.unit)}</span>
               </span>
@@ -930,7 +930,7 @@ function CatalogProductCard({ product }: { product: Product }) {
           <div className="mt-1 flex items-center justify-between gap-1 flex-wrap">
             <p className="text-xs text-slate-500 font-medium">
               Birim:{" "}
-              {product.unit.toLowerCase() === "adet" ? (
+              {(product.unit || "").toLowerCase() === "adet" ? (
                 <span className="text-blue-600 font-extrabold">Adet</span>
               ) : (
                 <span className="text-slate-800 font-bold">{formatUnitLabel(product.unit)}</span>
@@ -939,12 +939,12 @@ function CatalogProductCard({ product }: { product: Product }) {
             {boxInfo && (
               <span
                 className={`text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs border ${
-                  boxInfo.toLowerCase().startsWith("paket")
+                  (boxInfo || "").toLowerCase().startsWith("paket")
                     ? "text-purple-700 bg-purple-50 border-purple-200"
                     : "text-red-600 bg-red-50 border border-red-200"
                 }`}
               >
-                {boxInfo.toLowerCase().startsWith("paket") ? (
+                {(boxInfo || "").toLowerCase().startsWith("paket") ? (
                   <Package className="h-3 w-3 text-purple-600 shrink-0" />
                 ) : (
                   <Boxes className="h-3 w-3 text-red-600 shrink-0" />

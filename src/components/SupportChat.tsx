@@ -128,7 +128,7 @@ function formatMsgTime(iso?: unknown): string {
 
 function cleanPhoneForWhatsApp(phone?: unknown): string {
   if (!phone) return "";
-  const digits = String(phone).replace(/\D/g, "");
+  const digits = String(phone || "").replace(/\D/g, "");
   return digits.startsWith("0") ? digits.slice(1) : digits;
 }
 

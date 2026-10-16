@@ -62,9 +62,9 @@ export const GUEST_ACCOUNT = {
 };
 
 /** Telefon numarasından rakamları çıkarır, ülke kodunu (+90 veya 90) ve baştaki 0'ı atar */
-export function normalizePhone(raw: string): string {
+export function normalizePhone(raw?: string | null): string {
   if (!raw) return "";
-  let digits = raw.replace(/\D/g, "");
+  let digits = String(raw || "").replace(/\D/g, "");
   if (digits.startsWith("90") && digits.length >= 12) {
     digits = digits.slice(2);
   }

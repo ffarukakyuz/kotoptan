@@ -148,8 +148,12 @@ try {
   window.addEventListener("error", function(evt) {
     if (evt && evt.error && typeof evt.error.message === "string") {
       var msg = evt.error.message;
-      if (msg.indexOf("Invariant failed") !== -1 || msg.indexOf("useStore") !== -1) {
-        console.warn("[Invariant Shield] Intercepted:", msg);
+      if (
+        msg.indexOf("replaceAll") !== -1 ||
+        msg.indexOf("Invariant failed") !== -1 ||
+        msg.indexOf("useStore") !== -1
+      ) {
+        console.warn("[Invariant & replaceAll Shield] Intercepted:", msg);
         evt.preventDefault();
         evt.stopPropagation();
       }
@@ -298,6 +302,37 @@ export { renderIndexHTML as default };
         }
       }
     }
+  }
+
+  // 5.6 Defensively patch any id.replaceAll or segment.replaceAll in all generated dist & output chunks
+  function patchReplaceAllRecursively(dir) {
+    if (!fs.existsSync(dir)) return;
+    const items = fs.readdirSync(dir, { withFileTypes: true });
+    for (const item of items) {
+      const full = path.join(dir, item.name);
+      if (item.isDirectory()) {
+        patchReplaceAllRecursively(full);
+      } else if (/\.(js|mjs|cjs)$/.test(item.name)) {
+        let text = fs.readFileSync(full, "utf-8");
+        let changed = false;
+        if (text.includes("id.replaceAll(")) {
+          text = text.replace(/id\.replaceAll\(/g, '(id || "").replaceAll(');
+          changed = true;
+        }
+        if (text.includes("segment.replaceAll(")) {
+          text = text.replace(/segment\.replaceAll\(/g, '(segment || "").replaceAll(');
+          changed = true;
+        }
+        if (changed) {
+          fs.writeFileSync(full, text, "utf-8");
+          console.log(`Defensively patched replaceAll in: ${item.name}`);
+        }
+      }
+    }
+  }
+  patchReplaceAllRecursively(distDir);
+  if (fs.existsSync(outputDir)) {
+    patchReplaceAllRecursively(outputDir);
   }
 
   const distFilesCount = fs.readdirSync(distDir).length;
