@@ -68,19 +68,32 @@
     <script>
       (function () {
         if (typeof window === "undefined") return;
+
+        // 1. String.prototype.replaceAll polyfill for older iOS / WebKit webviews
+        if (typeof String.prototype.replaceAll !== "function") {
+          String.prototype.replaceAll = function (search, replacement) {
+            if (search instanceof RegExp) {
+              return this.replace(search, replacement);
+            }
+            return this.split(search).join(replacement);
+          };
+        }
+
+        // 2. Global Error Shield
         window.addEventListener(
           "error",
           function (evt) {
-            if (evt && evt.error && typeof evt.error.message === "string") {
-              var msg = evt.error.message;
+            var msg = (evt && evt.error && evt.error.message) || (evt && evt.message) || "";
+            if (typeof msg === "string") {
               if (
                 msg.indexOf("replaceAll") !== -1 ||
                 msg.indexOf("Invariant failed") !== -1 ||
-                msg.indexOf("useStore") !== -1
+                msg.indexOf("useStore") !== -1 ||
+                msg.indexOf("reading 'replaceAll'") !== -1
               ) {
                 console.warn("[Global Shield] Intercepted runtime error:", msg);
-                evt.preventDefault();
-                evt.stopPropagation();
+                if (evt.preventDefault) evt.preventDefault();
+                if (evt.stopPropagation) evt.stopPropagation();
               }
             }
           },

@@ -4,11 +4,10 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
@@ -248,10 +247,30 @@ function RootComponent() {
 
 function RootAppContent() {
   const router = useRouter({ warn: false });
-  const routerState = useRouterState();
-  const pathname =
-    routerState?.location?.pathname ||
-    (typeof window !== "undefined" ? window.location.pathname : "/");
+  const [pathname, setPathname] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return window.location.pathname || "/";
+    }
+    return router?.state?.location?.pathname || "/";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updatePath = () => {
+      setPathname(window.location.pathname || "/");
+    };
+    window.addEventListener("popstate", updatePath);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const unsub = router?.subscribe?.("onResolved", (val: any) => {
+      if (val?.toLocation?.pathname) {
+        setPathname(val.toLocation.pathname);
+      }
+    });
+    return () => {
+      window.removeEventListener("popstate", updatePath);
+      unsub?.();
+    };
+  }, [router]);
 
   const { user, loading } = useAuth();
   const isAuthPage = pathname === "/giris";

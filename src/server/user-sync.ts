@@ -108,7 +108,11 @@ export function registerOrUpdateServerUser(
 
   // Yeniden kayıt olunuyorsa silinenler listesinden çıkar
   const deletedSet = loadDeletedUserSet();
-  if (deletedSet.has(data.phone) || (digits && deletedSet.has(digits)) || (normalized && deletedSet.has(normalized))) {
+  if (
+    deletedSet.has(data.phone) ||
+    (digits && deletedSet.has(digits)) ||
+    (normalized && deletedSet.has(normalized))
+  ) {
     deletedSet.delete(data.phone);
     if (digits) deletedSet.delete(digits);
     if (normalized) {

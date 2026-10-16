@@ -236,7 +236,9 @@ export function saveLocalUsersBatch(users: FallbackUser[]): void {
 
 export function findFallbackUser(identifier?: string | null): FallbackUser | undefined {
   if (!identifier) return undefined;
-  const rawClean = String(identifier || "").trim().toLowerCase();
+  const rawClean = String(identifier || "")
+    .trim()
+    .toLowerCase();
   const digits = String(identifier || "").replace(/\D/g, "");
   const normalized = digits.startsWith("0") ? digits.slice(1) : digits;
 

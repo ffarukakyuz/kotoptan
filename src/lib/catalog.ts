@@ -69,7 +69,7 @@ export function districtLabel(value?: string | null): string {
       d.label.toLowerCase() === lower ||
       (lower === "bitlis" && d.value === "bitlis"),
   );
-  return found ? found.label : (trimmed || "Tatvan");
+  return found ? found.label : trimmed || "Tatvan";
 }
 
 // Yönetim siparişler ekranı için ilçe filtreleri (Ahlat ve Adilcevaz aynı gün sevkiyat rotasında birleşik gösterilir)
@@ -117,7 +117,9 @@ export type Product = {
 
 export function cleanProductDescription(desc?: string | null): string {
   if (!desc) return "";
-  return String(desc || "").replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "").trim();
+  return String(desc || "")
+    .replace(/\[(TÜKENDİ|STOK_YOK)\]/gi, "")
+    .trim();
 }
 
 /**
@@ -314,7 +316,9 @@ export function extractPackageOrBoxInfo(
       /(?:paket\s*içi|paket\s*ici)\s*[:=-]?\s*([0-9]+\s*(?:adet|tane)?)/i,
     );
     if (packMatch && packMatch[0]) {
-      return String(packMatch[0]).trim().replace(/^paket/i, "Paket");
+      return String(packMatch[0])
+        .trim()
+        .replace(/^paket/i, "Paket");
     }
   }
 

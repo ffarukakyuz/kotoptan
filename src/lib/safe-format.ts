@@ -106,7 +106,10 @@ export function formatPhoneDisplay(raw?: unknown): string {
  */
 export function formatPrice(price?: unknown): string {
   if (price === null || price === undefined || price === "") return "";
-  const num = typeof price === "number" ? price : parseFloat(safeString(price).replace(/\s+/g, "").replace(",", "."));
+  const num =
+    typeof price === "number"
+      ? price
+      : parseFloat(safeString(price).replace(/\s+/g, "").replace(",", "."));
   if (Number.isNaN(num)) return "";
   try {
     return new Intl.NumberFormat("tr-TR", {

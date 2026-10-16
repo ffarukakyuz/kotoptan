@@ -539,7 +539,7 @@ function CartPage() {
                   value={item.quantity}
                   inputMode="numeric"
                   onChange={(e) => {
-                    const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                    const n = parseInt((e.target?.value || "").replace(/\D/g, ""), 10);
                     setQuantity(item.productId, Number.isNaN(n) ? 0 : Math.min(n, 9999));
                   }}
                 />

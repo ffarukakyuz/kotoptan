@@ -606,7 +606,9 @@ export function AdminChatPanel({ onNavigateToOrders }: AdminChatPanelProps = {})
                 <div className="flex items-center gap-2">
                   {currentSession?.user_phone && (
                     <a
-                      href={`https://wa.me/90${String(currentSession.user_phone || "").replace(/\D/g, "").replace(/^0/, "")}`}
+                      href={`https://wa.me/90${String(currentSession.user_phone || "")
+                        .replace(/\D/g, "")
+                        .replace(/^0/, "")}`}
                       target="_blank"
                       rel="noreferrer"
                       className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-300 font-semibold transition-colors"

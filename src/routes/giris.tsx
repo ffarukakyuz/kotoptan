@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -134,7 +134,7 @@ async function withTimeout<T>(promise: Promise<T>, ms = 2000, fallbackVal?: T): 
 function AuthPage() {
   const navigate = useNavigate();
   const { user, loading, loginWithFallbackUser } = useAuth();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/giris";
   const [busy, setBusy] = useState(false);
   const [successEntering, setSuccessEntering] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -421,11 +421,11 @@ function AuthPage() {
     const userFound = findFallbackUser(identifier);
     if (!userFound) {
       const autoUser = saveLocalUser({
-        phone: identifier,
-        normalizedPhone: normalized || identifier.replace(/\D/g, ""),
-        email: identifier.includes("@")
+        phone: identifier || "",
+        normalizedPhone: normalized || (identifier || "").replace(/\D/g, ""),
+        email: (identifier || "").includes("@")
           ? identifier
-          : `${normalized || identifier.replace(/\D/g, "") || "kullanici"}@kotoptan.local`,
+          : `${normalized || (identifier || "").replace(/\D/g, "") || "kullanici"}@kotoptan.local`,
         fullName: "Kotoptan Müşterisi",
         businessName: "İşletme Hesabı",
         address: "Bitlis",
@@ -870,7 +870,7 @@ function AuthPage() {
                     const formatted = districtLabel(val);
                     setSelectedDistrict(formatted);
 
-                    const normKey = val
+                    const normKey = String(val || "")
                       .toLowerCase()
                       .replace(/ı/g, "i")
                       .replace(/ğ/g, "g")

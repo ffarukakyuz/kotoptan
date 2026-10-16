@@ -194,11 +194,12 @@ function Index() {
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
 
   const filteredProducts = useMemo(() => {
-    const q = search.trim().toLocaleLowerCase("tr");
-    return allProducts.filter(
+    const q = (search || "").trim().toLocaleLowerCase("tr");
+    return (allProducts || []).filter(
       (p) =>
+        p &&
         (category === "tumu" || p.category === category) &&
-        (q === "" || p.name.toLocaleLowerCase("tr").includes(q)),
+        (q === "" || (p.name || "").toLocaleLowerCase("tr").includes(q)),
     );
   }, [allProducts, category, search]);
 
