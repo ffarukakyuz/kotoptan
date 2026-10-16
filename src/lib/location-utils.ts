@@ -195,7 +195,8 @@ export function getUserDefaultLocation(): UserSavedLocation | null {
       localStorage.getItem(USER_DEFAULT_LOCATION_KEY) ||
       localStorage.getItem("ko_last_registered_location");
     if (!raw) return null;
-    return JSON.parse(raw) as UserSavedLocation;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as UserSavedLocation) : null;
   } catch {
     return null;
   }

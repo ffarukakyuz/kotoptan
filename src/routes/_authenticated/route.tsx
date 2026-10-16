@@ -21,7 +21,9 @@ function AuthenticatedLayout() {
   // Yönetim ve Sevkiyat rotaları doğrudan açılabilir.
   useEffect(() => {
     if (!loading && !user && !isManagementRoute) {
-      void navigate({ to: "/giris", replace: true });
+      if (navigate) {
+        void navigate({ to: "/giris", replace: true }).catch(() => {});
+      }
       const timer = setTimeout(() => {
         if (
           typeof window !== "undefined" &&

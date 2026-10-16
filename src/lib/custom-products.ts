@@ -513,31 +513,45 @@ export function deleteCustomProduct(id: string): void {
  * 5. Asla mükerrer veya çift ürün oluşturmaz.
  */
 export function getAllCatalogProducts(): Product[] {
-  const deletedIds = getPermanentlyDeletedIds();
-  const deletedNames = getPermanentlyDeletedNames();
-  const overrides = getProductOverrides();
-  const customProducts = getCustomProducts().filter(
-    (p) =>
-      !deletedIds.has(p.id) &&
-      (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
-      !isBannedProductName(p.name),
-  );
+  try {
+    const deletedIds = getPermanentlyDeletedIds() || new Set();
+    const deletedNames = getPermanentlyDeletedNames() || new Set();
+    const overrides = getProductOverrides() || {};
+    const rawCustom = getCustomProducts();
+    const customProducts = (Array.isArray(rawCustom) ? rawCustom : []).filter(
+      (p) =>
+        p &&
+        p.id &&
+        !deletedIds.has(p.id) &&
+        (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
+        !isBannedProductName(p.name),
+    );
 
-  // Sabit ürünleri filtrele ve üzerindeki düzenlemeleri yerinde uygula
-  const fallbackProducts = FALLBACK_PRODUCTS.filter(
-    (p) =>
-      !deletedIds.has(p.id) &&
-      (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
-      !isBannedProductName(p.name),
-  ).map((p) => {
-    const override = overrides[p.id];
-    const merged = override ? { ...p, ...override } : p;
-    return normalizeProductWithOverrides(merged);
-  });
+    // Sabit ürünleri filtrele ve üzerindeki düzenlemeleri yerinde uygula
+    const safeFallbackList = Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : [];
+    const fallbackProducts = safeFallbackList
+      .filter(
+        (p) =>
+          p &&
+          p.id &&
+          !deletedIds.has(p.id) &&
+          (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
+          !isBannedProductName(p.name),
+      )
+      .map((p) => {
+        const override = overrides[p.id];
+        const merged = override ? { ...p, ...override } : p;
+        return normalizeProductWithOverrides(merged);
+      });
 
-  const normalizedCustom = customProducts.map(normalizeProductWithOverrides);
-
-  return [...normalizedCustom, ...fallbackProducts];
+    const normalizedCustom = customProducts.map(normalizeProductWithOverrides);
+    return [...normalizedCustom, ...fallbackProducts];
+  } catch (err) {
+    console.warn("[getAllCatalogProducts] Error retrieving products, using clean fallback:", err);
+    return (Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : []).map(
+      normalizeProductWithOverrides,
+    );
+  }
 }
 
 /**

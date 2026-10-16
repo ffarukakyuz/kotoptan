@@ -220,8 +220,18 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+const defaultFallbackQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 1000 * 60 * 5,
+    },
+  },
+});
+
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const ctx = Route.useRouteContext({ shouldThrow: false });
+  const queryClient = ctx?.queryClient ?? defaultFallbackQueryClient;
 
   return (
     <GlobalErrorBoundary>
@@ -237,9 +247,13 @@ function RootComponent() {
 }
 
 function RootAppContent() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter({ warn: false });
+  const routerState = useRouterState();
+  const pathname =
+    routerState?.location?.pathname ||
+    (typeof window !== "undefined" ? window.location.pathname : "/");
+
   const { user, loading } = useAuth();
-  const router = useRouter();
   const isAuthPage = pathname === "/giris";
 
   // Mobil Safari / WebKit hata ve önbellek koruma mekanizmaları
@@ -248,7 +262,7 @@ function RootAppContent() {
 
     // Mobil Safari BFCache: Geri/İleri tuşunda sonsuz reload döngüsünü engelleyerek router'ı tazele
     const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
+      if (event.persisted && router) {
         try {
           router.invalidate();
         } catch {
@@ -287,7 +301,9 @@ function RootAppContent() {
   // Giriş zorunludur: Giriş yapılmamışsa ve /giris sayfasında değilsek derhal /giris'e yönlendir.
   useEffect(() => {
     if (!loading && !user && !isAuthPage) {
-      void router.navigate({ to: "/giris", replace: true });
+      if (router) {
+        void router.navigate({ to: "/giris", replace: true }).catch(() => {});
+      }
       const timer = setTimeout(() => {
         if (typeof window !== "undefined" && window.location.pathname !== "/giris") {
           window.location.replace("/giris");

@@ -38,12 +38,16 @@ export function getOrCreateCustomerSessionId(userId?: string | null): string {
     return `session_user_${userId}`;
   }
 
-  let stored = localStorage.getItem(CUSTOMER_SESSION_KEY);
-  if (!stored) {
-    stored = `session_guest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    localStorage.setItem(CUSTOMER_SESSION_KEY, stored);
+  try {
+    let stored = localStorage.getItem(CUSTOMER_SESSION_KEY);
+    if (!stored) {
+      stored = `session_guest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      localStorage.setItem(CUSTOMER_SESSION_KEY, stored);
+    }
+    return stored;
+  } catch {
+    return `session_guest_${Date.now()}`;
   }
-  return stored;
 }
 
 /**

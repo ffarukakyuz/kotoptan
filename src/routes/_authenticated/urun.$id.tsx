@@ -78,7 +78,12 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
 }
 
 function ProductDetail() {
-  const { id } = Route.useParams();
+  const params = Route.useParams({ shouldThrow: false }) as { id?: string } | undefined;
+  const id =
+    params?.id ||
+    (typeof window !== "undefined"
+      ? window.location.pathname.match(/\/urun\/([^/?#]+)/)?.[1] || ""
+      : "");
   const { isAdmin } = useAuth();
   const { add } = useCart();
   const qc = useQueryClient();
@@ -200,12 +205,7 @@ function ProductDetail() {
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm relative group">
           {/* SOL ÜSTTE: Koli İçi (Kırmızı) / Paket İçi (Mor) / Adet (Mavi) Rozeti */}
           <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1 pointer-events-none">
-            {extractPackageOrBoxInfo(
-              product.description,
-              product.unit,
-              product.name,
-              product.id,
-            ) &&
+            {extractPackageOrBoxInfo(product.description, product.unit, product.name, product.id) &&
               (() => {
                 const info = extractPackageOrBoxInfo(
                   product.description,

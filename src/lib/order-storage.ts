@@ -68,7 +68,13 @@ export function getLocalOrders(): StoredOrder[] {
     const raw = localStorage.getItem(LOCAL_ORDERS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((o): o is StoredOrder => Boolean(o && typeof o === "object" && o.id))
+      .map((o) => ({
+        ...o,
+        order_items: Array.isArray(o.order_items) ? o.order_items : [],
+      }));
   } catch {
     return [];
   }
@@ -87,16 +93,17 @@ export function mergeOrdersWithLocal<T extends StoredOrder>(
 ): T[] {
   const deletedIds = getDeletedOrderIds();
   const overrides = getOrderStatusOverrides();
-  let localList = getLocalOrders() as T[];
+  const safeRemote = Array.isArray(remoteOrders) ? remoteOrders : [];
+  let localList = (getLocalOrders() as T[]) || [];
 
   // Kullanıcı izolasyonu: Yönetici değilse yerel siparişlerden de yalnızca kendisine ait olanları al
   if (!isAdmin && currentUserId) {
     localList = localList.filter((lo) => lo && lo.user_id === currentUserId);
   }
 
-  const remoteIds = new Set(remoteOrders.map((o) => String(o.id)));
+  const remoteIds = new Set(safeRemote.map((o) => String(o?.id || "")));
   const combined = [
-    ...remoteOrders,
+    ...safeRemote,
     ...localList.filter((lo) => lo && lo.id && !remoteIds.has(String(lo.id))),
   ];
 
@@ -112,18 +119,27 @@ export function mergeOrdersWithLocal<T extends StoredOrder>(
     .map((o) => {
       const sid = String(o.id);
       const override = overrides[sid] || overrides[o.id];
+      const safeItems = Array.isArray(o.order_items) ? o.order_items : [];
       if (override) {
         return {
           ...o,
+          order_items: safeItems,
           status: override.status ?? o.status,
           archived_at: override.archived_at !== undefined ? override.archived_at : o.archived_at,
           note: override.note !== undefined ? override.note : o.note,
         };
       }
-      return o;
+      return {
+        ...o,
+        order_items: safeItems,
+      };
     });
 
-  processed.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  processed.sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeB - timeA;
+  });
   return processed;
 }
 

@@ -200,14 +200,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const rawLocal = localStorage.getItem(LOCAL_SESSION_KEY);
           if (rawLocal) {
             const parsed = JSON.parse(rawLocal);
-            if (parsed && parsed.user) {
+            if (parsed && typeof parsed === "object" && parsed.user) {
               setUser(parsed.user as User);
-              setProfile(parsed.profile as Profile);
+              setProfile((parsed.profile as Profile) || null);
               setIsAdmin(Boolean(parsed.isAdmin));
             }
           }
-        } catch {
-          // ignore
+        } catch (err) {
+          console.warn("[useAuth] Failed parsing local session:", err);
+          try {
+            localStorage.removeItem(LOCAL_SESSION_KEY);
+          } catch {
+            // ignore
+          }
         }
       }
 
@@ -267,8 +272,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+const FALLBACK_AUTH_VALUE: AuthContextValue = {
+  user: null,
+  session: null,
+  profile: null,
+  isAdmin: false,
+  loading: false,
+  refreshProfile: async () => {},
+  signOut: async () => {},
+  loginWithFallbackUser: () => {},
+};
+
+export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    return FALLBACK_AUTH_VALUE;
+  }
   return ctx;
 }

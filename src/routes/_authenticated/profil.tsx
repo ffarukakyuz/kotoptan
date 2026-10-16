@@ -240,8 +240,10 @@ function ProfilePage() {
         const rawLocal = localStorage.getItem("ko_local_auth_session");
         if (rawLocal) {
           const parsedLocal = JSON.parse(rawLocal);
-          parsedLocal.profile = { id: user.id, ...parsed.data, district: districtName };
-          localStorage.setItem("ko_local_auth_session", JSON.stringify(parsedLocal));
+          if (parsedLocal && typeof parsedLocal === "object") {
+            parsedLocal.profile = { id: user.id, ...parsed.data, district: districtName };
+            localStorage.setItem("ko_local_auth_session", JSON.stringify(parsedLocal));
+          }
         }
       } catch {
         // ignore

@@ -172,7 +172,14 @@ function getArchivedMap(): Record<string, boolean> {
   if (cachedArchivedMap !== null) return cachedArchivedMap;
   if (typeof window === "undefined") return {};
   try {
-    cachedArchivedMap = JSON.parse(localStorage.getItem("custom_product_archived_status") || "{}");
+    const raw = localStorage.getItem("custom_product_archived_status");
+    if (!raw) {
+      cachedArchivedMap = {};
+    } else {
+      const parsed = JSON.parse(raw);
+      cachedArchivedMap =
+        parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    }
   } catch {
     cachedArchivedMap = {};
   }
@@ -183,7 +190,13 @@ function getStockMap(): Record<string, boolean> {
   if (cachedStockMap !== null) return cachedStockMap;
   if (typeof window === "undefined") return {};
   try {
-    cachedStockMap = JSON.parse(localStorage.getItem("custom_product_stock_status") || "{}");
+    const raw = localStorage.getItem("custom_product_stock_status");
+    if (!raw) {
+      cachedStockMap = {};
+    } else {
+      const parsed = JSON.parse(raw);
+      cachedStockMap = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    }
   } catch {
     cachedStockMap = {};
   }
@@ -344,10 +357,8 @@ export function isProductArchived(product: { is_active?: boolean | null; id?: st
           return false;
         }
       }
-      const archivedMap = JSON.parse(
-        localStorage.getItem("custom_product_archived_status") || "{}",
-      );
-      if (archivedMap[product.id] !== undefined) {
+      const archivedMap = getArchivedMap();
+      if (archivedMap && archivedMap[product.id] !== undefined) {
         return Boolean(archivedMap[product.id]);
       }
     } catch {

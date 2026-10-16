@@ -225,7 +225,18 @@ async function fetchAdminProductsList(): Promise<Product[]> {
 function AdminPage() {
   const { isAdmin, loading } = useAuth();
   const qc = useQueryClient();
-  const search = Route.useSearch();
+  const rawSearch = Route.useSearch({ shouldThrow: false }) as {
+    edit?: string;
+    tab?: string;
+  };
+  const search =
+    rawSearch ||
+    (typeof window !== "undefined"
+      ? {
+          edit: new URLSearchParams(window.location.search).get("edit") || undefined,
+          tab: new URLSearchParams(window.location.search).get("tab") || undefined,
+        }
+      : {});
   const [activeTab, setActiveTab] = useState<string>(
     search.edit ? "products" : search.tab === "drive" ? "sync" : (search.tab ?? "orders"),
   );

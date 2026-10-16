@@ -422,7 +422,13 @@ function CartPage() {
           })),
         };
         const raw = localStorage.getItem("ko_local_orders");
-        const list = raw ? JSON.parse(raw) : [];
+        let list: unknown[] = [];
+        try {
+          const parsed = raw ? JSON.parse(raw) : [];
+          list = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          list = [];
+        }
         localStorage.setItem("ko_local_orders", JSON.stringify([fallbackRecord, ...list]));
         clear();
         toast.success("Siparişiniz başarıyla alındı ve iletildi!");

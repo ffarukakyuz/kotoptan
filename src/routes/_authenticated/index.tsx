@@ -176,16 +176,19 @@ function Index() {
   const allProducts = useMemo(() => {
     void stockTick;
     const base =
-      clientProducts.length > 0
+      Array.isArray(clientProducts) && clientProducts.length > 0
         ? clientProducts
-        : dbProducts && dbProducts.length > 0
+        : Array.isArray(dbProducts) && dbProducts.length > 0
           ? dbProducts
-          : [];
+          : getAllCatalogProducts();
     // Soft-deleted/archived products and banned products are completely hidden from customer catalog
-    return base
-      .filter((p) => !isBannedProductName(p.name) && !isProductPermanentlyDeleted(p.id, p.name))
+    return (Array.isArray(base) ? base : [])
+      .filter(
+        (p) =>
+          p && p.name && !isBannedProductName(p.name) && !isProductPermanentlyDeleted(p.id, p.name),
+      )
       .map(normalizeProductWithOverrides)
-      .filter((p) => p.is_active !== false);
+      .filter((p) => p && p.is_active !== false);
   }, [clientProducts, dbProducts, stockTick]);
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;

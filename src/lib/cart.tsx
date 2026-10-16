@@ -30,9 +30,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        setItems(JSON.parse(raw) as CartItem[]);
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter((i): i is CartItem =>
+              Boolean(i && typeof i === "object" && i.productId && typeof i.quantity === "number"),
+            );
+            setItems(valid);
+          } else {
+            setItems([]);
+          }
+        } else {
+          setItems([]);
+        }
       } else {
         setItems([]);
       }
@@ -45,43 +57,64 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(items));
+      if (typeof window !== "undefined") {
+        localStorage.setItem(storageKey, JSON.stringify(Array.isArray(items) ? items : []));
+      }
     } catch {
       /* ignore */
     }
   }, [items, hydrated, storageKey]);
 
-  const value = useMemo<CartState>(
-    () => ({
-      items,
-      totalQuantity: items.reduce((sum, i) => sum + i.quantity, 0),
+  const value = useMemo<CartState>(() => {
+    const safeItems = Array.isArray(items) ? items : [];
+    return {
+      items: safeItems,
+      totalQuantity: safeItems.reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0),
       add: (item, quantity = 1) =>
         setItems((prev) => {
-          const found = prev.find((p) => p.productId === item.productId);
+          const arr = Array.isArray(prev) ? prev : [];
+          const found = arr.find((p) => p && p.productId === item.productId);
           if (found) {
-            return prev.map((p) =>
-              p.productId === item.productId ? { ...p, quantity: p.quantity + quantity } : p,
+            return arr.map((p) =>
+              p.productId === item.productId
+                ? { ...p, quantity: (Number(p.quantity) || 0) + quantity }
+                : p,
             );
           }
-          return [...prev, { ...item, quantity }];
+          return [...arr, { ...item, quantity }];
         }),
       setQuantity: (productId, quantity) =>
-        setItems((prev) =>
-          quantity <= 0
-            ? prev.filter((p) => p.productId !== productId)
-            : prev.map((p) => (p.productId === productId ? { ...p, quantity } : p)),
-        ),
-      remove: (productId) => setItems((prev) => prev.filter((p) => p.productId !== productId)),
+        setItems((prev) => {
+          const arr = Array.isArray(prev) ? prev : [];
+          return quantity <= 0
+            ? arr.filter((p) => p && p.productId !== productId)
+            : arr.map((p) => (p && p.productId === productId ? { ...p, quantity } : p));
+        }),
+      remove: (productId) =>
+        setItems((prev) => {
+          const arr = Array.isArray(prev) ? prev : [];
+          return arr.filter((p) => p && p.productId !== productId);
+        }),
       clear: () => setItems([]),
-    }),
-    [items],
-  );
+    };
+  }, [items]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-export function useCart() {
+const FALLBACK_CART_STATE: CartState = {
+  items: [],
+  totalQuantity: 0,
+  add: () => {},
+  setQuantity: () => {},
+  remove: () => {},
+  clear: () => {},
+};
+
+export function useCart(): CartState {
   const ctx = useContext(CartContext);
-  if (!ctx) throw new Error("useCart must be used within CartProvider");
+  if (!ctx) {
+    return FALLBACK_CART_STATE;
+  }
   return ctx;
 }
