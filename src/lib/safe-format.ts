@@ -28,9 +28,9 @@ export function safeReplaceAll(
   const str = safeString(value);
   if (!str) return "";
   try {
-    if (typeof str.replaceAll === "function") {
+    if (typeof (str || "")?.replaceAll === "function") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return str.replaceAll(search as any, replacement as any);
+      return (str || "").replaceAll(search as any, replacement as any);
     }
     if (typeof search === "string") {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

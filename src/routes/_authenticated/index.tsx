@@ -453,7 +453,7 @@ function Index() {
                 <span className="rounded-lg bg-white/10 text-white/90 px-2.5 py-1 font-semibold">
                   Depodan Kapıya Teslimat
                 </span>
-                <span className="rounded-lg bg-amber-500/20 text-amber-300 px-2.5 py-1 font-semibold">
+                <span className="rounded-lg bg-emerald-500/20 text-emerald-300 px-2.5 py-1 font-semibold">
                   Bitlis • 7 İlçe
                 </span>
               </div>

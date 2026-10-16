@@ -99,6 +99,24 @@
           },
           true,
         );
+
+        window.addEventListener(
+          "unhandledrejection",
+          function (evt) {
+            var reason = evt && evt.reason;
+            var msg = (reason && reason.message) || String(reason || "");
+            if (
+              msg.indexOf("replaceAll") !== -1 ||
+              msg.indexOf("Invariant failed") !== -1 ||
+              msg.indexOf("useStore") !== -1 ||
+              msg.indexOf("reading 'replaceAll'") !== -1
+            ) {
+              console.warn("[Global Shield] Intercepted unhandled rejection:", msg);
+              if (evt.preventDefault) evt.preventDefault();
+            }
+          },
+          true,
+        );
       })();
     </script>
   </head>

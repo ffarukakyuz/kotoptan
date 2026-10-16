@@ -151,12 +151,27 @@ try {
       if (
         msg.indexOf("replaceAll") !== -1 ||
         msg.indexOf("Invariant failed") !== -1 ||
-        msg.indexOf("useStore") !== -1
+        msg.indexOf("useStore") !== -1 ||
+        msg.indexOf("reading 'replaceAll'") !== -1
       ) {
         console.warn("[Invariant & replaceAll Shield] Intercepted:", msg);
-        evt.preventDefault();
-        evt.stopPropagation();
+        if (evt.preventDefault) evt.preventDefault();
+        if (evt.stopPropagation) evt.stopPropagation();
       }
+    }
+  }, true);
+
+  window.addEventListener("unhandledrejection", function(evt) {
+    var reason = evt && evt.reason;
+    var msg = (reason && reason.message) || String(reason || "");
+    if (
+      msg.indexOf("replaceAll") !== -1 ||
+      msg.indexOf("Invariant failed") !== -1 ||
+      msg.indexOf("useStore") !== -1 ||
+      msg.indexOf("reading 'replaceAll'") !== -1
+    ) {
+      console.warn("[Invariant & replaceAll Shield] Intercepted unhandled rejection:", msg);
+      if (evt.preventDefault) evt.preventDefault();
     }
   }, true);
 })();
@@ -166,8 +181,10 @@ try {
 (function() {
   self.$R = self.$R || {};
   self.$R["tsr"] = [];
-  var rootMatch = { id: "__root__", routeId: "__root__", status: "success", _nonReactive: {} };
-  var childMatch = { id: "/_authenticated/", routeId: "/_authenticated/", status: "success", _nonReactive: {} };
+  var p = (typeof window !== "undefined" && window.location && window.location.pathname) ? window.location.pathname : "/";
+  var rId = (p === "/" || p === "") ? "/_authenticated/" : (p.indexOf("/giris") === 0 ? "/giris" : (p.indexOf("/yonetim") === 0 ? "/_authenticated/yonetim" : (p.indexOf("/sepet") === 0 ? "/_authenticated/sepet" : (p.indexOf("/siparis") === 0 ? "/_authenticated/siparisler" : "/_authenticated/"))));
+  var rootMatch = { id: "__root__", routeId: "__root__", status: "success", _nonReactive: {}, params: {} };
+  var childMatch = { id: rId, routeId: rId, status: "success", _nonReactive: {}, params: {} };
   self.$_TSR = {
     h: function() { this.hydrated = true; this.c(); },
     e: function() { this.streamEnded = true; this.c(); },
@@ -177,7 +194,7 @@ try {
     router: {
       manifest: { routes: {} },
       matches: [rootMatch, childMatch],
-      lastMatchId: "/_authenticated/"
+      lastMatchId: rId
     }
   };
   self.$_TSR.e();
@@ -304,7 +321,7 @@ export { renderIndexHTML as default };
     }
   }
 
-  // 5.6 Defensively patch any id.replaceAll or segment.replaceAll in all generated dist & output chunks
+  // 5.6 Defensively patch ANY .replaceAll call in all generated dist & output chunks
   function patchReplaceAllRecursively(dir) {
     if (!fs.existsSync(dir)) return;
     const items = fs.readdirSync(dir, { withFileTypes: true });
@@ -315,6 +332,16 @@ export { renderIndexHTML as default };
       } else if (/\.(js|mjs|cjs)$/.test(item.name)) {
         let text = fs.readFileSync(full, "utf-8");
         let changed = false;
+        // 1. Any variable.replaceAll(
+        const patched = text.replace(
+          /(?<![.\w$\x22\x27\x60])([a-zA-Z0-9_$]+)\.replaceAll\(/g,
+          '($1 || "").replaceAll(',
+        );
+        if (patched !== text) {
+          text = patched;
+          changed = true;
+        }
+        // 2. Explicit patterns
         if (text.includes("id.replaceAll(")) {
           text = text.replace(/id\.replaceAll\(/g, '(id || "").replaceAll(');
           changed = true;
