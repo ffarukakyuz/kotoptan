@@ -434,12 +434,6 @@ function AdminPage() {
             <OrdersPanel onNavigateToDrive={() => setActiveTab("sync")} />
           </GlobalErrorBoundary>
         </TabsContent>
-              onNavigateToDrive={() => setActiveTab("sync")}
-              initialProducts={allProducts}
-              isLoadingProducts={isProductsLoading}
-            />
-          </GlobalErrorBoundary>
-        </TabsContent>
         <TabsContent value="messages">
           <GlobalErrorBoundary
             inline={true}

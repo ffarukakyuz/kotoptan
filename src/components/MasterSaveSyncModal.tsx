@@ -68,7 +68,9 @@ export function MasterSaveSyncModal({
   const performFullSaveAndDeploy = async (tokenToUse: string) => {
     setIsSaving(true);
     setLogs(["🚀 Sistem kaydetme ve dağıtım işlemi başlatılıyor..."]);
-    const toastId = toast.loading("Değişiklikler kaydediliyor ve GitHub & Cloudflare'e gönderiliyor...");
+    const toastId = toast.loading(
+      "Değişiklikler kaydediliyor ve GitHub & Cloudflare'e gönderiliyor...",
+    );
 
     try {
       const activeProducts = getAllCatalogProducts();
@@ -87,7 +89,10 @@ export function MasterSaveSyncModal({
       }
 
       // 1. Sunucu dosyalarını güncelle (/api/github)
-      setLogs((prev) => [...prev, `📦 ${activeProducts.length} aktif ürün ve ${deletedIds.length} silinen ürün kod tabanına işleniyor...`]);
+      setLogs((prev) => [
+        ...prev,
+        `📦 ${activeProducts.length} aktif ürün ve ${deletedIds.length} silinen ürün kod tabanına işleniyor...`,
+      ]);
       try {
         await fetch("/api/github", {
           method: "POST",
@@ -110,7 +115,10 @@ export function MasterSaveSyncModal({
       // 2. Eğer Token varsa doğrudan GitHub REST API üzerinden commit & push yap
       let gitSuccess = false;
       if (trimmedToken && trimmedToken.length > 10) {
-        setLogs((prev) => [...prev, "🔑 GitHub Token ile doğrudan GitHub REST API üzerinden commit oluşturuluyor..."]);
+        setLogs((prev) => [
+          ...prev,
+          "🔑 GitHub Token ile doğrudan GitHub REST API üzerinden commit oluşturuluyor...",
+        ]);
         const ghRes = await pushCatalogDirectlyToGitHub({
           token: trimmedToken,
           repo: "ffarukakyuz/kotoptan",
@@ -128,7 +136,10 @@ export function MasterSaveSyncModal({
             "🚀 Cloudflare Pages otomatik derleme ve yayın süreci tetiklendi.",
           ]);
         } else {
-          setLogs((prev) => [...prev, `⚠️ GitHub push uyarısı: ${ghRes.error || "Bilinmeyen hata"}`]);
+          setLogs((prev) => [
+            ...prev,
+            `⚠️ GitHub push uyarısı: ${ghRes.error || "Bilinmeyen hata"}`,
+          ]);
         }
       }
 
@@ -138,9 +149,12 @@ export function MasterSaveSyncModal({
         });
         setTimeout(() => setIsOpen(false), 2000);
       } else if (!trimmedToken) {
-        toast.success("Değişiklikler yerel sisteme başarıyla kaydedildi! (Canlıya aktarım için Token giriniz)", {
-          id: toastId,
-        });
+        toast.success(
+          "Değişiklikler yerel sisteme başarıyla kaydedildi! (Canlıya aktarım için Token giriniz)",
+          {
+            id: toastId,
+          },
+        );
       } else {
         toast.warning("Yerel sistem güncellendi, GitHub aktarımı kontrol ediliyor...", {
           id: toastId,
@@ -233,7 +247,9 @@ export function MasterSaveSyncModal({
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5">
                 <Boxes className="h-4 w-4 mx-auto text-emerald-600 mb-1" />
                 <span className="text-muted-foreground block text-[10px]">Aktif Ürünler</span>
-                <span className="font-extrabold text-foreground">{getAllCatalogProducts().length}</span>
+                <span className="font-extrabold text-foreground">
+                  {getAllCatalogProducts().length}
+                </span>
               </div>
               <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5">
                 <ShoppingBag className="h-4 w-4 mx-auto text-blue-600 mb-1" />
@@ -243,29 +259,42 @@ export function MasterSaveSyncModal({
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5">
                 <Users className="h-4 w-4 mx-auto text-amber-600 mb-1" />
                 <span className="text-muted-foreground block text-[10px]">Kalıcı Silinen</span>
-                <span className="font-extrabold text-foreground">{getPermanentlyDeletedIds().size}</span>
+                <span className="font-extrabold text-foreground">
+                  {getPermanentlyDeletedIds().size}
+                </span>
               </div>
             </div>
 
             {/* Token Input */}
             <div className="space-y-2 rounded-xl border border-border bg-card p-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="master-token" className="text-xs font-semibold flex items-center gap-1.5">
+                <Label
+                  htmlFor="master-token"
+                  className="text-xs font-semibold flex items-center gap-1.5"
+                >
                   <ShieldCheck className="h-4 w-4 text-emerald-600" />
                   <span>GitHub Personal Access Token (PAT)</span>
                 </Label>
                 {token ? (
-                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30"
+                  >
                     Kayıtlı
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30"
+                  >
                     Gerekli
                   </Badge>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Token bir kez girildiğinde tarayıcınızda kalıcı saklanır; sonraki tüm kaydetmelerinizde tek tıkla doğrudan GitHub ve Cloudflare'e otomatik dağıtım yapılır.
+                Token bir kez girildiğinde tarayıcınızda kalıcı saklanır; sonraki tüm
+                kaydetmelerinizde tek tıkla doğrudan GitHub ve Cloudflare'e otomatik dağıtım
+                yapılır.
               </p>
               <Input
                 id="master-token"
@@ -285,7 +314,9 @@ export function MasterSaveSyncModal({
                   <ExternalLink className="h-3 w-3" />
                   Token Oluştur (GitHub'dan 30 saniyede al)
                 </a>
-                <span>Hedef: <strong>ffarukakyuz/kotoptan</strong></span>
+                <span>
+                  Hedef: <strong>ffarukakyuz/kotoptan</strong>
+                </span>
               </div>
             </div>
 
@@ -331,7 +362,11 @@ export function MasterSaveSyncModal({
                 onClick={handleCopyJSON}
                 className="text-xs gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
               >
-                {isCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {isCopied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
                 <span>{isCopied ? "Kopyalandı!" : "Katalog JSON Kopyala"}</span>
               </Button>
 
