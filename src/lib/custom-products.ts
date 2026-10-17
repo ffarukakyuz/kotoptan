@@ -365,9 +365,29 @@ export function saveProductOverride(product: Product): void {
   if (typeof window === "undefined" || !product?.id) return;
   try {
     const overrides = getProductOverrides();
-    overrides[product.id] = product;
+    const inStock = product.in_stock !== undefined ? product.in_stock : true;
+    const baseDesc = cleanProductDescription(product.description || "");
+    const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
+    overrides[product.id] = {
+      ...product,
+      description: finalDesc,
+      in_stock: inStock,
+    };
     localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
+
+    // Yerel stok haritasını da eşitle
+    try {
+      const rawStock = localStorage.getItem("custom_product_stock_status");
+      const stockMap = rawStock ? JSON.parse(rawStock) : {};
+      stockMap[product.id] = inStock;
+      localStorage.setItem("custom_product_stock_status", JSON.stringify(stockMap));
+    } catch {
+      // ignore
+    }
+
     window.dispatchEvent(new Event("catalog_updated"));
+    window.dispatchEvent(new Event("product_stock_status_changed"));
     window.dispatchEvent(new Event("storage"));
   } catch (err) {
     console.warn("[saveProductOverride] Error:", err);
@@ -456,11 +476,35 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
     return product;
   }
   try {
+    const inStock =
+      product.in_stock !== undefined
+        ? product.in_stock
+        : !/\[(TÜKENDİ|STOK_YOK)\]/i.test(product.description || "");
+
+    const baseDesc = cleanProductDescription(product.description || "");
+    const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
+    const productWithStock: Product = {
+      ...product,
+      description: finalDesc,
+      in_stock: inStock,
+    };
+
+    // Yerel stok haritasını eşitle
+    try {
+      const rawStock = localStorage.getItem("custom_product_stock_status");
+      const stockMap = rawStock ? JSON.parse(rawStock) : {};
+      stockMap[product.id] = inStock;
+      localStorage.setItem("custom_product_stock_status", JSON.stringify(stockMap));
+    } catch {
+      // ignore
+    }
+
     const isFallbackItem = FALLBACK_PRODUCTS.some((fp) => fp.id === product.id);
 
     if (isFallbackItem) {
       // 1. Sabit ürün düzenleniyor: Overrides haritasına kaydet
-      saveProductOverride(product);
+      saveProductOverride(productWithStock);
 
       // custom_added_products içinde varsa temizle ki çift görünmesin
       const raw = getRawCustomProducts();
@@ -476,25 +520,27 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
       let updated: Product[];
       if (existingIndex >= 0) {
         // Yerinde güncelle (sırasını bozma)
-        updated = existing.map((p, idx) => (idx === existingIndex ? product : p));
+        updated = existing.map((p, idx) => (idx === existingIndex ? productWithStock : p));
       } else if (isExplicitEdit) {
         // Düzenleme modunda ama bulunamadıysa yine de override olarak sakla
-        saveProductOverride(product);
-        return product;
+        saveProductOverride(productWithStock);
+        return productWithStock;
       } else {
         // Yepyeni ürün ekleme: başa koy
-        updated = [product, ...existing.filter((p) => p.id !== product.id)];
+        updated = [productWithStock, ...existing.filter((p) => p.id !== product.id)];
       }
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
 
     window.dispatchEvent(new Event("catalog_updated"));
+    window.dispatchEvent(new Event("product_stock_status_changed"));
     window.dispatchEvent(new Event("storage"));
+    return productWithStock;
   } catch (err) {
     console.warn("[saveCustomProduct] Save error:", err);
+    return product;
   }
-  return product;
 }
 
 /**

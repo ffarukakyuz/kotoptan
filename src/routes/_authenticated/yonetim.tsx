@@ -195,6 +195,7 @@ const productSchema = z.object({
   unit: z.string().trim().min(1, "Birim gerekli").max(30),
   image_url: z.string().trim().max(400000),
   is_active: z.boolean(),
+  in_stock: z.boolean().optional(),
 });
 
 const emptyProduct = {
@@ -204,6 +205,7 @@ const emptyProduct = {
   unit: "adet",
   image_url: "",
   is_active: true,
+  in_stock: true,
 };
 
 type AdminOrderItem = { id: string; product_name: string; unit: string; quantity: number };
@@ -600,6 +602,7 @@ function ProductsPanel({
     if (target) {
       lastInitialEditIdRef.current = initialEditId;
       setEditingId(target.id);
+      const targetInStock = isProductInStock(target);
       setForm({
         name: target.name || "",
         description: cleanProductDescription(target.description),
@@ -607,6 +610,7 @@ function ProductsPanel({
         unit: target.unit || "adet",
         image_url: target.image_url ?? "",
         is_active: target.is_active ?? true,
+        in_stock: targetInStock,
       });
       toast.info(`"${target.name}" düzenleme için hazırlandı.`);
       setTimeout(() => {
@@ -677,8 +681,7 @@ function ProductsPanel({
       toast.error(parsed.error.issues[0]?.message ?? "Bilgileri kontrol edin");
       return;
     }
-    const targetProduct = editingId ? data.find((p) => p.id === editingId) : null;
-    const inStock = targetProduct ? isProductInStock(targetProduct) : true;
+    const inStock = form.in_stock !== false;
     const baseDesc = cleanProductDescription(parsed.data.description);
     const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
@@ -690,6 +693,7 @@ function ProductsPanel({
       ...parsed.data,
       description: finalDesc,
       image_url: normalizedImageUrl || null,
+      in_stock: inStock,
     };
     setBusy(true);
     const isEdit = Boolean(editingId);
@@ -702,7 +706,9 @@ function ProductsPanel({
       description: payload.description,
       image_url: payload.image_url,
       is_active: payload.is_active,
+      in_stock: inStock,
     };
+    setProductStockStatusLocal(finalId, inStock);
     saveCustomProduct(customProd, isEdit);
 
     try {
@@ -863,10 +869,23 @@ function ProductsPanel({
     const baseDesc = cleanProductDescription(product.description);
     const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
-    // 2. Optimistic update query client cache
+    const updatedProduct: Product = {
+      ...product,
+      description: newDescription,
+      in_stock: newStatus,
+    };
+
+    // 2. Override ve Özel ürün listelerine de kalıcı olarak işle
+    saveProductOverride(updatedProduct);
+    const customList = getCustomProducts();
+    if (customList.some((p) => p.id === product.id)) {
+      saveCustomProduct(updatedProduct, true);
+    }
+
+    // 3. Optimistic update query client cache
     const updateProductList = (old: Product[] | undefined) => {
       if (!old) return old;
-      return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
+      return old.map((p) => (p.id === product.id ? updatedProduct : p));
     };
     qc.setQueryData<Product[]>(["admin-products"], updateProductList);
     qc.setQueryData<Product[]>(["products", "active"], updateProductList);
@@ -874,7 +893,7 @@ function ProductsPanel({
       updateProductList(updateList),
     );
 
-    // 3. Veritabanına da yaz
+    // 4. Veritabanına da yaz
     try {
       const { error } = await supabase
         .from("products")
@@ -1125,6 +1144,48 @@ function ProductsPanel({
                     </Button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Stok Durumu Seçimi (Stokta Var / Stokta Yok) */}
+            <div className="space-y-1.5 rounded-lg border px-3 py-2.5 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Stok Durumu</Label>
+                <span
+                  className={`text-[11px] font-bold ${
+                    form.in_stock !== false ? "text-emerald-600" : "text-rose-600"
+                  }`}
+                >
+                  {form.in_stock !== false
+                    ? "● Stokta Var (Sevkiyata Hazır)"
+                    : "● Stokta Yok (Tükendi)"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, in_stock: true })}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-bold border transition-all cursor-pointer ${
+                    form.in_stock !== false
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Stokta Var</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, in_stock: false })}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-bold border transition-all cursor-pointer ${
+                    form.in_stock === false
+                      ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span>Stokta Yok (Tükendi)</span>
+                </button>
               </div>
             </div>
 
@@ -1581,6 +1642,60 @@ function ProductsPanel({
                               ))}
                             </div>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* Stok Durumu ve Görünürlük Seçimi */}
+                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/60 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-muted-foreground">
+                            Stok Durumu:
+                          </span>
+                          <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/40">
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, in_stock: true }))}
+                              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                form.in_stock !== false
+                                  ? "bg-emerald-600 text-white shadow-xs"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Stokta Var</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, in_stock: false }))}
+                              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                form.in_stock === false
+                                  ? "bg-rose-600 text-white shadow-xs"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <XCircle className="h-3 w-3" />
+                              <span>Stokta Yok (Tükendi)</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-muted-foreground">
+                            Katalog:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({ ...prev, is_active: !prev.is_active }))
+                            }
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border cursor-pointer transition-colors ${
+                              form.is_active
+                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            }`}
+                          >
+                            {form.is_active ? "● Aktif (Yayında)" : "● Arşivde (Gizli)"}
+                          </button>
                         </div>
                       </div>
                     </div>

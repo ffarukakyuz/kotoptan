@@ -166,6 +166,8 @@
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     background-color: #000000;
+    scroll-behavior: smooth;
+    text-rendering: optimizeSpeed;
   }
 
   body {
@@ -175,6 +177,12 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Akıcı katalog kartı optimizasyonu (su gibi akması için render motoru desteği) */
+  .catalog-card-item {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 350px;
   }
 
   /* iOS Safari input auto-zoom engelleme */

@@ -113,6 +113,7 @@ export type Product = {
   image_url: string | null;
   image?: string | null;
   is_active: boolean;
+  in_stock?: boolean;
 };
 
 export function cleanProductDescription(desc?: string | null): string {
@@ -221,13 +222,13 @@ if (typeof window !== "undefined") {
 }
 
 /**
- * Normalizes products by applying custom packaging / unit overrides (e.g. shampoos sold as paket)
- * and respecting local archive status overrides.
+ * Normalizes products by applying custom packaging / unit overrides (e.g. shampoos sold as paket),
+ * respecting local archive status overrides, and synchronizing stock status precisely down to fine details.
  */
 export function normalizeProductWithOverrides(product: Product): Product {
   if (!product) return product;
 
-  // Yerel arşiv durumunu kontrol et
+  // 1. Yerel arşiv durumunu kontrol et
   let active = product.is_active !== false;
   if (typeof window !== "undefined" && product.id) {
     const archivedMap = getArchivedMap();
@@ -236,13 +237,20 @@ export function normalizeProductWithOverrides(product: Product): Product {
     }
   }
 
+  // 2. Stok durumunu ince detaylara kadar tam eşitle
+  const inStock = isProductInStock(product);
+  const baseDesc = cleanProductDescription(product.description);
+  const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
+
   const override = product.id ? PRODUCT_PACKAGING_CUSTOM_OVERRIDES[product.id] : undefined;
   if (override) {
+    const customDesc = override.description ?? baseDesc;
     return {
       ...product,
       unit: override.unit ?? product.unit,
-      description: override.description ?? product.description,
+      description: inStock ? customDesc : `${customDesc} [TÜKENDİ]`,
       is_active: active,
+      in_stock: inStock,
     };
   }
 
@@ -254,17 +262,21 @@ export function normalizeProductWithOverrides(product: Product): Product {
   ) {
     const isClear = /clear/i.test(safeName);
     const count = isClear ? 5 : 6;
+    const shampooDesc = `Paket İçi: ${count} Adet`;
     return {
       ...product,
       unit: "paket",
-      description: `Paket İçi: ${count} Adet`,
+      description: inStock ? shampooDesc : `${shampooDesc} [TÜKENDİ]`,
       is_active: active,
+      in_stock: inStock,
     };
   }
 
   return {
     ...product,
+    description: finalDesc,
     is_active: active,
+    in_stock: inStock,
   };
 }
 
@@ -413,12 +425,16 @@ export function isProductInStock(product: {
   id?: string;
   description?: string | null;
   is_active?: boolean | null;
+  in_stock?: boolean | null;
 }): boolean {
   if (typeof window !== "undefined" && product.id) {
     const overrides = getStockMap();
     if (overrides[product.id] !== undefined) {
       return Boolean(overrides[product.id]);
     }
+  }
+  if (product.in_stock !== undefined && product.in_stock !== null) {
+    return Boolean(product.in_stock);
   }
   if (product.description && /\[(TÜKENDİ|STOK_YOK)\]/i.test(product.description)) {
     return false;
@@ -427,13 +443,72 @@ export function isProductInStock(product: {
 }
 
 export function setProductStockStatusLocal(productId: string, inStock: boolean) {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && productId) {
     try {
-      const overrides = { ...getStockMap() };
-      overrides[productId] = inStock;
-      cachedStockMap = overrides;
-      localStorage.setItem("custom_product_stock_status", JSON.stringify(overrides));
+      // 1. Stok haritasını güncelle
+      const stockMap = { ...getStockMap() };
+      stockMap[productId] = inStock;
+      cachedStockMap = stockMap;
+      localStorage.setItem("custom_product_stock_status", JSON.stringify(stockMap));
+
+      // 2. custom_product_overrides içindeki ürünü de ince detayına kadar eşitle
+      const rawOverrides = localStorage.getItem("custom_product_overrides");
+      if (rawOverrides) {
+        try {
+          const overrides = JSON.parse(rawOverrides);
+          if (overrides && typeof overrides === "object") {
+            const existing = overrides[productId] as Product | undefined;
+            if (existing) {
+              const baseDesc = cleanProductDescription(existing.description || "");
+              overrides[productId] = {
+                ...existing,
+                in_stock: inStock,
+                description: inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]",
+              };
+              localStorage.setItem("custom_product_overrides", JSON.stringify(overrides));
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 3. custom_added_products içindeki ürünü de güncelle
+      const rawCustom = localStorage.getItem("custom_added_products");
+      if (rawCustom) {
+        try {
+          const customList = JSON.parse(rawCustom);
+          if (Array.isArray(customList)) {
+            let changed = false;
+            const updated = customList.map((p: Product) => {
+              if (p && p.id === productId) {
+                changed = true;
+                const baseDesc = cleanProductDescription(p.description || "");
+                return {
+                  ...p,
+                  in_stock: inStock,
+                  description: inStock
+                    ? baseDesc
+                    : baseDesc
+                      ? `${baseDesc} [TÜKENDİ]`
+                      : "[TÜKENDİ]",
+                };
+              }
+              return p;
+            });
+            if (changed) {
+              localStorage.setItem("custom_added_products", JSON.stringify(updated));
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 4. Tüm bileşenlere bildir
       window.dispatchEvent(new Event("product_stock_status_changed"));
+      window.dispatchEvent(new Event("catalog_updated"));
+      window.dispatchEvent(new Event("storage"));
     } catch {
       // ignore
     }
