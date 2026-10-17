@@ -4,7 +4,7 @@ import type { Product } from "@/lib/catalog";
  * Canlı siteden (https://kotoptan.pages.dev) ve Yönetim Panelinden
  * senkronize edilmiş gerçek toptan ürün kataloğu.
  * Toplam ürün sayısı: 153
- * Senkronizasyon tarihi: 2026-10-17T21:55:11.722Z
+ * Senkronizasyon tarihi: 2026-10-17T21:58:35.442Z
  */
 export const FALLBACK_PRODUCTS: Product[] = [
   {
