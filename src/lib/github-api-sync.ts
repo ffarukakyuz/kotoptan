@@ -1,4 +1,10 @@
-import { getAllCatalogProducts, getPermanentlyDeletedIds, getPermanentlyDeletedNames, getProductOverrides, getCustomProducts } from "./custom-products";
+import {
+  getAllCatalogProducts,
+  getPermanentlyDeletedIds,
+  getPermanentlyDeletedNames,
+  getProductOverrides,
+  getCustomProducts,
+} from "./custom-products";
 import type { Product } from "./catalog";
 
 export interface GitHubSyncResult {
@@ -75,7 +81,11 @@ export function exportCatalogDataJSON(): string {
 /**
  * Dışarıdan verilen JSON verisini içe aktararak yerel katalog durumunu günceller.
  */
-export function importCatalogDataJSON(jsonStr: string): { ok: boolean; count: number; error?: string } {
+export function importCatalogDataJSON(jsonStr: string): {
+  ok: boolean;
+  count: number;
+  error?: string;
+} {
   try {
     const data = JSON.parse(jsonStr);
     if (!data || typeof data !== "object") {
@@ -91,8 +101,12 @@ export function importCatalogDataJSON(jsonStr: string): { ok: boolean; count: nu
     }
 
     if (data.permanentlyDeleted && typeof data.permanentlyDeleted === "object") {
-      const ids = Array.isArray(data.permanentlyDeleted.deletedIds) ? data.permanentlyDeleted.deletedIds : [];
-      const names = Array.isArray(data.permanentlyDeleted.deletedNames) ? data.permanentlyDeleted.deletedNames : [];
+      const ids = Array.isArray(data.permanentlyDeleted.deletedIds)
+        ? data.permanentlyDeleted.deletedIds
+        : [];
+      const names = Array.isArray(data.permanentlyDeleted.deletedNames)
+        ? data.permanentlyDeleted.deletedNames
+        : [];
       localStorage.setItem("ko_permanently_deleted_products_v2", JSON.stringify(ids));
       localStorage.setItem("ko_permanently_deleted_names_v2", JSON.stringify(names));
     }
@@ -100,7 +114,9 @@ export function importCatalogDataJSON(jsonStr: string): { ok: boolean; count: nu
     window.dispatchEvent(new Event("catalog_updated"));
     window.dispatchEvent(new Event("storage"));
 
-    const count = Array.isArray(data.allProducts) ? data.allProducts.length : (getAllCatalogProducts()?.length || 0);
+    const count = Array.isArray(data.allProducts)
+      ? data.allProducts.length
+      : getAllCatalogProducts()?.length || 0;
     return { ok: true, count };
   } catch (err) {
     return {
@@ -149,7 +165,8 @@ export async function pushCatalogDirectlyToGitHub(options: {
   const repo = (options.repo || "ffarukakyuz/kotoptan").trim();
   const branch = (options.branch || "main").trim();
   const commitMsg = (
-    options.commitMessage || "Katalog güncellemesi: Güncellenen ürün fotoğrafları ve silinen ürünler"
+    options.commitMessage ||
+    "Katalog güncellemesi: Güncellenen ürün fotoğrafları ve silinen ürünler"
   ).trim();
 
   if (!token) {
@@ -175,7 +192,9 @@ export async function pushCatalogDirectlyToGitHub(options: {
 
     if (!refRes.ok) {
       if (refRes.status === 401 || refRes.status === 403) {
-        throw new Error("GitHub Token yetkisi yetersiz veya süresi dolmuş. Lütfen 'repo' yetkili bir Token kullanın.");
+        throw new Error(
+          "GitHub Token yetkisi yetersiz veya süresi dolmuş. Lütfen 'repo' yetkili bir Token kullanın.",
+        );
       }
       if (refRes.status === 404) {
         throw new Error(`Belirtilen dal (${branch}) veya depo (${repo}) bulunamadı.`);
@@ -188,9 +207,12 @@ export async function pushCatalogDirectlyToGitHub(options: {
     addLog(`✅ Mevcut HEAD commit bulundu: ${latestCommitSha.slice(0, 7)}`);
 
     // 2. Get the commit to find base tree
-    const commitRes = await fetch(`https://api.github.com/repos/${repo}/git/commits/${latestCommitSha}`, {
-      headers,
-    });
+    const commitRes = await fetch(
+      `https://api.github.com/repos/${repo}/git/commits/${latestCommitSha}`,
+      {
+        headers,
+      },
+    );
     if (!commitRes.ok) {
       throw new Error("Mevcut commit ağacı okunamadı.");
     }
@@ -261,22 +283,29 @@ export async function pushCatalogDirectlyToGitHub(options: {
 
     // 6. Update branch ref (push)
     addLog(`🚀 GitHub dalı güncelleniyor (git push origin ${branch})...`);
-    const updateRefRes = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${branch}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({
-        sha: newCommitSha,
-        force: false,
-      }),
-    });
+    const updateRefRes = await fetch(
+      `https://api.github.com/repos/${repo}/git/refs/heads/${branch}`,
+      {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          sha: newCommitSha,
+          force: false,
+        }),
+      },
+    );
 
     if (!updateRefRes.ok) {
       const errJson = await updateRefRes.json().catch(() => ({}));
-      throw new Error(`Dal referansı güncellenemedi: ${errJson.message || updateRefRes.statusText}`);
+      throw new Error(
+        `Dal referansı güncellenemedi: ${errJson.message || updateRefRes.statusText}`,
+      );
     }
 
     const now = new Date().toISOString();
-    addLog(`🎉 Başarılı! Tüm ürün fotoğrafları ve katalog güncellemeleri GitHub (${repo}) ana dalına push edildi.`);
+    addLog(
+      `🎉 Başarılı! Tüm ürün fotoğrafları ve katalog güncellemeleri GitHub (${repo}) ana dalına push edildi.`,
+    );
     addLog(`🌐 Cloudflare Pages otomatik dağıtımı tetiklendi (kotoptan.pages.dev).`);
 
     return {

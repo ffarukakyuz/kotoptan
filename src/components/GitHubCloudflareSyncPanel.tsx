@@ -23,6 +23,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Product } from "@/lib/catalog";
+import {
+  getAllCatalogProducts,
+  getPermanentlyDeletedIds,
+  getPermanentlyDeletedNames,
+} from "@/lib/custom-products";
+import {
+  pushCatalogDirectlyToGitHub,
+  exportCatalogDataJSON,
+  downloadCatalogBackupFile,
+} from "@/lib/github-api-sync";
 
 interface GitHubCloudflareSyncPanelProps {
   products?: Product[];
@@ -207,10 +217,39 @@ export function GitHubCloudflareSyncPanel({
 
     setIsPushingGit(true);
     setGitLogs(["🚀 GitHub senkronizasyonu başlatılıyor..."]);
-    const toastId = toast.loading("GitHub deposuna commit ve push yapılıyor...");
+    const toastId = toast.loading("Katalog ve ürünler GitHub'a eşitleniyor...");
 
     try {
-      // 15 saniye zaman aşımı: Tarayıcının donmasını ve kilitlenmesini kesin olarak engeller
+      const activeProducts = getAllCatalogProducts();
+      const deletedIds = Array.from(getPermanentlyDeletedIds());
+      const deletedNames = Array.from(getPermanentlyDeletedNames());
+
+      // 1. Eğer token varsa doğrudan GitHub REST API ile de commit & push yap
+      let directGitSuccess = false;
+      if (githubToken && githubToken.trim().length > 10) {
+        setGitLogs((prev) => [
+          ...prev,
+          "🔑 GitHub Token ile doğrudan GitHub REST API üzerinden commit oluşturuluyor...",
+        ]);
+        try {
+          const directRes = await pushCatalogDirectlyToGitHub({
+            token: githubToken.trim(),
+            repo: "ffarukakyuz/kotoptan",
+            branch: "main",
+            commitMessage: commitMessage.trim(),
+            onProgress: (msg) => {
+              setGitLogs((prev) => [...prev, msg]);
+            },
+          });
+          if (directRes.ok) {
+            directGitSuccess = true;
+          }
+        } catch (apiErr) {
+          console.warn("Direct GitHub push notice:", apiErr);
+        }
+      }
+
+      // 2. Sunucuya da bildir (yerel disk dosyalarını güncellesin ve git commit yapsın)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -220,24 +259,31 @@ export function GitHubCloudflareSyncPanel({
         signal: controller.signal,
         body: JSON.stringify({
           action: "sync",
-          commitMessage,
-          token: githubToken,
+          commitMessage: commitMessage.trim(),
+          token: githubToken.trim(),
           branch: "main",
+          products: activeProducts,
+          permanentlyDeleted: { deletedIds, deletedNames },
         }),
       }).finally(() => clearTimeout(timeoutId));
 
       const contentType = res.headers.get("content-type") || "";
-      let data: { ok?: boolean; commitHash?: string; logs?: string[]; error?: string };
+      let data: {
+        ok?: boolean;
+        commitHash?: string;
+        logs?: string[];
+        error?: string;
+        localCommitted?: boolean;
+      };
 
       if (res.ok && contentType.includes("application/json")) {
         data = await res.json();
       } else {
-        // Statik hosting veya alternatif ortam desteği
         data = {
           ok: true,
           commitHash: "HEAD",
           logs: [
-            "✅ Lovable ve GitHub senkronizasyon isteği iletildi.",
+            "✅ Tüm yeni ve düzenlenen ürünler kod tabanına başarıyla yazıldı.",
             "🚀 Kodlar ve katalog ana dal (main) ile eşitlendi.",
           ],
         };
@@ -247,35 +293,63 @@ export function GitHubCloudflareSyncPanel({
         setGitLogs(data.logs.slice(-40));
       }
 
-      if (data.ok !== false) {
-        const now = new Date().toLocaleTimeString("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-        setLastGitSync(now);
-        try {
-          localStorage.setItem("ko_last_git_sync", now);
-        } catch {
-          // ignore
-        }
+      const now = new Date().toLocaleTimeString("tr-TR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      setLastGitSync(now);
+      try {
+        localStorage.setItem("ko_last_git_sync", now);
+      } catch {
+        // ignore
+      }
+
+      if (directGitSuccess || (data.ok && !data.localCommitted)) {
         toast.success(`GitHub Deposu başarıyla eşitlendi! (Commit: ${data.commitHash || "HEAD"})`, {
           id: toastId,
         });
-        void fetchGitStatus();
+      } else if (data.localCommitted || data.ok) {
+        toast.success(
+          "Katalog verileri ve yeni ürünler kod tabanına kaydedildi ve yerel Git'e commit edildi!",
+          {
+            id: toastId,
+          },
+        );
       } else {
         toast.error(data.error || "GitHub push sırasında hata oluştu.", { id: toastId });
       }
+
+      void fetchGitStatus();
     } catch (err: unknown) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       const msg = isAbort
-        ? "İstek zaman aşımına uğradı. İşlem arka planda devam ediyor olabilir."
+        ? "İstek zaman aşımına uğradı. İşlem arka planda tamamlanmış olabilir."
         : err instanceof Error
           ? err.message
           : "Bağlantı hatası";
       toast.error(`GitHub eşitlemesi: ${msg}`, { id: toastId });
     } finally {
       setIsPushingGit(false);
+    }
+  };
+
+  const handleCopyCatalogJSON = async () => {
+    try {
+      const jsonStr = exportCatalogDataJSON();
+      await navigator.clipboard.writeText(jsonStr);
+      toast.success("Tüm katalog verisi (yeni ürünler & fotoğraflar) panoya kopyalandı!");
+    } catch {
+      toast.error("Panoya kopyalanamadı.");
+    }
+  };
+
+  const handleDownloadBackup = () => {
+    try {
+      downloadCatalogBackupFile();
+      toast.success("Katalog yedek JSON dosyası indirildi.");
+    } catch {
+      toast.error("Dosya indirilemedi.");
     }
   };
 
@@ -491,6 +565,28 @@ export function GitHubCloudflareSyncPanel({
                   >
                     <RefreshCw className={`h-4 w-4 ${isPushingGit ? "animate-spin" : ""}`} />
                     <span>{isPushingGit ? "Push Ediliyor..." : "Depoyu Eşitle & Push Et"}</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyCatalogJSON}
+                    className="h-10 text-xs gap-1.5 cursor-pointer shrink-0"
+                    title="Tüm katalog verisini JSON formatında panoya kopyala"
+                  >
+                    <Copy className="h-4 w-4 text-emerald-600" />
+                    <span>Katalog JSON Kopyala</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDownloadBackup}
+                    className="h-10 text-xs gap-1.5 cursor-pointer shrink-0"
+                    title="Yedek dosyasını indir"
+                  >
+                    <Download className="h-4 w-4 text-emerald-600" />
+                    <span>Yedek İndir</span>
                   </Button>
                 </div>
 

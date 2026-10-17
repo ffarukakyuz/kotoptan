@@ -161,10 +161,14 @@ export async function performGitSync(options: {
   branch?: string;
   authorName?: string;
   authorEmail?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  products?: any[];
+  permanentlyDeleted?: { deletedIds: string[]; deletedNames?: string[] };
 }): Promise<{
   ok: boolean;
   error?: string;
   commitHash?: string;
+  localCommitted?: boolean;
   logs: string[];
   lastSyncedAt: string;
 }> {
@@ -177,6 +181,30 @@ export async function performGitSync(options: {
 
   if (options.token && options.token.trim()) {
     saveGitHubConfig({ token: options.token.trim() });
+  }
+
+  // 0. Ürünler veya silinenler gönderildiyse önce disk dosyalarını güncelle
+  if (Array.isArray(options.products) && options.products.length > 0) {
+    try {
+      const productsPath = path.resolve(process.cwd(), "src/data/products.ts");
+      const serialized = JSON.stringify(options.products, null, 2);
+      const source = `import type { Product } from "@/lib/catalog";\n\n/**\n * Canlı siteden ve Yönetim Panelinden senkronize edilmiş ürün kataloğu.\n * Toplam ürün sayısı: ${options.products.length}\n * Senkronizasyon tarihi: ${new Date().toISOString()}\n */\nexport const FALLBACK_PRODUCTS: Product[] = ${serialized};\n`;
+      fs.writeFileSync(productsPath, source, "utf-8");
+      logs.push(`✅ src/data/products.ts dosyası ${options.products.length} ürün ile güncellendi.`);
+    } catch (fsErr) {
+      console.warn("Ürünler dosya yazma uyarısı:", fsErr);
+      logs.push(`⚠️ Ürünler dosyası güncellenirken uyarı oluştu.`);
+    }
+  }
+
+  if (options.permanentlyDeleted) {
+    try {
+      const delPath = path.resolve(process.cwd(), "src/data/permanently-deleted.json");
+      fs.writeFileSync(delPath, JSON.stringify(options.permanentlyDeleted, null, 2), "utf-8");
+      logs.push(`✅ src/data/permanently-deleted.json dosyası güncellendi.`);
+    } catch (fsErr) {
+      console.warn("Silinenler dosya yazma uyarısı:", fsErr);
+    }
   }
 
   logs.push(`🔍 Git durumu kontrol ediliyor (Dal: ${branch}, Depo: ${repo})...`);
@@ -239,15 +267,24 @@ export async function performGitSync(options: {
 
   // 6. Git push
   if (!token) {
-    const errorMsg =
-      "GitHub Personal Access Token (PAT) ayarlanmamış. Kodların doğrudan GitHub'a push edilmesi için lütfen Token girin veya kaydedin.";
-    logs.push(`❌ ${errorMsg}`);
+    logs.push(
+      "💾 Kodlar ve katalog dosyaları yerel Git deposuna başarıyla kaydedildi ve commit edildi.",
+    );
+    logs.push(
+      "ℹ️ GitHub uzak deposuna doğrudan push için lütfen Token girin veya depoya erişim izni tanımlayın.",
+    );
+    const now = new Date().toISOString();
+    saveGitHubConfig({
+      lastSyncedAt: now,
+      lastCommitHash: commitHash,
+      lastCommitMessage: commitMsg,
+    });
     return {
-      ok: false,
-      error: errorMsg,
+      ok: true,
+      localCommitted: true,
       commitHash,
       logs,
-      lastSyncedAt: new Date().toISOString(),
+      lastSyncedAt: now,
     };
   }
 

@@ -496,7 +496,9 @@ export default {
               const productsPath = path.resolve(process.cwd(), "src/data/products.ts");
               const source = `import type { Product } from "@/lib/catalog";\n\nexport const FALLBACK_PRODUCTS: Product[] = ${JSON.stringify(body.products, null, 2)};\n`;
               fs.writeFileSync(productsPath, source, "utf-8");
-              logs.push(`✅ src/data/products.ts dosyası ${body.products.length} ürün ile güncellendi.`);
+              logs.push(
+                `✅ src/data/products.ts dosyası ${body.products.length} ürün ile güncellendi.`,
+              );
             } catch (fsErr) {
               console.warn("Dosya yazma uyarısı:", fsErr);
             }
@@ -524,23 +526,34 @@ export default {
               };
 
               // Get HEAD
-              const refRes = await fetch(`https://api.github.com/repos/${repo}/git/ref/heads/main`, {
-                headers: ghHeaders,
-              });
+              const refRes = await fetch(
+                `https://api.github.com/repos/${repo}/git/ref/heads/main`,
+                {
+                  headers: ghHeaders,
+                },
+              );
 
               if (refRes.ok) {
-                const refData = (await refRes.json()) as any;
+                const refData = (await refRes.json()) as { object: { sha: string } };
                 const commitSha = refData.object.sha;
 
                 // Get commit
-                const cRes = await fetch(`https://api.github.com/repos/${repo}/git/commits/${commitSha}`, {
-                  headers: ghHeaders,
-                });
-                const cData = (await cRes.json()) as any;
+                const cRes = await fetch(
+                  `https://api.github.com/repos/${repo}/git/commits/${commitSha}`,
+                  {
+                    headers: ghHeaders,
+                  },
+                );
+                const cData = (await cRes.json()) as { tree: { sha: string } };
                 const baseTreeSha = cData.tree.sha;
 
                 // Build tree items
-                const treeItems: any[] = [];
+                const treeItems: Array<{
+                  path: string;
+                  mode: string;
+                  type: string;
+                  content: string;
+                }> = [];
                 if (Array.isArray(body.products) && body.products.length > 0) {
                   const source = `import type { Product } from "@/lib/catalog";\n\nexport const FALLBACK_PRODUCTS: Product[] = ${JSON.stringify(body.products, null, 2)};\n`;
                   treeItems.push({
@@ -566,7 +579,7 @@ export default {
                     body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
                   });
                   if (tRes.ok) {
-                    const tData = (await tRes.json()) as any;
+                    const tData = (await tRes.json()) as { sha: string };
                     const newTreeSha = tData.sha;
 
                     const ncRes = await fetch(`https://api.github.com/repos/${repo}/git/commits`, {
@@ -580,7 +593,7 @@ export default {
                     });
 
                     if (ncRes.ok) {
-                      const ncData = (await ncRes.json()) as any;
+                      const ncData = (await ncRes.json()) as { sha: string };
                       const newCommitSha = ncData.sha;
 
                       await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, {
@@ -589,7 +602,9 @@ export default {
                         body: JSON.stringify({ sha: newCommitSha, force: false }),
                       });
 
-                      logs.push(`✅ GitHub deposuna (${repo}) doğrudan push edildi! Commit: ${newCommitSha.slice(0, 7)}`);
+                      logs.push(
+                        `✅ GitHub deposuna (${repo}) doğrudan push edildi! Commit: ${newCommitSha.slice(0, 7)}`,
+                      );
                       logs.push(`🚀 Cloudflare Pages otomatik dağıtımı tetiklendi.`);
 
                       return new Response(

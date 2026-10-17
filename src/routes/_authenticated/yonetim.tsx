@@ -52,6 +52,9 @@ import { AdminChatPanel } from "@/components/AdminChatPanel";
 import { listAdminChatSessions } from "@/lib/chat-service";
 import type { DriveOrder } from "@/lib/google-drive";
 import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product-image-map";
+import { ProductGitSyncModal } from "@/components/ProductGitSyncModal";
+import { MasterSaveSyncModal } from "@/components/MasterSaveSyncModal";
+import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { FALLBACK_PRODUCTS } from "@/data/products";
@@ -66,6 +69,8 @@ import {
   getAllCatalogProducts,
   markProductPermanentlyDeleted,
   batchMarkProductsPermanentlyDeleted,
+  getPermanentlyDeletedIds,
+  getPermanentlyDeletedNames,
 } from "@/lib/custom-products";
 import {
   mergeOrdersWithLocal,
@@ -76,7 +81,6 @@ import {
   removeOrderItem,
   isArchivedOrder as isArchivedOrderStorage,
 } from "@/lib/order-storage";
-import { analyzeProductPhoto } from "@/lib/gemini";
 import { ADMIN_MEMBERS, isUserAdmin, GUEST_ACCOUNT } from "@/lib/admin-config";
 import {
   getStoredLocalUsers,
@@ -238,7 +242,7 @@ function AdminPage() {
         }
       : {});
   const [activeTab, setActiveTab] = useState<string>(
-    search.edit ? "products" : search.tab === "drive" ? "sync" : (search.tab ?? "orders"),
+    search.edit ? "products" : search.tab === "drive" ? "sync" : (search.tab ?? "products"),
   );
   const [syncSubTab, setSyncSubTab] = useState<"github" | "cloudflare">("github");
 
@@ -335,6 +339,7 @@ function AdminPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <MasterSaveSyncModal buttonText="Değişiklikleri Sisteme Kaydet & Dağıt" size="sm" />
           <Button
             variant="outline"
             size="sm"
@@ -365,18 +370,18 @@ function AdminPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto sm:h-10 p-1 bg-muted rounded-xl gap-1">
           <TabsTrigger
-            value="orders"
-            className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center gap-0.5 sm:gap-1"
-          >
-            <span>Sipariş</span>
-            <span className="hidden sm:inline">ler ({allOrders.length})</span>
-          </TabsTrigger>
-          <TabsTrigger
             value="products"
             className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center gap-0.5 sm:gap-1"
           >
             <span>Ürünler</span>
             <span className="hidden sm:inline"> ({allProducts.length})</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="orders"
+            className="px-1 py-1.5 text-[11px] sm:text-xs md:text-sm font-semibold truncate flex items-center justify-center gap-0.5 sm:gap-1"
+          >
+            <span>Sipariş</span>
+            <span className="hidden sm:inline">ler ({allOrders.length})</span>
           </TabsTrigger>
           <TabsTrigger
             value="messages"
@@ -406,15 +411,6 @@ function AdminPage() {
             Üyeler
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="orders">
-          <GlobalErrorBoundary
-            inline={true}
-            fallbackTitle="Siparişler Paneli"
-            fallbackMessage="Sipariş ve sevkiyat listesi yüklenirken beklenmeyen bir hata oluştu."
-          >
-            <OrdersPanel onNavigateToDrive={() => setActiveTab("sync")} />
-          </GlobalErrorBoundary>
-        </TabsContent>
         <TabsContent value="products">
           <GlobalErrorBoundary
             inline={true}
@@ -423,6 +419,21 @@ function AdminPage() {
           >
             <ProductsPanel
               initialEditId={search.edit}
+              onNavigateToDrive={() => setActiveTab("sync")}
+              initialProducts={allProducts}
+              isLoadingProducts={isProductsLoading}
+            />
+          </GlobalErrorBoundary>
+        </TabsContent>
+        <TabsContent value="orders">
+          <GlobalErrorBoundary
+            inline={true}
+            fallbackTitle="Siparişler Paneli"
+            fallbackMessage="Sipariş listesi yüklenirken bir hata oluştu."
+          >
+            <OrdersPanel onNavigateToDrive={() => setActiveTab("sync")} />
+          </GlobalErrorBoundary>
+        </TabsContent>
               onNavigateToDrive={() => setActiveTab("sync")}
               initialProducts={allProducts}
               isLoadingProducts={isProductsLoading}
@@ -514,1051 +525,7 @@ const dayLabel = (iso: string) => {
 };
 
 function OrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: () => void }) {
-  const qc = useQueryClient();
-  const [view, setView] = useState<"aktif" | "arsiv">("aktif");
-  const [filter, setFilter] = useState("hepsi");
-  const [range, setRange] = useState<DateRange>("hepsi");
-  const [district, setDistrict] = useState("hepsi");
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-orders"],
-    queryFn: async () => {
-      let remoteOrders: AdminOrder[] = [];
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
-          )
-          .order("created_at", { ascending: false });
-        if (!error && data) {
-          remoteOrders = data as AdminOrder[];
-        }
-      } catch (err) {
-        console.warn("[Admin] remote orders query error:", err);
-      }
-
-      return mergeOrdersWithLocal<AdminOrder>(remoteOrders, null, true);
-    },
-    refetchInterval: 4000,
-    refetchOnWindowFocus: true,
-  });
-
-  const refresh = useCallback(() => {
-    void qc.invalidateQueries({ queryKey: ["admin-orders"] });
-  }, [qc]);
-
-  useEffect(() => {
-    const handleOrdersUpdated = () => {
-      refresh();
-    };
-    window.addEventListener("orders_updated", handleOrdersUpdated);
-    window.addEventListener("storage", handleOrdersUpdated);
-    return () => {
-      window.removeEventListener("orders_updated", handleOrdersUpdated);
-      window.removeEventListener("storage", handleOrdersUpdated);
-    };
-  }, [refresh]);
-
-  const patchOrder = async (
-    id: string,
-    patch: { status?: string; archived_at?: string | null; note?: string },
-    okMessage: string,
-  ) => {
-    try {
-      await applyOrderPatch(id, patch);
-      toast.success(okMessage);
-      refresh();
-    } catch {
-      toast.error("Sipariş güncellenemedi.");
-    }
-  };
-
-  const setItemQuantity = async (orderId: string, itemId: string, quantity: number) => {
-    if (quantity < 1) return;
-    try {
-      await updateOrderItemQuantity(orderId, itemId, quantity);
-      toast.success("Ürün miktarı güncellendi");
-    } catch {
-      // ignore
-    }
-    refresh();
-  };
-
-  const removeItem = async (orderId: string, itemId: string) => {
-    try {
-      await removeOrderItem(orderId, itemId);
-      toast.success("Ürün siparişten çıkarıldı");
-    } catch {
-      // ignore
-    }
-    refresh();
-  };
-
-  const [orderToDelete, setOrderToDelete] = useState<AdminOrder | null>(null);
-  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
-
-  const executeDeleteOrder = async (order: AdminOrder) => {
-    if (!order?.id) return;
-    setIsDeletingOrder(true);
-    try {
-      // Optimistik anında güncelleme
-      qc.setQueryData(["admin-orders"], (prev: AdminOrder[] | undefined) =>
-        prev ? prev.filter((o) => o.id !== order.id) : [],
-      );
-
-      await permanentlyDeleteOrder(order.id);
-      toast.success("Sipariş kalıcı olarak silindi");
-      refresh();
-    } catch (err) {
-      console.error("[OrdersPanel] Delete error:", err);
-      toast.error("Sipariş silinirken bir hata oluştu");
-      refresh();
-    } finally {
-      setIsDeletingOrder(false);
-      setOrderToDelete(null);
-    }
-  };
-
-  const [showRouteMap, setShowRouteMap] = useState(true);
-  const [sortByRoute, setSortByRoute] = useState(true);
-  const [routeMode, setRouteMode] = useState<"yolda" | "hepsi">("yolda");
-  const [isSeedingOrders, setIsSeedingOrders] = useState(false);
-  const [isPurgingOrders, setIsPurgingOrders] = useState(false);
-
-  const handleSeedDistrictOrders = async () => {
-    setIsSeedingOrders(true);
-    try {
-      const res = await seedAllDistrictTestOrders();
-      toast.success(
-        `6 ilçe için toplam ${res.count} adet rota deneme siparişi başarıyla oluşturuldu!`,
-        { duration: 5000 },
-      );
-      refresh();
-    } catch (err) {
-      console.error("[OrdersPanel] Seed error:", err);
-      toast.error("Deneme siparişleri oluşturulurken bir hata oluştu");
-    } finally {
-      setIsSeedingOrders(false);
-    }
-  };
-
-  const handlePurgeTestOrders = async () => {
-    setIsPurgingOrders(true);
-    try {
-      const purged = await purgeAllTestOrders();
-      toast.success(
-        purged > 0
-          ? `${purged} adet deneme siparişi temizlendi.`
-          : "Tüm deneme siparişleri başarıyla temizlendi.",
-      );
-      refresh();
-    } catch (err) {
-      console.error("[OrdersPanel] Purge error:", err);
-      toast.error("Deneme siparişleri silinirken bir sorun oluştu.");
-    } finally {
-      setIsPurgingOrders(false);
-    }
-  };
-
-  const all = data ?? [];
-  const scopedActive = all.filter((o) => !isArchivedOrder(o));
-  const scopedPast = all.filter((o) => isArchivedOrder(o));
-
-  const activeCount = scopedActive.length;
-  const archivedCount = scopedPast.length;
-  const inTransitCount = scopedActive.filter((o) => o.status === "yolda").length;
-  const waitingCount = scopedActive.filter((o) => o.status !== "yolda").length;
-
-  const scoped = view === "arsiv" ? scopedPast : scopedActive;
-
-  // Seçilen ilçe veya tüm ilçelerdeki aktif siparişler (Sevkiyat Haritası için)
-  // Ahlat & Adilcevaz seçildiğinde iki ilçenin de siparişleri aynı ekranda birleşir
-  const districtActiveOrders = useMemo(() => {
-    return scopedActive.filter((o) => matchesDistrictFilter(o.district, district));
-  }, [scopedActive, district]);
-
-  // Rotaya dahil edilecek siparişler:
-  // "yolda" modunda (varsayılan): Yalnızca rotaya eklenip "Yolda" seçilen siparişler rotalanır.
-  // "hepsi" modunda: İlçedeki tüm aktif siparişler rotalanır.
-  const districtRoutedOrders = useMemo(() => {
-    if (routeMode === "hepsi") {
-      return districtActiveOrders;
-    }
-    return districtActiveOrders.filter((o) => o.status === "yolda");
-  }, [districtActiveOrders, routeMode]);
-
-  // Depodan başlayarak en yakın komşu (TSP) sırasına göre optimize edilmiş duraklar
-  const optimizedDistrictStops = useMemo(() => {
-    return computeOptimizedStops(districtRoutedOrders);
-  }, [districtRoutedOrders]);
-
-  // Sipariş ID'sine göre durak bilgisi sorgulama haritası
-  const stopLookup = useMemo(() => {
-    const map = new Map<string, RouteOrderStop>();
-    optimizedDistrictStops.forEach((s) => map.set(s.id, s));
-    return map;
-  }, [optimizedDistrictStops]);
-
-  // İlçedeki bekleyen tüm siparişleri tek tıkla rotaya dahil etme
-  const handleAddAllDistrictWaitingToRoute = async () => {
-    const waitingInDistrict = districtActiveOrders.filter((o) => o.status !== "yolda");
-    if (waitingInDistrict.length === 0) {
-      toast.info("Bu ilçede rotaya eklenecek bekleyen sipariş bulunmuyor.");
-      return;
-    }
-    for (const ord of waitingInDistrict) {
-      await patchOrder(
-        ord.id,
-        { status: "yolda" },
-        `${waitingInDistrict.length} sipariş topluca rotaya eklendi ve 'Yolda' olarak güncellendi.`,
-      );
-    }
-  };
-
-  // Listede görüntülenecek filtrelenmiş ve sıralanmış siparişler
-  const orders = useMemo(() => {
-    const filtered = scoped.filter((o) => {
-      const matchDistrict = matchesDistrictFilter(o.district, district);
-      const matchDate = inDateRange(o.created_at, range);
-      if (!matchDistrict || !matchDate) return false;
-
-      if (view === "aktif") {
-        if (filter === "hepsi") return true;
-        if (filter === "yolda") return o.status === "yolda";
-        if (filter === "bekliyor") return o.status !== "yolda";
-        return o.status === filter;
-      }
-      if (filter === "hepsi") return true;
-      return o.status === filter;
-    });
-
-    if (view === "aktif" && sortByRoute) {
-      // Rotadaki durakları en yakın duraktan uzağa doğru sırala, bekleyenleri tarih sırasına göre sonraya koy
-      return [...filtered].sort((a, b) => {
-        const stopA = stopLookup.get(a.id)?.stopNumber;
-        const stopB = stopLookup.get(b.id)?.stopNumber;
-        if (stopA !== undefined && stopB !== undefined) return stopA - stopB;
-        if (stopA !== undefined) return -1;
-        if (stopB !== undefined) return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-    }
-
-    return filtered;
-  }, [scoped, filter, district, range, view, sortByRoute, stopLookup]);
-
-  return (
-    <div className="mt-4">
-      {/* 1. Üst Sekmeler: Aktif vs Geçmiş Siparişler (Yeni ile eski siparişler kesinlikle karışmaz) */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          <button
-            key="aktif"
-            type="button"
-            onClick={() => {
-              setView("aktif");
-              setFilter("hepsi");
-            }}
-            className={
-              view === "aktif"
-                ? "rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground flex items-center gap-2 shadow-xs"
-                : "rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-primary flex items-center gap-2"
-            }
-          >
-            <span>📦 Aktif Sevkiyat & Siparişler</span>
-            <span className="rounded-full bg-white/20 dark:bg-black/20 px-2 py-0.5 text-xs font-bold">
-              {activeCount}
-            </span>
-            {inTransitCount > 0 && (
-              <span className="rounded-full bg-emerald-500/80 text-white px-2 py-0.5 text-[11px] font-bold">
-                🚚 {inTransitCount} Yolda
-              </span>
-            )}
-            {waitingCount > 0 && (
-              <span className="rounded-full bg-amber-500/80 text-white px-2 py-0.5 text-[11px] font-bold">
-                ⏳ {waitingCount} Bekliyor
-              </span>
-            )}
-          </button>
-
-          <button
-            key="arsiv"
-            type="button"
-            onClick={() => {
-              setView("arsiv");
-              setFilter("hepsi");
-            }}
-            className={
-              view === "arsiv"
-                ? "rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground flex items-center gap-2 shadow-xs"
-                : "rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-primary flex items-center gap-2"
-            }
-          >
-            <span>📋 Geçmiş Siparişler (Teslim & İptal)</span>
-            <span className="rounded-full bg-white/20 dark:bg-black/20 px-2 py-0.5 text-xs font-bold">
-              {archivedCount}
-            </span>
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to="/siparisler"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-            title="Sadece ilçeler, siparişler ve rota haritasının olduğu ayrı ekrana git"
-          >
-            <RouteIcon className="h-3.5 w-3.5" />
-            <span>Sevkiyat & İlçe Haritası Ekranı (/siparisler) →</span>
-          </Link>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refresh}
-            className="gap-1.5 text-xs border-border hover:bg-muted cursor-pointer"
-            title="Sipariş listesini yenile"
-          >
-            <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Yenile</span>
-          </Button>
-
-          {onNavigateToDrive && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onNavigateToDrive}
-              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <GitBranch className="h-3.5 w-3.5 text-emerald-600" />
-              Depo & Eşitle
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Geçmiş Siparişler Bilgilendirme Kutusu */}
-      {view === "arsiv" && (
-        <div className="mt-3 rounded-xl border border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/20 p-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-400">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-foreground">
-                Geçmiş ve Tamamlanan Siparişler Ekranı
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Teslim edilen veya iptal edilen tüm siparişler burada arşivlenir. Yeni aktif sipariş
-                listenizi meşgul etmez.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setView("aktif")}
-            className="text-xs cursor-pointer h-7"
-          >
-            ← Aktif Sevkiyat Ekranına Dön
-          </Button>
-        </div>
-      )}
-
-      {/* 3. İlçe Seçimi Butonları */}
-      <div className="mt-3 flex flex-wrap gap-2 items-center">
-        <span className="text-xs font-semibold text-muted-foreground mr-1">İlçe:</span>
-        {ADMIN_DISTRICT_FILTERS.map((d) => {
-          const isSelected = district === d.value;
-          return (
-            <button
-              key={d.value}
-              onClick={() => setDistrict(d.value)}
-              className={
-                isSelected
-                  ? "rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground shadow-xs cursor-pointer"
-                  : "rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:border-primary cursor-pointer"
-              }
-            >
-              {d.label}
-              {d.value !== "hepsi" && (
-                <span className="ml-1 opacity-75 font-semibold">
-                  ({scoped.filter((o) => matchesDistrictFilter(o.district, d.value)).length})
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 4. Durum Filtreleri */}
-      <div className="mt-2.5 flex flex-wrap gap-2 items-center">
-        <span className="text-xs font-semibold text-muted-foreground mr-1">Durum:</span>
-        {view === "aktif"
-          ? [
-              { value: "hepsi", label: `Tüm Aktifler (${activeCount})` },
-              { value: "yolda", label: `🚚 Yolda / Rotada (${inTransitCount})` },
-              { value: "bekliyor", label: `⏳ Sevkiyatta Bekleyen (${waitingCount})` },
-              { value: "yeni", label: "Yeni" },
-              { value: "hazirlaniyor", label: "Hazırlanıyor" },
-            ].map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setFilter(s.value)}
-                className={
-                  filter === s.value
-                    ? "rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
-                    : "rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:border-primary"
-                }
-              >
-                {s.label}
-              </button>
-            ))
-          : [
-              { value: "hepsi", label: `Tüm Geçmiş (${archivedCount})` },
-              { value: "teslim", label: "Teslim Edilenler" },
-              { value: "iptal", label: "İptal Edilenler" },
-            ].map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setFilter(s.value)}
-                className={
-                  filter === s.value
-                    ? "rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
-                    : "rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:border-primary"
-                }
-              >
-                {s.label}
-              </button>
-            ))}
-      </div>
-
-      {/* 5. Tarih Aralığı Filtresi */}
-      <div className="mt-2.5 flex flex-wrap gap-2 items-center">
-        <span className="text-xs font-semibold text-muted-foreground mr-1">Tarih:</span>
-        {DATE_RANGES.map((r) => (
-          <button
-            key={r.value}
-            onClick={() => setRange(r.value)}
-            className={
-              range === r.value
-                ? "rounded-full bg-muted-foreground text-background px-3 py-0.5 text-xs font-semibold"
-                : "rounded-full border border-border px-3 py-0.5 text-xs font-medium text-muted-foreground hover:border-primary"
-            }
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 6. Aktif Siparişler İçin Otomatik İlçe Sevkiyat Rotası ve Harita Bileşeni */}
-      {view === "aktif" && (
-        <div id="admin-route-map-section" className="mt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 p-2.5 rounded-xl bg-card border border-border">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                <RouteIcon className="h-4 w-4" />
-              </span>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5 leading-none flex-wrap">
-                  <span>
-                    {district === "hepsi" ? "Tüm İlçeler" : districtLabel(district)} Akıllı Sevkiyat
-                    Rotası
-                  </span>
-                  <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 text-[10px] flex items-center gap-1">
-                    <Truck className="h-3 w-3" />
-                    {districtRoutedOrders.length} Durak Yolda / Rotada
-                  </span>
-                  {districtActiveOrders.length - districtRoutedOrders.length > 0 && (
-                    <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold px-2 py-0.5 text-[10px] flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {districtActiveOrders.length - districtRoutedOrders.length} Sevkiyatta
-                      Bekliyor
-                    </span>
-                  )}
-                </h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Tatvan Aydınlar Mah. Ana Depodan başlayarak 'Yolda' olan siparişler en yakın
-                  teslimat noktasına göre dizilir
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Rota Gösterim Modu */}
-              <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/40">
-                <button
-                  type="button"
-                  onClick={() => setRouteMode("yolda")}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
-                    routeMode === "yolda"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Yalnızca rotaya eklenip 'Yolda' olan siparişleri haritaya dizer"
-                >
-                  <Truck className="h-3 w-3" />
-                  <span>
-                    Sadece Yoldakiler (
-                    {districtActiveOrders.filter((o) => o.status === "yolda").length})
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRouteMode("hepsi")}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
-                    routeMode === "hepsi"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="İlçedeki tüm aktif siparişleri haritada gösterir"
-                >
-                  <span>Tüm Aktifler ({districtActiveOrders.length})</span>
-                </button>
-              </div>
-
-              {districtActiveOrders.some((o) => o.status !== "yolda") && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddAllDistrictWaitingToRoute}
-                  className="text-xs h-7.5 cursor-pointer font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1"
-                  title="Bu ilçedeki tüm bekleyen siparişleri rotaya ekler ve 'Yolda' yapar"
-                >
-                  <Truck className="h-3.5 w-3.5" />
-                  <span>Tümünü Rotaya Ekle</span>
-                </Button>
-              )}
-
-              <Button
-                type="button"
-                size="sm"
-                variant={sortByRoute ? "default" : "outline"}
-                onClick={() => setSortByRoute((prev) => !prev)}
-                className="text-xs h-7.5 cursor-pointer font-semibold"
-                title="Sipariş kartlarını rota durak sırasına (en yakın duraktan uzağa) göre diz"
-              >
-                <Milestone className="h-3.5 w-3.5 mr-1" />
-                {sortByRoute ? "Sıralama: Rota (En Yakın)" : "Sıralama: Tarihe Göre"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setShowRouteMap((prev) => !prev)}
-                className="text-xs h-7.5 cursor-pointer"
-              >
-                {showRouteMap ? "Haritayı Gizle" : "Haritayı Göster"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Rotada hiç sipariş yoksa bilgilendirme kutusu */}
-          {showRouteMap && districtRoutedOrders.length === 0 && (
-            <div className="mb-2 p-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span>
-                  <strong>Rotada henüz sipariş yok:</strong> Siparişler verilmiş olsa da sevkiyatta
-                  beklemektedir. Dağıtıma çıkaracağınız siparişlerin yanındaki{" "}
-                  <strong>"Rotaya Ekle (Yolda)"</strong> butonuna tıklayarak onları akıllı rotaya
-                  ekleyebilirsiniz.
-                </span>
-              </div>
-              {districtActiveOrders.length > 0 && (
-                <Button
-                  size="sm"
-                  onClick={handleAddAllDistrictWaitingToRoute}
-                  className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer gap-1"
-                >
-                  <Truck className="h-3.5 w-3.5" />
-                  Bekleyenleri Rotaya Ekle ({districtActiveOrders.length})
-                </Button>
-              )}
-            </div>
-          )}
-
-          {showRouteMap && (
-            <AdminDistrictRouteMap
-              orders={districtRoutedOrders}
-              selectedDistrict={district}
-              onOrderClick={(orderId) => {
-                const el = document.getElementById(`order-card-${orderId}`);
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  el.classList.add("ring-2", "ring-emerald-500");
-                  setTimeout(() => el.classList.remove("ring-2", "ring-emerald-500"), 2500);
-                }
-              }}
-            />
-          )}
-        </div>
-      )}
-
-      {/* 7. Sipariş Kartları Listesi */}
-      {isLoading ? (
-        <Skeleton className="mt-4 h-40 rounded-xl" />
-      ) : orders.length === 0 ? (
-        <div className="mt-8 text-center p-8 rounded-xl border border-dashed border-border bg-card/50">
-          <p className="text-sm text-muted-foreground font-medium mb-3">
-            {view === "arsiv"
-              ? "Geçmiş / arşiv kayıtlarında sipariş bulunmuyor."
-              : "Aktif sevkiyat bekleyen sipariş bulunmuyor."}
-          </p>
-          {view === "aktif" && (
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refresh}
-                className="gap-1.5 text-xs cursor-pointer"
-              >
-                <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Listeyi Yenile</span>
-              </Button>
-              <Link
-                to="/siparisler"
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-              >
-                <RouteIcon className="h-3.5 w-3.5" />
-                <span>Harita ve Sevkiyat Ekranına Git</span>
-              </Link>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="mt-4 space-y-4">
-          {orders.map((o, idx) => {
-            const editing = editingId === o.id;
-            const stopInfo = stopLookup.get(o.id);
-            const showDay =
-              !sortByRoute &&
-              (idx === 0 || dayKey(orders[idx - 1]!.created_at) !== dayKey(o.created_at));
-
-            return (
-              <Fragment key={o.id}>
-                {showDay && (
-                  <h3 className="pt-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    {dayLabel(o.created_at)}
-                  </h3>
-                )}
-                <article
-                  id={`order-card-${o.id}`}
-                  className="rounded-xl border border-border bg-card p-5 shadow-card transition-shadow hover:shadow-md"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold text-foreground text-base">{o.business_name}</p>
-
-                        {/* Rota ve Sevkiyat Durum Rozeti */}
-                        {view === "aktif" &&
-                          (o.status === "yolda" ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                              <Truck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                              {stopInfo ? (
-                                <>
-                                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white font-extrabold">
-                                    {stopInfo.stopNumber}
-                                  </span>
-                                  <span>
-                                    {stopInfo.stopNumber}. Durak (Depodan{" "}
-                                    {stopInfo.distanceFromDepotKm} km)
-                                  </span>
-                                </>
-                              ) : (
-                                <span>🚚 Yolda (Rotaya Eklendi)</span>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                              <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                              <span>⏳ Sevkiyatta Bekliyor (Rotada Değil)</span>
-                            </span>
-                          ))}
-
-                        {/* Geçmiş Sipariş Rozeti (Teslim veya İptal) */}
-                        {view === "arsiv" && (
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                              o.status === "teslim"
-                                ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                                : "bg-destructive/15 border border-destructive/30 text-destructive"
-                            }`}
-                          >
-                            {o.status === "teslim" ? (
-                              <>
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Teslim Edildi
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-3.5 w-3.5" /> İptal Edildi
-                              </>
-                            )}
-                          </span>
-                        )}
-
-                        <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                          {districtLabel(o.district)}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {o.full_name} ·{" "}
-                        <span className="font-medium text-foreground">{o.phone}</span>
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">{o.address}</p>
-
-                      {(() => {
-                        const coords = extractCoordinates(o.address) || extractCoordinates(o.note);
-                        if (!coords) return null;
-                        return (
-                          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                            <MapPin className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                            <span>
-                              Konum: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-                            </span>
-                          </div>
-                        );
-                      })()}
-
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        #{o.id.slice(0, 8).toUpperCase()} ·{" "}
-                        {new Date(o.created_at).toLocaleString("tr-TR")}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Tek tıkla Rotaya Ekle veya Beklet Hızlı Butonu */}
-                      {view === "aktif" &&
-                        (o.status !== "yolda" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() =>
-                              void patchOrder(
-                                o.id,
-                                { status: "yolda" },
-                                "Sipariş teslimat rotasına eklendi ve 'Yolda' olarak güncellendi.",
-                              )
-                            }
-                            className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs gap-1"
-                            title="Siparişi teslimat rotasına dahil et ve durumunu 'Yolda' yap"
-                          >
-                            <Truck className="h-3.5 w-3.5" />
-                            <span>Rotaya Ekle (Yolda)</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              void patchOrder(
-                                o.id,
-                                { status: "hazirlaniyor" },
-                                "Sipariş teslimat rotasından çıkarıldı ve beklemede olarak işaretlendi.",
-                              )
-                            }
-                            className="h-8 text-xs font-semibold text-amber-700 dark:text-amber-300 border-amber-500/40 hover:bg-amber-500/10 cursor-pointer shadow-xs gap-1"
-                            title="Siparişi teslimat rotasından çıkarıp sevkiyat beklemesine al"
-                          >
-                            <PauseCircle className="h-3.5 w-3.5" />
-                            <span>Rotadan Çıkar (Beklet)</span>
-                          </Button>
-                        ))}
-
-                      <div className="w-48">
-                        <Select
-                          value={o.status}
-                          onValueChange={async (v) => {
-                            const isFinished = v === "teslim" || v === "iptal";
-                            await patchOrder(
-                              o.id,
-                              { status: v },
-                              v === "iptal"
-                                ? `"${o.business_name || o.full_name || "Sipariş"}" siparişi iptal edildi.`
-                                : isFinished
-                                  ? `Sipariş "${statusLabel(v)}" olarak işaretlendi ve Geçmiş Siparişler ekranına aktarıldı.`
-                                  : v === "yolda"
-                                    ? "Sipariş teslimat rotasına eklendi ('Yolda')"
-                                    : "Sipariş durumu güncellendi ('Sevkiyatta Bekliyor')",
-                            );
-                            if (v === "teslim") {
-                              setView("arsiv");
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder={statusLabel(o.status)} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="yeni">⏳ Yeni (Sevkiyat Bekliyor)</SelectItem>
-                            <SelectItem value="hazirlaniyor">
-                              ⏳ Hazırlanıyor (Sevkiyat Bekliyor)
-                            </SelectItem>
-                            <SelectItem value="yolda">🚚 Yolda (Rotada Dağıtımda)</SelectItem>
-                            <SelectItem value="teslim">✅ Teslim Edildi (Arşivle)</SelectItem>
-                            <SelectItem value="iptal">❌ İptal Edildi (Arşivle)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <ul className="mt-3 space-y-1 text-sm">
-                    {(o.order_items || []).length > 0 ? (
-                      (o.order_items || []).map((i) => {
-                        const unitName =
-                          (i.unit || "").toLowerCase() === "adet" ? "Adet" : i.unit || "Adet";
-                        return (
-                          <li
-                            key={i.id}
-                            className="flex items-center justify-between gap-2 border-b border-border/60 py-1.5"
-                          >
-                            <span className="font-medium text-foreground">{i.product_name}</span>
-                            {editing ? (
-                              <span className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Azalt"
-                                  onClick={() => void setItemQuantity(o.id, i.id, i.quantity - 1)}
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </Button>
-                                <span className="w-14 text-center font-semibold text-xs">
-                                  {i.quantity} {unitName}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Artır"
-                                  onClick={() => void setItemQuantity(o.id, i.id, i.quantity + 1)}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Ürünü çıkar"
-                                  onClick={() => void removeItem(o.id, i.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </span>
-                            ) : (
-                              <span
-                                className={`font-bold text-xs px-2 py-0.5 rounded border ${
-                                  (i.unit || "").toLowerCase() === "adet"
-                                    ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/70 border-blue-200 dark:border-blue-800"
-                                    : "text-foreground bg-muted/60 border-border"
-                                }`}
-                              >
-                                {i.quantity} {unitName}
-                              </span>
-                            )}
-                          </li>
-                        );
-                      })
-                    ) : (
-                      <li className="py-1 text-xs italic text-muted-foreground">
-                        Ürün kalemi bulunmuyor.
-                      </li>
-                    )}
-                  </ul>
-
-                  {editing ? (
-                    <div className="mt-3">
-                      <Label htmlFor={`note-${o.id}`}>Sipariş notu</Label>
-                      <Textarea
-                        id={`note-${o.id}`}
-                        rows={2}
-                        defaultValue={o.note}
-                        maxLength={500}
-                        onBlur={(e) => {
-                          if (e.target.value !== o.note)
-                            void patchOrder(o.id, { note: e.target.value }, "Not güncellendi");
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    o.note && (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">Not:</span> {o.note}
-                      </p>
-                    )
-                  )}
-
-                  {/* Alt İşlem Butonları (Google Maps butonu kaldırıldı, doğrudan rota ve teslimat butonları yerleştirildi) */}
-                  <div className="mt-4 flex flex-wrap gap-2 items-center">
-                    {view === "aktif" && stopInfo && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          setShowRouteMap(true);
-                          const el = document.getElementById("admin-route-map-section");
-                          el?.scrollIntoView({ behavior: "smooth" });
-                        }}
-                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30 text-xs font-semibold cursor-pointer"
-                      >
-                        <RouteIcon className="h-3.5 w-3.5 mr-1 text-blue-600" />
-                        Haritada Durak #{stopInfo.stopNumber}
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant={editing ? "default" : "outline"}
-                      onClick={() => setEditingId(editing ? null : o.id)}
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      {editing ? "Düzenlemeyi bitir" : "Düzenle"}
-                    </Button>
-
-                    {/* Teslim Edildi Butonu -> Durumu günceller ve Geçmiş Siparişler ekranına yönlendirir */}
-                    {o.status !== "teslim" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer font-semibold"
-                        onClick={async () => {
-                          await patchOrder(
-                            o.id,
-                            { status: "teslim", archived_at: new Date().toISOString() },
-                            `"${o.business_name || o.full_name || "Sipariş"}" teslim edildi olarak işaretlendi ve Geçmiş Siparişler ekranına aktarıldı.`,
-                          );
-                          setView("arsiv");
-                          setFilter("hepsi");
-                        }}
-                      >
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600 mr-1" />
-                        Teslim edildi
-                      </Button>
-                    )}
-
-                    {/* İptal Et Butonu -> Durumu günceller, kullanıcı ekranını yönlendirmez; sipariş iptal edilenlere aktarılır */}
-                    {o.status !== "iptal" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-destructive border-destructive/30 hover:bg-destructive/10 cursor-pointer font-semibold"
-                        onClick={async () => {
-                          await patchOrder(
-                            o.id,
-                            { status: "iptal", archived_at: new Date().toISOString() },
-                            `"${o.business_name || o.full_name || "Sipariş"}" siparişi iptal edildi.`,
-                          );
-                        }}
-                      >
-                        <XCircle className="h-4 w-4 text-destructive mr-1" />
-                        İptal et
-                      </Button>
-                    )}
-
-                    {/* Geçmiş Ekranındaysa: Aktife Geri Al Butonu */}
-                    {isArchivedOrder(o) ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="cursor-pointer"
-                        onClick={async () => {
-                          await patchOrder(
-                            o.id,
-                            { archived_at: null, status: "yeni" },
-                            `"${o.business_name}" siparişi aktif listeye geri alındı.`,
-                          );
-                          setView("aktif");
-                        }}
-                      >
-                        <ArchiveRestore className="h-4 w-4 mr-1 text-primary" />
-                        Aktif listeye al
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          void patchOrder(
-                            o.id,
-                            { archived_at: new Date().toISOString() },
-                            "Sipariş arşivlendi",
-                          )
-                        }
-                      >
-                        <Archive className="h-4 w-4 mr-1" />
-                        Arşivle
-                      </Button>
-                    )}
-
-                    {isArchivedOrder(o) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:bg-destructive/10 cursor-pointer font-medium"
-                        onClick={() => setOrderToDelete(o)}
-                        title="Bu siparişi kalıcı olarak sil"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1 text-destructive" />
-                        Kalıcı sil
-                      </Button>
-                    )}
-                  </div>
-                </article>
-              </Fragment>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Sipariş Kalıcı Silme Onay Diyaloğu */}
-      <AlertDialog
-        open={Boolean(orderToDelete)}
-        onOpenChange={(open) => !open && setOrderToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              Siparişi Kalıcı Olarak Sil
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 text-sm text-foreground/80">
-              <span>
-                <strong>#{orderToDelete?.id.slice(0, 8).toUpperCase()}</strong> numaralı (
-                {orderToDelete?.business_name || orderToDelete?.full_name || "Müşteri"}) siparişini
-                veritabanından ve hafızadan <strong>tamamen silmek</strong> üzeresiniz.
-              </span>
-              <span className="block text-xs text-destructive/90 bg-destructive/10 p-2.5 rounded-lg border border-destructive/20 font-medium">
-                ⚠️ Bu işlem geri alınamaz. Sipariş tüm geçmiş kayıtlardan tamamen yok edilecektir.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingOrder}>İptal</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeletingOrder}
-              onClick={(e) => {
-                e.preventDefault();
-                if (orderToDelete) void executeDeleteOrder(orderToDelete);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeletingOrder ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                "Kalıcı Olarak Sil"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
+  return <AdminOrdersPanel onNavigateToDrive={onNavigateToDrive} />;
 }
 
 async function compressImage(file: File, max = 800, quality = 0.72) {
@@ -1608,31 +575,7 @@ function ProductsPanel({
     try {
       const dataUrl = await compressImage(file);
       setForm((f) => ({ ...f, image_url: dataUrl }));
-      toast.success("Fotoğraf yüklendi");
-
-      // Yalnızca yeni ürün ekleme diyaloğunda AI çalışsın
-      // Var olan ürün düzenlenirken (editingId varsa) kullanıcının mevcut metinlerini ezmeyelim!
-      if (!editingId) {
-        toast.info("Yapay zeka görseli analiz ediyor...");
-        const aiResult = await analyzeProductPhoto(dataUrl, "image/jpeg", form.name || undefined);
-        if (aiResult.ok && aiResult.product) {
-          const p = aiResult.product;
-          const validName = !isBogusProductName(p.name) ? p.name : "";
-          setForm((f) => ({
-            ...f,
-            name: f.name ? f.name : validName,
-            category: f.category !== "gida" ? f.category : p.category,
-            unit: f.unit !== "adet" ? f.unit : p.unit,
-            description: f.description ? f.description : p.description,
-            image_url: dataUrl,
-          }));
-          if (validName) {
-            toast.success(`Yapay zeka "${validName}" ürününü tespit etti ve formu doldurdu!`);
-          } else {
-            toast.info("Fotoğraf yüklendi. Lütfen ürün adını yazınız.");
-          }
-        }
-      }
+      toast.success("Fotoğraf yüklendi. Ürün bilgilerini manuel olarak girebilirsiniz.");
     } catch {
       toast.error("Fotoğraf işlenemedi");
     } finally {
@@ -1680,6 +623,49 @@ function ProductsPanel({
       }, 150);
     }
   }, [initialEditId, data]);
+
+  // Arka planda veya manuel olarak tüm katalog durumunu (yeni eklenenler, fotoğraflar, silinenler)
+  // sunucudaki src/data/products.ts ve yerel Git reposuna senkronize et
+  const syncCatalogToServer = useCallback(async (quiet = true) => {
+    try {
+      const activeProducts = getAllCatalogProducts();
+      const deletedIds = Array.from(getPermanentlyDeletedIds());
+      const deletedNames = Array.from(getPermanentlyDeletedNames());
+      const res = await fetch("/api/github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "sync",
+          commitMessage: "Yönetim panelinden ürün kataloğu güncellendi",
+          products: activeProducts,
+          permanentlyDeleted: { deletedIds, deletedNames },
+        }),
+      });
+      if (!quiet) {
+        if (res.ok) {
+          toast.success(
+            "Tüm ürünler ve silinenler kaynak kodlara (src/data/products.ts) kaydedildi ve Git'e işlendi.",
+          );
+        } else {
+          toast.error("Sunucuya kaydedilemedi.");
+        }
+      }
+      return res.ok;
+    } catch {
+      if (!quiet) toast.error("Sunucu bağlantı hatası");
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    // Sayfa açıldığında veya yerel katalog güncellendiğinde arka planda sunucu kod dosyalarına eşitle
+    void syncCatalogToServer(true);
+    const handler = () => {
+      void syncCatalogToServer(true);
+    };
+    window.addEventListener("catalog_updated", handler);
+    return () => window.removeEventListener("catalog_updated", handler);
+  }, [syncCatalogToServer]);
 
   const reset = () => {
     setEditingId(null);
@@ -2008,8 +994,7 @@ function ProductsPanel({
               Yeni Ürün Ekle
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Kataloğa yeni ürün eklemek için bilgileri doldurun. Cihazdan fotoğraf yüklerseniz
-              yapay zeka alanları otomatik tamamlar.
+              Kataloğa yeni ürün eklemek için bilgileri doldurun ve fotoğrafınızı yükleyin.
             </DialogDescription>
           </DialogHeader>
 
@@ -2231,6 +1216,20 @@ function ProductsPanel({
             <Plus className="h-4 w-4" />
             <span>Yeni Ürün Ekle</span>
           </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void syncCatalogToServer(false)}
+            className="h-9 gap-1.5 text-xs cursor-pointer border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+            title="Tarayıcıdaki tüm yeni eklenen, düzenlenen ve silinen ürünleri doğrudan sunucunun src/data/products.ts dosyasına ve Git'e yazar"
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Sisteme Kaydet</span>
+          </Button>
+
+          <ProductGitSyncModal />
 
           {onNavigateToDrive && (
             <Button

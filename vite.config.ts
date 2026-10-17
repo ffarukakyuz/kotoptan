@@ -341,6 +341,8 @@ function apiGeminiPlugin() {
                 branch: data.branch,
                 authorName: data.authorName,
                 authorEmail: data.authorEmail,
+                products: data.products,
+                permanentlyDeleted: data.permanentlyDeleted,
               });
 
               return res.end(JSON.stringify(syncRes));
