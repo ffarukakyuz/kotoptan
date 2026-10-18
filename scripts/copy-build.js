@@ -103,6 +103,105 @@ try {
   const autoHealScript = `<script>
 (function() {
   if (typeof window === "undefined") return;
+
+  // 0. globalThis
+  if (typeof globalThis === "undefined") {
+    window.globalThis = window;
+  }
+
+  // 1. replaceAll
+  if (typeof String.prototype.replaceAll !== "function") {
+    String.prototype.replaceAll = function(search, replacement) {
+      if (search instanceof RegExp) return this.replace(search, replacement);
+      return this.split(search).join(replacement);
+    };
+  }
+
+  // 2. at
+  if (typeof Array.prototype.at !== "function") {
+    Array.prototype.at = function(n) {
+      n = Math.trunc(n) || 0;
+      if (n < 0) n += this.length;
+      if (n < 0 || n >= this.length) return undefined;
+      return this[n];
+    };
+  }
+
+  // 3. hasOwn
+  if (typeof Object.hasOwn !== "function") {
+    Object.hasOwn = function(obj, prop) {
+      return Object.prototype.hasOwnProperty.call(obj, prop);
+    };
+  }
+
+  // 4. Promise.allSettled
+  if (typeof Promise.allSettled !== "function") {
+    Promise.allSettled = function(promises) {
+      return Promise.all(
+        Array.from(promises).map(function(p) {
+          return Promise.resolve(p).then(
+            function(v) { return { status: "fulfilled", value: v }; },
+            function(r) { return { status: "rejected", reason: r }; }
+          );
+        })
+      );
+    };
+  }
+
+  // 5. structuredClone
+  if (typeof window.structuredClone !== "function") {
+    window.structuredClone = function(obj) {
+      if (obj === undefined) return undefined;
+      try { return JSON.parse(JSON.stringify(obj)); } catch (e) { return obj; }
+    };
+  }
+
+  // 6. crypto.randomUUID
+  if (typeof window.crypto === "undefined") window.crypto = {};
+  if (typeof window.crypto.randomUUID !== "function") {
+    window.crypto.randomUUID = function() {
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        var r = (Math.random() * 16) | 0;
+        var v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    };
+  }
+
+  // 7. requestIdleCallback
+  if (typeof window.requestIdleCallback !== "function") {
+    window.requestIdleCallback = function(cb) {
+      var start = Date.now();
+      return setTimeout(function() {
+        cb({ didTimeout: false, timeRemaining: function() { return Math.max(0, 50 - (Date.now() - start)); } });
+      }, 1);
+    };
+  }
+  if (typeof window.cancelIdleCallback !== "function") {
+    window.cancelIdleCallback = function(id) { clearTimeout(id); };
+  }
+
+  // 8. ResizeObserver
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = function() {
+      this.observe = function() {};
+      this.unobserve = function() {};
+      this.disconnect = function() {};
+    };
+  }
+
+  // 9. IntersectionObserver
+  if (typeof window.IntersectionObserver === "undefined") {
+    window.IntersectionObserver = function(cb) {
+      this.observe = function(el) {
+        setTimeout(function() { cb([{ isIntersecting: true, target: el, intersectionRatio: 1 }]); }, 30);
+      };
+      this.unobserve = function() {};
+      this.disconnect = function() {};
+    };
+  }
+
+  // 10. Storage shield
   try {
     if (window.localStorage) {
       var keys = [
@@ -143,7 +242,21 @@ try {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    var _memStore = {};
+    var _mock = {
+      getItem: function(k) { return _memStore[k] || null; },
+      setItem: function(k, v) { _memStore[k] = String(v); },
+      removeItem: function(k) { delete _memStore[k]; },
+      clear: function() { _memStore = {}; },
+      get length() { return Object.keys(_memStore).length; },
+      key: function(i) { return Object.keys(_memStore)[i] || null; }
+    };
+    try {
+      window.localStorage = _mock;
+      window.sessionStorage = _mock;
+    } catch (_ignore) {}
+  }
 
   window.addEventListener("error", function(evt) {
     if (evt && evt.error && typeof evt.error.message === "string") {
@@ -152,7 +265,8 @@ try {
         msg.indexOf("replaceAll") !== -1 ||
         msg.indexOf("Invariant failed") !== -1 ||
         msg.indexOf("useStore") !== -1 ||
-        msg.indexOf("reading 'replaceAll'") !== -1
+        msg.indexOf("reading 'replaceAll'") !== -1 ||
+        msg.indexOf("ResizeObserver") !== -1
       ) {
         console.warn("[Invariant & replaceAll Shield] Intercepted:", msg);
         if (evt.preventDefault) evt.preventDefault();
@@ -168,7 +282,8 @@ try {
       msg.indexOf("replaceAll") !== -1 ||
       msg.indexOf("Invariant failed") !== -1 ||
       msg.indexOf("useStore") !== -1 ||
-      msg.indexOf("reading 'replaceAll'") !== -1
+      msg.indexOf("reading 'replaceAll'") !== -1 ||
+      msg.indexOf("ResizeObserver") !== -1
     ) {
       console.warn("[Invariant & replaceAll Shield] Intercepted unhandled rejection:", msg);
       if (evt.preventDefault) evt.preventDefault();

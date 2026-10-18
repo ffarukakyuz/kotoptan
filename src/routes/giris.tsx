@@ -269,6 +269,17 @@ function AuthPage() {
     setMapOpen(true);
   };
 
+  const handleGuestEnter = () => {
+    const guest =
+      FALLBACK_USERS.find((u) => u.normalizedPhone === "misafir") ||
+      FALLBACK_USERS[FALLBACK_USERS.length - 1];
+    if (guest) {
+      loginWithFallbackUser(guest);
+      setSuccessEntering(true);
+      toast.success("Katalog misafir modunda açılıyor...");
+    }
+  };
+
   useEffect(() => {
     if (!loading && user && pathname === "/giris") {
       void navigate({ to: "/" });
@@ -809,6 +820,23 @@ function AuthPage() {
                 disabled={busy}
               >
                 {busy ? "Giriş yapılıyor..." : "Giriş Yap"}
+              </Button>
+
+              <div className="relative my-3 flex items-center justify-center">
+                <div className="border-t border-emerald-500/20 w-full" />
+                <span className="bg-[#050f08] px-3 text-[10px] font-semibold text-emerald-400/70 uppercase tracking-widest shrink-0">
+                  VEYA
+                </span>
+                <div className="border-t border-emerald-500/20 w-full" />
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleGuestEnter}
+                variant="outline"
+                className="w-full bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/35 font-bold text-xs py-2.5 rounded-xl transition cursor-pointer shadow-sm"
+              >
+                👀 Üye Olmadan Kataloğu İncele
               </Button>
             </form>
           </>

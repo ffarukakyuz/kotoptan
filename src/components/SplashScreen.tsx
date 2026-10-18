@@ -33,10 +33,10 @@ export function SplashScreen({
       }, minDuration);
     }
 
-    // iPhone veya yavaş bağlantılarda 3 saniye sonra kullanıcıyı asla kilitli bırakma; doğrudan giriş butonu göster
+    // Mobil veya tablet cihazlarda yönlendirme gecikirse 1.6 saniye sonra doğrudan geçiş butonu göster
     const emergencyTimer = setTimeout(() => {
       setShowDirectButton(true);
-    }, 2800);
+    }, 1600);
 
     return () => {
       clearTimeout(timer1);
