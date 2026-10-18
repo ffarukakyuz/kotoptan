@@ -41,7 +41,9 @@ async function getServerEntry(): Promise<ServerEntry> {
 function isH3SwallowedErrorBody(body: string): boolean {
   try {
     const payload = JSON.parse(body) as { unhandled?: unknown; message?: unknown };
-    return payload.unhandled === true && (payload.message === "HTTPError" || payload.unhandled === true);
+    return (
+      payload.unhandled === true && (payload.message === "HTTPError" || payload.unhandled === true)
+    );
   } catch {
     return false;
   }
@@ -71,11 +73,12 @@ async function normalizeCatastrophicSsrResponse(
     bodySnippet: body.slice(0, 1000),
   });
 
+  const acceptsHtml = request.headers.get("accept")?.includes("text/html") ?? true;
   const isApi =
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_serverFn") ||
-    request.headers.get("accept")?.includes("application/json") ||
-    isH3SwallowedErrorBody(body);
+    (url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/_serverFn") ||
+      (request.headers.get("accept")?.includes("application/json") && !acceptsHtml)) &&
+    !acceptsHtml;
 
   if (isApi) {
     const errorMsg =
@@ -149,8 +152,9 @@ export default {
 
       if (typeof safeEnv === "object" && safeEnv !== null) {
         g.__env__ = { ...(g.__env__ || {}), ...safeEnv };
-        if ((safeEnv as any).DB) {
-          g.DB = (safeEnv as any).DB;
+        const envRecord = safeEnv as Record<string, unknown>;
+        if (envRecord.DB) {
+          g.DB = envRecord.DB;
         }
       }
 
@@ -230,10 +234,10 @@ export default {
             });
           } catch (pErr) {
             console.error("[/api/products GET] Error:", pErr);
-            return new Response(
-              JSON.stringify({ ok: false, error: "Ürünler listelenemedi" }),
-              { status: 500, headers: jsonHeaders },
-            );
+            return new Response(JSON.stringify({ ok: false, error: "Ürünler listelenemedi" }), {
+              status: 500,
+              headers: jsonHeaders,
+            });
           }
         }
 
@@ -256,10 +260,10 @@ export default {
             });
           } catch (postPErr) {
             console.error("[/api/products POST] Error:", postPErr);
-            return new Response(
-              JSON.stringify({ ok: false, error: "Geçersiz ürün verisi" }),
-              { status: 500, headers: jsonHeaders },
-            );
+            return new Response(JSON.stringify({ ok: false, error: "Geçersiz ürün verisi" }), {
+              status: 500,
+              headers: jsonHeaders,
+            });
           }
         }
 

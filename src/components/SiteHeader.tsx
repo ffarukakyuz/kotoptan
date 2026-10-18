@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { PWAInstallModal } from "@/components/PWAInstallBanner";
-import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC, BRAND_PROTECTION_SEAL_SRC } from "@/lib/branding";
 
 export function SiteHeader() {
   const { totalQuantity } = useCart();
@@ -147,12 +147,20 @@ export function SiteHeader() {
               <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none">
                 Ko<span className="text-[#22c55e]">toptan</span>
               </span>
-              <img
-                src={BRAND_MOTIF_SRC}
-                alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
-                className="h-5 w-5 sm:h-5.5 sm:w-5.5 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)] select-none self-center"
-                title="İhlâs, Felâk, Nâs ve Nazar Duası"
-              />
+              <div className="flex items-center gap-1.5 shrink-0 self-center">
+                <img
+                  src={BRAND_MOTIF_SRC}
+                  alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
+                  className="h-5 w-5 sm:h-5.5 sm:w-5.5 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)] select-none rounded-full"
+                  title="İhlâs, Felâk, Nâs ve Nazar Duası"
+                />
+                <img
+                  src={BRAND_PROTECTION_SEAL_SRC}
+                  alt="Kotoptan Koruma Halkası"
+                  className="h-5 w-5 sm:h-5.5 sm:w-5.5 object-cover shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)] select-none rounded-full"
+                  title="Kotoptan Koruma Halkası"
+                />
+              </div>
             </div>
             <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 tracking-wider uppercase mt-1 leading-none">
               Toptan Dağıtım

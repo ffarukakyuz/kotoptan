@@ -450,7 +450,7 @@ function Index() {
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-lg bg-emerald-500/20 text-emerald-300 px-2.5 py-1 font-semibold">
-                  197 Çeşit Ürün
+                  Onlarca Çeşit Ürün
                 </span>
                 <span className="rounded-lg bg-white/10 text-white/90 px-2.5 py-1 font-semibold">
                   Depodan Kapıya Teslimat
@@ -466,8 +466,8 @@ function Index() {
                 <h3 className="font-semibold text-white text-sm mb-2">Ko Toptan Hakkında</h3>
                 <p>
                   <strong>Ko Toptan</strong> (Kotoptan), Bitlis, Tatvan ve çevre ilçelerdeki bakkal,
-                  market ve süpermarketlere toptan bakliyat, un, yağ, salça, çay, deterjan, temizlik
-                  ve tüketim malları tedarik eden ana toptan satış platformudur.
+                  market ve süpermarketlere toptan bakliyat, gıda, kişisel bakım, temizlik ve
+                  tüketim malları tedarik eden ana toptan satış platformudur.
                 </p>
               </div>
 

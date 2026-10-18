@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BRAND_LOGO_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC, BRAND_PROTECTION_SEAL_SRC } from "@/lib/branding";
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -73,11 +73,25 @@ export function SplashScreen({
         </div>
 
         {/* Marka İsmi ve Tipografi: Ko beyaz, toptan zümrüt yeşili */}
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-1 flex items-center justify-center">
-          <span>
+        <div className="flex items-center justify-center gap-2 sm:gap-2.5 mb-1">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none">
             Ko<span className="text-[#22c55e]">toptan</span>
-          </span>
-        </h1>
+          </h1>
+          <div className="flex items-center gap-1.5 shrink-0 self-center">
+            <img
+              src={BRAND_MOTIF_SRC}
+              alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
+              className="h-6 w-6 sm:h-7 sm:w-7 object-contain shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] select-none rounded-full"
+              title="İhlâs, Felâk, Nâs ve Nazar Duası"
+            />
+            <img
+              src={BRAND_PROTECTION_SEAL_SRC}
+              alt="Kotoptan Koruma Halkası"
+              className="h-6 w-6 sm:h-7 sm:w-7 object-cover shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] select-none rounded-full"
+              title="Kotoptan Koruma Halkası"
+            />
+          </div>
+        </div>
         <p className="text-[11px] sm:text-xs font-semibold text-emerald-400 tracking-wider uppercase mt-1 mb-6">
           Toptan Dağıtım
         </p>
