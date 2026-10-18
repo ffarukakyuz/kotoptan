@@ -41,6 +41,7 @@ import {
   clampToBitlis,
   type GeoLocation,
 } from "@/lib/location-utils";
+import type { StoredOrder } from "@/lib/order-storage";
 
 export const Route = createFileRoute("/_authenticated/sepet")({
   head: () => ({
@@ -380,10 +381,14 @@ function CartPage() {
         };
 
         const existingRaw = localStorage.getItem("ko_local_orders");
-        const existingList = existingRaw ? JSON.parse(existingRaw) : [];
-        const filteredList = Array.isArray(existingList)
-          ? existingList.filter((o: { id: string }) => o.id !== finalOrderId)
-          : [];
+        let existingList: StoredOrder[] = [];
+        try {
+          const parsed = existingRaw ? JSON.parse(existingRaw) : [];
+          existingList = Array.isArray(parsed) ? (parsed as StoredOrder[]) : [];
+        } catch {
+          existingList = [];
+        }
+        const filteredList = existingList.filter((o) => o && o.id !== finalOrderId);
         localStorage.setItem(
           "ko_local_orders",
           JSON.stringify([localOrderRecord, ...filteredList]),
@@ -414,18 +419,18 @@ function CartPage() {
           phone: form.phone || "",
           address: form.address || "",
           note: form.note || "",
-          order_items: items.map((i, idx) => ({
+          order_items: (Array.isArray(items) ? items : []).map((i, idx) => ({
             id: `item-${Date.now()}-${idx}`,
-            product_name: i.name,
-            unit: i.unit,
-            quantity: i.quantity,
+            product_name: i.name || "Ürün",
+            unit: i.unit || "koli",
+            quantity: Number(i.quantity) || 1,
           })),
         };
         const raw = localStorage.getItem("ko_local_orders");
-        let list: unknown[] = [];
+        let list: StoredOrder[] = [];
         try {
           const parsed = raw ? JSON.parse(raw) : [];
-          list = Array.isArray(parsed) ? parsed : [];
+          list = Array.isArray(parsed) ? (parsed as StoredOrder[]) : [];
         } catch {
           list = [];
         }
@@ -539,7 +544,7 @@ function CartPage() {
                   value={item.quantity}
                   inputMode="numeric"
                   onChange={(e) => {
-                    const n = parseInt((e.target?.value || "").replace(/\D/g, ""), 10);
+                    const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
                     setQuantity(item.productId, Number.isNaN(n) ? 0 : Math.min(n, 9999));
                   }}
                 />

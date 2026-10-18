@@ -3,7 +3,6 @@ import {
   ShoppingCart,
   Package,
   LogOut,
-  LogIn,
   User as UserIcon,
   ShieldCheck,
   Menu,
@@ -104,7 +103,7 @@ export function SiteHeader() {
         </>
       )}
 
-      {/* Yönetici Hesabı Sekmeleri: Siparişler ve Yönetim (Yöneticide Sepet Olmaz) */}
+      {/* Yönetici Hesabı Sekmeleri: Sadece Siparişler ve Yönetim (Sepet Asla Olmaz) */}
       {isAdmin && (
         <>
           <Link
@@ -163,31 +162,54 @@ export function SiteHeader() {
         {/* Desktop Nav Links */}
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
-        {/* Header Actions (Siparişler Kutu Logosu Kısayolu, Yönetim, Cart (yalnızca müşteri), User, Çıkış, Menu) */}
+        {/* Header Actions (Siparişler Kısayolu, Yönetim, Sepet, User, Çıkış, Menu) */}
         <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Siparişler Kısayol Kutu Logosu (Mobilde ve masaüstünde sağdaki arama butonu yerine 1-tıkla siparişlere erişim) */}
-          <Link
-            to={isAdmin ? "/siparisler" : user ? "/siparislerim" : "/giris"}
-            aria-label={isAdmin ? "Siparişler & Sevkiyat" : "Siparişlerim"}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-white/95 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
-            title={isAdmin ? "Siparişler & Sevkiyat (Yönetici)" : "Siparişlerim"}
-          >
-            <Package className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
-          </Link>
-
-          {/* YÖNETİCİ HESABI: Yönetim Paneli Rozeti */}
+          {/* YÖNETİCİ: Arama butonu yerine doğrudan siparişler kutu logosu (Mobilde tek dokunuşla sevkiyat & siparişler) */}
           {isAdmin && (
+            <>
+              <Link
+                to="/siparisler"
+                aria-label="Siparişler"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/95 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
+                title="Siparişler & Sevkiyat Rotası"
+              >
+                <Package className="h-5 w-5 text-white stroke-[2.2]" />
+              </Link>
+              <Link
+                to="/yonetim"
+                aria-label="Yönetim Paneli"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-400 hover:text-emerald-300 hover:bg-white/10 transition-colors active:scale-95 cursor-pointer"
+                title="Yönetim Paneli"
+              >
+                <ShieldCheck className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
+              </Link>
+            </>
+          )}
+
+          {/* MÜŞTERİ: Arama butonu yerine siparişler kutu logosu ile hızlı siparişlerime erişim */}
+          {user && !isAdmin && (
             <Link
-              to="/yonetim"
-              aria-label="Yönetim Paneli"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-400 hover:text-emerald-300 hover:bg-white/10 transition-colors active:scale-95 cursor-pointer"
-              title="Yönetim Paneli"
+              to="/siparislerim"
+              aria-label="Siparişlerim"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 hover:bg-white/10 hover:text-white transition-colors active:scale-95 cursor-pointer"
+              title="Siparişlerim"
             >
-              <ShieldCheck className="h-5 w-5 text-emerald-400 stroke-[2.2]" />
+              <Package className="h-5 w-5 text-white stroke-[2.2]" />
             </Link>
           )}
 
-          {/* Sepet (Yalnızca Müşteri Hesabında Görünür - Yönetici Hesabında Kesinlikle Görünmez) */}
+          {/* Masaüstü İsteğe Bağlı Arama Butonu (Mobilde yer kaplamaz, kutu logosu yerini alır) */}
+          <button
+            type="button"
+            onClick={handleSearchClick}
+            aria-label="Ürün Ara"
+            className="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer"
+            title="Ürün Ara"
+          >
+            <Search className="h-4.5 w-4.5 stroke-[2]" />
+          </button>
+
+          {/* Sepet SADECE MÜŞTERİDE GÖRÜNÜR (Yöneticide sepet mantıken kaldırıldı) */}
           {!isAdmin && (
             <Link
               to="/sepet"
@@ -205,39 +227,27 @@ export function SiteHeader() {
           )}
 
           {/* User & Çıkış Bölümü */}
-          {user ? (
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <Link
-                to="/profil"
-                aria-label="Hesabım"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
-                title={profile?.business_name || profile?.full_name || "Hesabım"}
-              >
-                <UserIcon className="h-4.5 w-4.5 stroke-[2]" />
-              </Link>
-
-              {/* ÇIKIŞ YAP BUTONU (Masaüstü Doğrudan Görünür) */}
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="hidden sm:flex items-center gap-1 rounded-lg bg-red-950/40 hover:bg-red-800 border border-red-500/30 px-2.5 py-1.5 text-xs font-semibold text-red-300 hover:text-white transition-colors cursor-pointer"
-                title="Oturumu Kapat"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>Çıkış</span>
-              </button>
-            </div>
-          ) : (
-            /* GİRİŞ YAP BUTONU */
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <Link
-              to="/giris"
-              aria-label="Giriş Yap"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
+              to="/profil"
+              aria-label="Hesabım"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+              title={profile?.business_name || profile?.full_name || "Hesabım"}
             >
-              <LogIn className="h-3.5 w-3.5" />
-              <span>Giriş Yap</span>
+              <UserIcon className="h-4.5 w-4.5 stroke-[2]" />
             </Link>
-          )}
+
+            {/* ÇIKIŞ YAP BUTONU (Masaüstü Doğrudan Görünür) */}
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="hidden sm:flex items-center gap-1 rounded-lg bg-red-950/40 hover:bg-red-800 border border-red-500/30 px-2.5 py-1.5 text-xs font-semibold text-red-300 hover:text-white transition-colors cursor-pointer"
+              title="Oturumu Kapat"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Çıkış</span>
+            </button>
+          </div>
 
           {/* Menu / Hamburger Button */}
           <button
@@ -290,40 +300,27 @@ export function SiteHeader() {
             </div>
           )}
 
-          {user ? (
-            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-              <Link
-                to="/profil"
-                className="text-xs font-semibold text-emerald-400 hover:underline truncate max-w-[180px]"
-                onClick={() => setOpen(false)}
-              >
-                {profile?.business_name || profile?.full_name || "Profilim"}
-              </Link>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-500/40 bg-red-950/40 text-red-300 hover:bg-red-800 hover:text-white text-xs gap-1.5 cursor-pointer"
-                onClick={() => {
-                  setOpen(false);
-                  void signOut();
-                }}
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>Çıkış Yap</span>
-              </Button>
-            </div>
-          ) : (
-            <div className="mt-3 border-t border-white/10 pt-3">
-              <Link
-                to="/giris"
-                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-colors"
-                onClick={() => setOpen(false)}
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Giriş Yap / Kayıt Ol</span>
-              </Link>
-            </div>
-          )}
+          <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+            <Link
+              to="/profil"
+              className="text-xs font-semibold text-emerald-400 hover:underline truncate max-w-[180px]"
+              onClick={() => setOpen(false)}
+            >
+              {profile?.business_name || profile?.full_name || "Profilim"}
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-500/40 bg-red-950/40 text-red-300 hover:bg-red-800 hover:text-white text-xs gap-1.5 cursor-pointer"
+              onClick={() => {
+                setOpen(false);
+                void signOut();
+              }}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Çıkış Yap</span>
+            </Button>
+          </div>
         </div>
       )}
 

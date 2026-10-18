@@ -365,29 +365,9 @@ export function saveProductOverride(product: Product): void {
   if (typeof window === "undefined" || !product?.id) return;
   try {
     const overrides = getProductOverrides();
-    const inStock = product.in_stock !== undefined ? product.in_stock : true;
-    const baseDesc = cleanProductDescription(product.description || "");
-    const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
-
-    overrides[product.id] = {
-      ...product,
-      description: finalDesc,
-      in_stock: inStock,
-    };
+    overrides[product.id] = product;
     localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
-
-    // Yerel stok haritasını da eşitle
-    try {
-      const rawStock = localStorage.getItem("custom_product_stock_status");
-      const stockMap = rawStock ? JSON.parse(rawStock) : {};
-      stockMap[product.id] = inStock;
-      localStorage.setItem("custom_product_stock_status", JSON.stringify(stockMap));
-    } catch {
-      // ignore
-    }
-
     window.dispatchEvent(new Event("catalog_updated"));
-    window.dispatchEvent(new Event("product_stock_status_changed"));
     window.dispatchEvent(new Event("storage"));
   } catch (err) {
     console.warn("[saveProductOverride] Error:", err);
@@ -476,35 +456,11 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
     return product;
   }
   try {
-    const inStock =
-      product.in_stock !== undefined
-        ? product.in_stock
-        : !/\[(TÜKENDİ|STOK_YOK)\]/i.test(product.description || "");
-
-    const baseDesc = cleanProductDescription(product.description || "");
-    const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
-
-    const productWithStock: Product = {
-      ...product,
-      description: finalDesc,
-      in_stock: inStock,
-    };
-
-    // Yerel stok haritasını eşitle
-    try {
-      const rawStock = localStorage.getItem("custom_product_stock_status");
-      const stockMap = rawStock ? JSON.parse(rawStock) : {};
-      stockMap[product.id] = inStock;
-      localStorage.setItem("custom_product_stock_status", JSON.stringify(stockMap));
-    } catch {
-      // ignore
-    }
-
     const isFallbackItem = FALLBACK_PRODUCTS.some((fp) => fp.id === product.id);
 
     if (isFallbackItem) {
       // 1. Sabit ürün düzenleniyor: Overrides haritasına kaydet
-      saveProductOverride(productWithStock);
+      saveProductOverride(product);
 
       // custom_added_products içinde varsa temizle ki çift görünmesin
       const raw = getRawCustomProducts();
@@ -520,27 +476,25 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
       let updated: Product[];
       if (existingIndex >= 0) {
         // Yerinde güncelle (sırasını bozma)
-        updated = existing.map((p, idx) => (idx === existingIndex ? productWithStock : p));
+        updated = existing.map((p, idx) => (idx === existingIndex ? product : p));
       } else if (isExplicitEdit) {
         // Düzenleme modunda ama bulunamadıysa yine de override olarak sakla
-        saveProductOverride(productWithStock);
-        return productWithStock;
+        saveProductOverride(product);
+        return product;
       } else {
         // Yepyeni ürün ekleme: başa koy
-        updated = [productWithStock, ...existing.filter((p) => p.id !== product.id)];
+        updated = [product, ...existing.filter((p) => p.id !== product.id)];
       }
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
 
     window.dispatchEvent(new Event("catalog_updated"));
-    window.dispatchEvent(new Event("product_stock_status_changed"));
     window.dispatchEvent(new Event("storage"));
-    return productWithStock;
   } catch (err) {
     console.warn("[saveCustomProduct] Save error:", err);
-    return product;
   }
+  return product;
 }
 
 /**
@@ -560,9 +514,9 @@ export function deleteCustomProduct(id: string): void {
  */
 export function getAllCatalogProducts(): Product[] {
   try {
-    const deletedIds = getPermanentlyDeletedIds() || new Set();
-    const deletedNames = getPermanentlyDeletedNames() || new Set();
-    const overrides = getProductOverrides() || {};
+    const deletedIds = getPermanentlyDeletedIds();
+    const deletedNames = getPermanentlyDeletedNames();
+    const overrides = getProductOverrides();
     const rawCustom = getCustomProducts();
     const customProducts = (Array.isArray(rawCustom) ? rawCustom : []).filter(
       (p) =>
@@ -574,8 +528,8 @@ export function getAllCatalogProducts(): Product[] {
     );
 
     // Sabit ürünleri filtrele ve üzerindeki düzenlemeleri yerinde uygula
-    const safeFallbackList = Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : [];
-    const fallbackProducts = safeFallbackList
+    const safeFallback = Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : [];
+    const fallbackProducts = safeFallback
       .filter(
         (p) =>
           p &&
@@ -585,18 +539,17 @@ export function getAllCatalogProducts(): Product[] {
           !isBannedProductName(p.name),
       )
       .map((p) => {
-        const override = overrides[p.id];
+        const override = overrides && typeof overrides === "object" ? overrides[p.id] : undefined;
         const merged = override ? { ...p, ...override } : p;
         return normalizeProductWithOverrides(merged);
       });
 
     const normalizedCustom = customProducts.map(normalizeProductWithOverrides);
+
     return [...normalizedCustom, ...fallbackProducts];
   } catch (err) {
-    console.warn("[getAllCatalogProducts] Error retrieving products, using clean fallback:", err);
-    return (Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : []).map(
-      normalizeProductWithOverrides,
-    );
+    console.warn("[catalog] Error in getAllCatalogProducts, using fallback:", err);
+    return Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : [];
   }
 }
 

@@ -47,59 +47,40 @@ export const BITLIS_DISTRICT_COORDS: Record<string, { lat: number; lng: number; 
 };
 
 /**
- * Van Gölü'nün derin açık su kütlesinde (kıyıdan kilometrelerce uzakta, açık gölde) olup olmadığını denetler.
- * Kıyı şeridi, sahil yolları, iskeleler, sahil parkları, balıkçı barınakları, plajlar ve göle sıfır
- * tüm işletmeler (Tatvan, Ahlat, Adilcevaz sahil kordonu vb.) KESİNLİKLE göl sayılmaz ve serbestçe seçilebilir.
+ * Verilen koordinatın Van Gölü suları içinde olup olmadığını kontrol eder.
+ * Müşteri konumlarının veya teslimat noktalarının göle yerleştirilmesini engeller.
  */
 export function isInLakeVan(lat: number, lng: number): boolean {
-  // Tatvan sahil şeridi (Sahil Parkı, İskele, Feribot Limanı, Sahil Yolu, Yaşam Parkı: lng <= 42.345 karadır)
-  // Yalnızca Tatvan körfezinin açık derin sularına (lng > 42.365) girildiyse göl kabul et
-  if (lat >= 38.48 && lat <= 38.54) {
-    return lng > 42.365;
-  }
-
-  // Ahlat sahil şeridi (Ahlat İskelesi, sahil kordonu, kale sahili, çay bahçeleri: lng <= 42.545 karadır)
-  if (lat >= 38.71 && lat <= 38.78) {
-    return lng > 42.55;
-  }
-
-  // Adilcevaz sahil şeridi (Sahil kordonu, belediye plajı, su sporları, liman: lng <= 42.765 karadır)
-  if (lat >= 38.78 && lat <= 38.84) {
-    return lng > 42.775;
-  }
-
-  // Tatvan ile Ahlat arasındaki batı sahil şeridi (Kıyıdüzü, Balaban, D965 karayolu ve sahil yerleşimleri: lng <= 42.42 karadır)
-  if (lat > 38.54 && lat < 38.71) {
-    return lng >= 42.45 && lng <= 43.15;
-  }
-
-  // Güney sahil şeridi (D300 karayolu ve Reşadiye kıyı hattı: lat <= 38.47 karadır)
-  if (lat < 38.48 && lng <= 42.55) {
-    return false;
-  }
-
+  // Tatvan sahil sınırı (Tatvan doğusu göl)
+  if (lat >= 38.48 && lat <= 38.54 && lng > 42.286) return true;
+  // Ahlat sahil sınırı (Ahlat güneydoğusu göl)
+  if (lat >= 38.72 && lat <= 38.78 && lng > 42.485) return true;
+  // Adilcevaz sahil sınırı (Adilcevaz güneyi ve doğusu göl)
+  if (lat >= 38.78 && lat <= 38.83 && lng > 42.732) return true;
+  // Genel Van Gölü ana su kütlesi
+  if (lat >= 38.54 && lat <= 38.72 && lng >= 42.27 && lng <= 43.5) return true;
   return false;
 }
 
 /**
- * Eğer koordinat Van Gölü'nün açık sularının ortasındaysa en yakın sahil şeridine çeker
+ * Eğer koordinat Van Gölü içindeyse karadaki güvenli sahil şeridine çeker
  */
 export function adjustIfInLakeVan(lat: number, lng: number): { lat: number; lng: number } {
   if (!isInLakeVan(lat, lng)) return { lat, lng };
-  // Tatvan bölgesindeyse Tatvan sahil kordonuna çek
-  if (lat >= 38.48 && lat <= 38.54) {
-    return { lat, lng: 42.315 };
+  // Tatvan bölgesindeyse batıya (kara tarafına) çek
+  if (lat >= 38.48 && lat <= 38.54 && lng > 42.286) {
+    return { lat, lng: 42.282 };
   }
-  // Ahlat bölgesindeyse Ahlat sahil kordonuna çek
-  if (lat >= 38.71 && lat <= 38.78) {
-    return { lat, lng: 42.52 };
+  // Ahlat bölgesindeyse batıya (ilçe merkezine) çek
+  if (lat >= 38.72 && lat <= 38.78 && lng > 42.485) {
+    return { lat, lng: 42.479 };
   }
-  // Adilcevaz bölgesindeyse Adilcevaz sahil kordonuna çek
-  if (lat >= 38.78 && lat <= 38.84) {
-    return { lat: Math.max(lat, 38.803), lng: 42.74 };
+  // Adilcevaz bölgesindeyse kuzeye ve batıya (çarşıya) çek
+  if (lat >= 38.78 && lat <= 38.83 && lng > 42.732) {
+    return { lat: Math.max(lat, 38.803), lng: 42.729 };
   }
-  // Orta açık göl için en yakın batı sahil şeridine al
-  return { lat, lng: 42.36 };
+  // Diğer göl konumları için en yakın ilçe merkezine al
+  return { lat: BITLIS_CENTER_COORDS.lat, lng: BITLIS_CENTER_COORDS.lng };
 }
 
 /**
@@ -139,43 +120,30 @@ export function isWithinBitlis(lat: number, lng: number): boolean {
 }
 
 /**
- * Koordinatı Bitlis sınırlarına kilitler / sınırlar.
- * Göle sıfır işletmeler ve sahil şeridindeki noktalar KESİNLİKLE engellenmez.
+ * Koordinatı Bitlis sınırlarına kilitler / sınırlar
  */
 export function clampToBitlis(
   lat: number,
   lng: number,
-): {
-  lat: number;
-  lng: number;
-  isClamped: boolean;
-  isOutsideBitlis: boolean;
-  isInLake: boolean;
-} {
+): { lat: number; lng: number; isClamped: boolean } {
   let finalLat = lat;
   let finalLng = lng;
-  const isOutsideBitlis = !isWithinBitlis(lat, lng);
-  let isInLake = false;
+  let isClamped = false;
 
-  if (isOutsideBitlis) {
+  if (!isWithinBitlis(lat, lng)) {
     finalLat = Math.min(Math.max(lat, BITLIS_BOUNDS.minLat), BITLIS_BOUNDS.maxLat);
     finalLng = Math.min(Math.max(lng, BITLIS_BOUNDS.minLng), BITLIS_BOUNDS.maxLng);
+    isClamped = true;
   }
 
   if (isInLakeVan(finalLat, finalLng)) {
-    isInLake = true;
     const adjusted = adjustIfInLakeVan(finalLat, finalLng);
     finalLat = adjusted.lat;
     finalLng = adjusted.lng;
+    isClamped = true;
   }
 
-  return {
-    lat: finalLat,
-    lng: finalLng,
-    isClamped: isOutsideBitlis || isInLake,
-    isOutsideBitlis,
-    isInLake,
-  };
+  return { lat: finalLat, lng: finalLng, isClamped };
 }
 
 export interface ReverseGeocodeResult {
@@ -228,7 +196,10 @@ export function getUserDefaultLocation(): UserSavedLocation | null {
       localStorage.getItem("ko_last_registered_location");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as UserSavedLocation) : null;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as UserSavedLocation;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -286,8 +257,8 @@ export async function reverseGeocodeNominatim(
     console.warn("Nominatim adres servisi uyarısı:", err);
   }
 
-  const normalizeTr = (str?: string | null) =>
-    String(str || "")
+  const normalizeTr = (str: string) =>
+    str
       .toLowerCase()
       .replace(/ı/g, "i")
       .replace(/ğ/g, "g")

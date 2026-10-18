@@ -12,38 +12,19 @@ function AuthenticatedLayout() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  const isManagementRoute =
-    typeof window !== "undefined" &&
-    (window.location.pathname.startsWith("/yonetim") ||
-      window.location.pathname.startsWith("/siparisler"));
-
-  // Giriş zorunludur: Müşteri sayfalarında oturum açılmamışsa /giris sayfasına yönlendir.
-  // Yönetim ve Sevkiyat rotaları doğrudan açılabilir.
   useEffect(() => {
-    if (!loading && !user && !isManagementRoute) {
+    if (!loading && !user) {
       if (navigate) {
         void navigate({ to: "/giris", replace: true }).catch(() => {});
       }
-      const timer = setTimeout(() => {
-        if (
-          typeof window !== "undefined" &&
-          window.location.pathname !== "/giris" &&
-          !window.location.pathname.startsWith("/yonetim") &&
-          !window.location.pathname.startsWith("/siparisler")
-        ) {
-          window.location.replace("/giris");
-        }
-      }, 1200);
-      return () => clearTimeout(timer);
     }
-  }, [user, loading, navigate, isManagementRoute]);
+  }, [user, loading, navigate]);
 
   if (loading) {
-    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
+    return <SplashScreen message="KasımOğulları — Oturum kontrol ediliyor..." />;
   }
 
-  // Yönetim ve Sevkiyat sayfaları oturum olmasa bile doğrudan açılır
-  if (!user && !isManagementRoute) {
+  if (!user) {
     return <SplashScreen message="Giriş ekranına yönlendiriliyor..." />;
   }
 

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SplashScreen } from "@/components/SplashScreen";
-import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 import { MapLocationDialog } from "@/components/MapLocationDialog";
 import { BitlisMapPicker } from "@/components/BitlisMapPicker";
 import { DISTRICTS, districtLabel } from "@/lib/catalog";
@@ -74,10 +74,9 @@ export const Route = createFileRoute("/giris")({
 });
 
 /** Telefon numarasını sadece rakamlara indirger ve standart 10 haneli formata dönüştürür. */
-function normalizePhone(raw?: string | null) {
-  if (!raw) return "";
-  let digits = String(raw || "").replace(/\D/g, "");
-  if (digits.startsWith("90") && digits.length >= 12) {
+function normalizePhone(raw: string) {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("90") && digits.length === 12) {
     digits = digits.slice(2);
   }
   if (digits.startsWith("0")) {
@@ -87,10 +86,8 @@ function normalizePhone(raw?: string | null) {
 }
 
 /** Telefon numarasından sabit bir giriş kimliği üretir. */
-function phoneIdentity(raw?: string | null) {
-  if (!raw) return "";
-  const norm = normalizePhone(raw);
-  return norm ? `${norm}@kotoptan.local` : "";
+function phoneIdentity(raw: string) {
+  return `${normalizePhone(raw)}@kotoptan.local`;
 }
 
 const signUpSchema = z.object({
@@ -133,8 +130,8 @@ async function withTimeout<T>(promise: Promise<T>, ms = 2000, fallbackVal?: T): 
 
 function AuthPage() {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, loading, loginWithFallbackUser } = useAuth();
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "/giris";
   const [busy, setBusy] = useState(false);
   const [successEntering, setSuccessEntering] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -267,17 +264,6 @@ function AuthPage() {
   const handleOpenMap = () => {
     setAutoGpsOnOpen(false);
     setMapOpen(true);
-  };
-
-  const handleGuestEnter = () => {
-    const guest =
-      FALLBACK_USERS.find((u) => u.normalizedPhone === "misafir") ||
-      FALLBACK_USERS[FALLBACK_USERS.length - 1];
-    if (guest) {
-      loginWithFallbackUser(guest);
-      setSuccessEntering(true);
-      toast.success("Katalog misafir modunda açılıyor...");
-    }
   };
 
   useEffect(() => {
@@ -432,11 +418,11 @@ function AuthPage() {
     const userFound = findFallbackUser(identifier);
     if (!userFound) {
       const autoUser = saveLocalUser({
-        phone: identifier || "",
-        normalizedPhone: normalized || (identifier || "").replace(/\D/g, ""),
-        email: (identifier || "").includes("@")
+        phone: identifier,
+        normalizedPhone: normalized || identifier.replace(/\D/g, ""),
+        email: identifier.includes("@")
           ? identifier
-          : `${normalized || (identifier || "").replace(/\D/g, "") || "kullanici"}@kotoptan.local`,
+          : `${normalized || identifier.replace(/\D/g, "") || "kullanici"}@kotoptan.local`,
         fullName: "Kotoptan Müşterisi",
         businessName: "İşletme Hesabı",
         address: "Bitlis",
@@ -748,18 +734,10 @@ function AuthPage() {
         {mode === "login" ? (
           <>
             <form className="space-y-4" onSubmit={onSignIn}>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor="si-phone" className="text-emerald-200/90 font-semibold text-xs">
-                    Telefon Numarası
-                  </Label>
-                  <img
-                    src={BRAND_MOTIF_SRC}
-                    alt="Kotoptan Motifi"
-                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
-                    title="Kotoptan"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="si-phone" className="text-emerald-200/90 font-semibold text-xs">
+                  Telefon Numarası
+                </Label>
                 <Input
                   id="si-phone"
                   name="phone"
@@ -770,7 +748,7 @@ function AuthPage() {
                   required
                   maxLength={60}
                   autoComplete="username"
-                  className="bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 
@@ -822,6 +800,13 @@ function AuthPage() {
                 {busy ? "Giriş yapılıyor..." : "Giriş Yap"}
               </Button>
             </form>
+            <button
+              type="button"
+              className="mt-5 w-full text-center text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 cursor-pointer"
+              onClick={() => setMode("register")}
+            >
+              Hesabınız yok mu? Yeni işletme hesabı açın
+            </button>
           </>
         ) : (
           <>
@@ -852,18 +837,10 @@ function AuthPage() {
                   className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor="su-phone" className="text-emerald-200/90 font-semibold text-xs">
-                    Cep Telefonu Numarası
-                  </Label>
-                  <img
-                    src={BRAND_MOTIF_SRC}
-                    alt="Kotoptan Motifi"
-                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
-                    title="Kotoptan"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="su-phone" className="text-emerald-200/90 font-semibold text-xs">
+                  Cep Telefonu Numarası
+                </Label>
                 <Input
                   id="su-phone"
                   name="phone"
@@ -874,7 +851,7 @@ function AuthPage() {
                   onChange={(e) => setRegisterPhone(e.target.value)}
                   required
                   maxLength={20}
-                  className="bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
+                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 
@@ -897,7 +874,7 @@ function AuthPage() {
                     const formatted = districtLabel(val);
                     setSelectedDistrict(formatted);
 
-                    const normKey = String(val || "")
+                    const normKey = val
                       .toLowerCase()
                       .replace(/ı/g, "i")
                       .replace(/ğ/g, "g")
