@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useDeferredValue, memo } from "react";
 import {
   Search,
   Plus,
@@ -193,15 +193,17 @@ function Index() {
 
   const isLoading = (isQueryLoading || isClientLoading) && allProducts.length === 0;
 
+  const deferredSearch = useDeferredValue(search);
+
   const filteredProducts = useMemo(() => {
-    const q = (search || "").trim().toLocaleLowerCase("tr");
+    const q = (deferredSearch || "").trim().toLocaleLowerCase("tr");
     return (allProducts || []).filter(
       (p) =>
         p &&
         (category === "tumu" || p.category === category) &&
         (q === "" || (p.name || "").toLocaleLowerCase("tr").includes(q)),
     );
-  }, [allProducts, category, search]);
+  }, [allProducts, category, deferredSearch]);
 
   const scrollToCatalog = () => {
     if (typeof document !== "undefined") {
@@ -905,7 +907,7 @@ function HeroProductCard({
  * Grid Product Card Component for the lower catalog section
  * Here, quantity stepper and Add to Cart buttons are fully accessible
  */
-function CatalogProductCard({ product }: { product: Product }) {
+const CatalogProductCard = memo(function CatalogProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
@@ -1171,4 +1173,4 @@ function CatalogProductCard({ product }: { product: Product }) {
       </div>
     </article>
   );
-}
+});

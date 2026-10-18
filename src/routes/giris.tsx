@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SplashScreen } from "@/components/SplashScreen";
-import { BRAND_LOGO_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC } from "@/lib/branding";
 import { MapLocationDialog } from "@/components/MapLocationDialog";
 import { BitlisMapPicker } from "@/components/BitlisMapPicker";
 import { DISTRICTS, districtLabel } from "@/lib/catalog";
@@ -737,10 +737,18 @@ function AuthPage() {
         {mode === "login" ? (
           <>
             <form className="space-y-4" onSubmit={onSignIn}>
-              <div>
-                <Label htmlFor="si-phone" className="text-emerald-200/90 font-semibold text-xs">
-                  Telefon Numarası
-                </Label>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label htmlFor="si-phone" className="text-emerald-200/90 font-semibold text-xs">
+                    Telefon Numarası
+                  </Label>
+                  <img
+                    src={BRAND_MOTIF_SRC}
+                    alt="Kotoptan Motifi"
+                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
+                    title="Kotoptan"
+                  />
+                </div>
                 <Input
                   id="si-phone"
                   name="phone"
@@ -751,7 +759,7 @@ function AuthPage() {
                   required
                   maxLength={60}
                   autoComplete="username"
-                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
+                  className="bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 
@@ -833,10 +841,18 @@ function AuthPage() {
                   className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
-              <div>
-                <Label htmlFor="su-phone" className="text-emerald-200/90 font-semibold text-xs">
-                  Cep Telefonu Numarası
-                </Label>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label htmlFor="su-phone" className="text-emerald-200/90 font-semibold text-xs">
+                    Cep Telefonu Numarası
+                  </Label>
+                  <img
+                    src={BRAND_MOTIF_SRC}
+                    alt="Kotoptan Motifi"
+                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
+                    title="Kotoptan"
+                  />
+                </div>
                 <Input
                   id="su-phone"
                   name="phone"
@@ -847,7 +863,7 @@ function AuthPage() {
                   onChange={(e) => setRegisterPhone(e.target.value)}
                   required
                   maxLength={20}
-                  className="mt-1.5 bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
+                  className="bg-[#020603]/90 border border-emerald-500/35 text-white placeholder:text-emerald-300/30 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 h-11 rounded-xl shadow-inner"
                 />
               </div>
 

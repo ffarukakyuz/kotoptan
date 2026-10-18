@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { PWAInstallModal } from "@/components/PWAInstallBanner";
-import { BRAND_LOGO_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC } from "@/lib/branding";
 
 export function SiteHeader() {
   const { totalQuantity } = useCart();
@@ -143,10 +143,18 @@ export function SiteHeader() {
             />
           </span>
           <div className="flex flex-col justify-center">
-            <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none">
-              Ko<span className="text-[#22c55e]">toptan</span>
-            </span>
-            <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 tracking-wider uppercase mt-0.5 leading-none">
+            <div className="flex items-center gap-2">
+              <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none">
+                Ko<span className="text-[#22c55e]">toptan</span>
+              </span>
+              <img
+                src={BRAND_MOTIF_SRC}
+                alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
+                className="h-6 w-6 sm:h-7 sm:w-7 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] select-none translate-y-[1px]"
+                title="İhlâs, Felâk, Nâs ve Nazar Duası"
+              />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 tracking-wider uppercase mt-1 leading-none">
               Toptan Dağıtım
             </span>
           </div>
