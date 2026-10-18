@@ -73,11 +73,12 @@ async function normalizeCatastrophicSsrResponse(
     bodySnippet: body.slice(0, 1000),
   });
 
+  const acceptsHtml = Boolean(request.headers.get("accept")?.includes("text/html"));
   const isApi =
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_serverFn") ||
-    request.headers.get("accept")?.includes("application/json") ||
-    isH3SwallowedErrorBody(body);
+    (url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/_serverFn") ||
+      Boolean(request.headers.get("accept")?.includes("application/json"))) &&
+    !acceptsHtml;
 
   if (isApi) {
     const errorMsg =
