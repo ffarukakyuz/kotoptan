@@ -31,7 +31,16 @@ const visionInputSchema = z.object({
 export const askSupport = createServerFn({ method: "POST" })
   .inputValidator((data) => inputSchema.parse(data))
   .handler(async ({ data }) => {
-    return await processChat(data.messages, data.isAdmin, data.userMeta);
+    try {
+      return await processChat(data.messages, data.isAdmin, data.userMeta);
+    } catch (err) {
+      console.error("[askSupport] Error in serverFn handler:", err);
+      return {
+        ok: false,
+        reply: "Asistan servisi şu anda yanıt veremiyor. Lütfen biraz sonra tekrar deneyin.",
+        error: err instanceof Error ? err.message : "Bilinmeyen asistan hatası",
+      };
+    }
   });
 
 /**
@@ -40,5 +49,13 @@ export const askSupport = createServerFn({ method: "POST" })
 export const analyzeProductImage = createServerFn({ method: "POST" })
   .inputValidator((data) => visionInputSchema.parse(data))
   .handler(async ({ data }) => {
-    return await processVision(data.imageBase64, data.mimeType, data.note);
+    try {
+      return await processVision(data.imageBase64, data.mimeType, data.note);
+    } catch (err) {
+      console.error("[analyzeProductImage] Error in serverFn handler:", err);
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Görsel analiz edilirken bir hata oluştu.",
+      };
+    }
   });

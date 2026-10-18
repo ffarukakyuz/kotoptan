@@ -22,36 +22,50 @@ const ALLOWED_ADMIN_EMAILS = [
 export const syncAdminRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const claims = context.claims as { email?: string } | null;
-    const email = (claims?.email ?? "").trim().toLowerCase();
-    if (!email) return { isAdmin: false as const };
+    try {
+      const claims = context.claims as { email?: string } | null;
+      const email = (claims?.email ?? "").trim().toLowerCase();
+      if (!email) return { isAdmin: false as const };
 
-    const rawExtra =
-      (typeof process !== "undefined" && process.env && process.env["ADMIN_EMAILS"]) ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (typeof globalThis !== "undefined" ? (globalThis as any).__env__?.ADMIN_EMAILS : "") ||
-      "";
-    const extra = rawExtra
-      .split(",")
-      .map((e: string) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const allowed = new Set([...ALLOWED_ADMIN_EMAILS.map((e) => e.toLowerCase()), ...extra]);
-    const shouldBeAdmin = allowed.has(email);
+      const rawExtra =
+        (typeof process !== "undefined" && process.env && process.env["ADMIN_EMAILS"]) ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (typeof globalThis !== "undefined" ? (globalThis as any).__env__?.ADMIN_EMAILS : "") ||
+        "";
+      const extra = rawExtra
+        .split(",")
+        .map((e: string) => e.trim().toLowerCase())
+        .filter(Boolean);
+      const allowed = new Set([...ALLOWED_ADMIN_EMAILS.map((e) => e.toLowerCase()), ...extra]);
+      const shouldBeAdmin = allowed.has(email);
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (shouldBeAdmin) {
-      const { error } = await supabaseAdmin
+      if (shouldBeAdmin) {
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
+        if (error) {
+          console.error("[syncAdminRole] Error upserting admin role:", error);
+          return { isAdmin: true as const, warning: error.message };
+        }
+        return { isAdmin: true as const };
+      }
+
+      const { error: delError } = await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
-      if (error) throw error;
-      return { isAdmin: true as const };
+        .delete()
+        .eq("user_id", context.userId)
+        .eq("role", "admin");
+      if (delError) {
+        console.warn("[syncAdminRole] Warning deleting admin role:", delError);
+      }
+      return { isAdmin: false as const };
+    } catch (err) {
+      console.error("[syncAdminRole] Unhandled error in serverFn:", err);
+      return {
+        isAdmin: false as const,
+        error: err instanceof Error ? err.message : "Yönetici rolü senkronizasyon hatası",
+      };
     }
-
-    await supabaseAdmin
-      .from("user_roles")
-      .delete()
-      .eq("user_id", context.userId)
-      .eq("role", "admin");
-    return { isAdmin: false as const };
   });

@@ -14,33 +14,48 @@ export const claimAdminRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ code: z.string().min(1).max(200) }).parse(data))
   .handler(async ({ data, context }) => {
-    const g = globalThis as unknown as { __env__?: Record<string, string | undefined> };
-    const expected =
-      (typeof process !== "undefined" && process.env && process.env["ADMIN_SIGNUP_CODE"]) ||
-      g.__env__?.ADMIN_SIGNUP_CODE;
-    if (!expected || data.code.trim() !== expected) {
-      return { ok: false as const, reason: "invalid_code" as const };
-    }
+    try {
+      const g = globalThis as unknown as { __env__?: Record<string, string | undefined> };
+      const expected =
+        (typeof process !== "undefined" && process.env && process.env["ADMIN_SIGNUP_CODE"]) ||
+        g.__env__?.ADMIN_SIGNUP_CODE;
+      if (!expected || data.code.trim() !== expected) {
+        return { ok: false as const, reason: "invalid_code" as const };
+      }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: admins, error: countError } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-    if (countError) throw countError;
+      const { data: admins, error: countError } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+      if (countError) {
+        console.error("[claimAdminRole] Error querying admin count:", countError);
+        return { ok: false as const, reason: "db_error" as const, error: countError.message };
+      }
 
-    if (admins.some((a) => a.user_id === context.userId)) {
+      if (admins && admins.some((a) => a.user_id === context.userId)) {
+        return { ok: true as const };
+      }
+      if (admins && admins.length >= MAX_ADMINS) {
+        return { ok: false as const, reason: "limit_reached" as const };
+      }
+
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
+
+      if (error) {
+        console.error("[claimAdminRole] Error upserting admin role:", error);
+        return { ok: false as const, reason: "db_error" as const, error: error.message };
+      }
       return { ok: true as const };
+    } catch (err) {
+      console.error("[claimAdminRole] Unexpected error:", err);
+      return {
+        ok: false as const,
+        reason: "server_error" as const,
+        error: err instanceof Error ? err.message : "Yönetim kodu doğrulanamadı",
+      };
     }
-    if (admins.length >= MAX_ADMINS) {
-      return { ok: false as const, reason: "limit_reached" as const };
-    }
-
-    const { error } = await supabaseAdmin
-      .from("user_roles")
-      .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
-
-    if (error) throw error;
-    return { ok: true as const };
   });

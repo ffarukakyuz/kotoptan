@@ -57,10 +57,24 @@ export function getD1(env: unknown): D1Database | null {
           return ctxDb as D1Database;
         }
       }
+      if (ctx?.cloudflare && typeof (ctx.cloudflare as Record<string, unknown>).env === "object") {
+        const cfDb = (ctx.cloudflare as Record<string, unknown>).env as Record<string, unknown>;
+        if (cfDb?.DB && typeof (cfDb.DB as D1Database).prepare === "function") {
+          return cfDb.DB as D1Database;
+        }
+      }
       // env.bindings.DB
       const bindings = e.bindings as Record<string, unknown> | undefined;
       if (bindings?.DB && typeof (bindings.DB as D1Database).prepare === "function") {
         return bindings.DB as D1Database;
+      }
+      // platform.env.DB
+      const platform = e.platform as Record<string, unknown> | undefined;
+      if (platform?.env && typeof (platform.env as Record<string, unknown>).DB === "object") {
+        const pDb = (platform.env as Record<string, unknown>).DB as D1Database;
+        if (pDb && typeof pDb.prepare === "function") {
+          return pDb;
+        }
       }
     }
 
@@ -76,6 +90,9 @@ export function getD1(env: unknown): D1Database | null {
     if (g?.env?.DB && typeof g.env.DB.prepare === "function") {
       return g.env.DB as D1Database;
     }
+    if (g?.__CF_PAGES_ENV__?.DB && typeof g.__CF_PAGES_ENV__.DB.prepare === "function") {
+      return g.__CF_PAGES_ENV__.DB as D1Database;
+    }
 
     // Process env fallback for Node context
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,10 +100,19 @@ export function getD1(env: unknown): D1Database | null {
     if (p?.env?.DB && typeof p.env.DB.prepare === "function") {
       return p.env.DB as D1Database;
     }
-  } catch (_e) {
-    // Ignore environment probing errors
+  } catch (probingErr) {
+    console.error("[getD1] Environment probing error:", probingErr);
   }
   return null;
+}
+
+/**
+ * Sanitizes parameters for D1 queries.
+ * In Cloudflare D1, passing `undefined` to `.bind()` throws an unhandled error.
+ */
+export function safeBind(stmt: D1PreparedStatement, ...values: unknown[]): D1PreparedStatement {
+  const sanitized = values.map((val) => (val === undefined ? null : val));
+  return stmt.bind(...sanitized);
 }
 
 interface LocalStore {
@@ -153,8 +179,9 @@ function saveLocalStore(store: LocalStore) {
 }
 
 export async function initD1Tables(env: unknown) {
-  const d1 = getD1(env);
-  if (d1) {
+  try {
+    const d1 = getD1(env);
+    if (!d1) return;
     try {
       await d1.exec(`
         CREATE TABLE IF NOT EXISTS chat_sessions (
@@ -195,8 +222,10 @@ export async function initD1Tables(env: unknown) {
         // column may already exist
       }
     } catch (e) {
-      console.warn("[D1] init tables warning:", e);
+      console.error("[D1 initD1Tables] SQL execution error:", e);
     }
+  } catch (err) {
+    console.error("[D1 initD1Tables] Unexpected initialization error:", err);
   }
 }
 
@@ -208,49 +237,64 @@ export async function getOrCreateSession(
   userPhone?: string,
 ): Promise<ChatSession> {
   const now = new Date().toISOString();
-  const safeName = userName || "Müşteri / Bayi";
-  const safePhone = userPhone || "";
-  const d1 = getD1(env);
+  const safeSessionId = String(sessionId || `session_${Date.now()}`);
+  const safeName = String(userName || "Müşteri / Bayi");
+  const safePhone = String(userPhone || "");
+  const safeUserId = userId ? String(userId) : null;
 
-  if (d1) {
-    try {
-      const existing = await d1
-        .prepare("SELECT * FROM chat_sessions WHERE id = ?")
-        .bind(sessionId)
-        .first<ChatSession>();
-      if (existing) {
-        return existing;
+  try {
+    const d1 = getD1(env);
+    if (d1) {
+      try {
+        const existing = await safeBind(
+          d1.prepare("SELECT * FROM chat_sessions WHERE id = ?"),
+          safeSessionId,
+        ).first<ChatSession>();
+
+        if (existing) {
+          return existing;
+        }
+
+        await safeBind(
+          d1.prepare(
+            "INSERT INTO chat_sessions (id, user_id, user_name, user_phone, status, last_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          ),
+          safeSessionId,
+          safeUserId,
+          safeName,
+          safePhone,
+          "bot",
+          "",
+          now,
+          now,
+        ).run();
+
+        return {
+          id: safeSessionId,
+          user_id: safeUserId,
+          user_name: safeName,
+          user_phone: safePhone,
+          status: "bot",
+          last_message: "",
+          created_at: now,
+          updated_at: now,
+        };
+      } catch (e) {
+        console.error("[D1 getOrCreateSession] Database error:", e);
       }
-      await d1
-        .prepare(
-          "INSERT INTO chat_sessions (id, user_id, user_name, user_phone, status, last_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        )
-        .bind(sessionId, userId || null, safeName, safePhone, "bot", "", now, now)
-        .run();
-
-      return {
-        id: sessionId,
-        user_id: userId || null,
-        user_name: safeName,
-        user_phone: safePhone,
-        status: "bot",
-        last_message: "",
-        created_at: now,
-        updated_at: now,
-      };
-    } catch (e) {
-      console.warn("[D1 getOrCreateSession] error:", e);
     }
+  } catch (err) {
+    console.error("[getOrCreateSession] Unexpected error:", err);
   }
 
   // Local memory / fallback
   const store = loadLocalStore();
-  if (store.sessions[sessionId]) {
-    return store.sessions[sessionId];
+  if (store.sessions[safeSessionId]) {
+    return store.sessions[safeSessionId];
   }
   const newSession: ChatSession = {
-    id: sessionId,
-    user_id: userId || null,
+    id: safeSessionId,
+    user_id: safeUserId,
     user_name: safeName,
     user_phone: safePhone,
     status: "bot",
@@ -258,22 +302,26 @@ export async function getOrCreateSession(
     created_at: now,
     updated_at: now,
   };
-  store.sessions[sessionId] = newSession;
+  store.sessions[safeSessionId] = newSession;
   saveLocalStore(store);
   return newSession;
 }
 
 export async function listAllSessions(env: unknown): Promise<ChatSession[]> {
-  const d1 = getD1(env);
-  if (d1) {
-    try {
-      const res = await d1
-        .prepare("SELECT * FROM chat_sessions ORDER BY updated_at DESC")
-        .all<ChatSession>();
-      return res.results || [];
-    } catch (e) {
-      console.warn("[D1 listAllSessions] error:", e);
+  try {
+    const d1 = getD1(env);
+    if (d1) {
+      try {
+        const res = await d1
+          .prepare("SELECT * FROM chat_sessions ORDER BY updated_at DESC")
+          .all<ChatSession>();
+        return res.results || [];
+      } catch (e) {
+        console.error("[D1 listAllSessions] Database error:", e);
+      }
     }
+  } catch (err) {
+    console.error("[listAllSessions] Unexpected error:", err);
   }
 
   const store = loadLocalStore();
@@ -286,31 +334,37 @@ export async function getSessionDetails(
   env: unknown,
   sessionId: string,
 ): Promise<{ session: ChatSession | null; messages: ChatMessageItem[] }> {
-  const d1 = getD1(env);
-  if (d1) {
-    try {
-      const session = await d1
-        .prepare("SELECT * FROM chat_sessions WHERE id = ?")
-        .bind(sessionId)
-        .first<ChatSession>();
-      const messagesRes = await d1
-        .prepare("SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC")
-        .bind(sessionId)
-        .all<ChatMessageItem>();
+  const safeSessionId = String(sessionId || "");
+  try {
+    const d1 = getD1(env);
+    if (d1 && safeSessionId) {
+      try {
+        const session = await safeBind(
+          d1.prepare("SELECT * FROM chat_sessions WHERE id = ?"),
+          safeSessionId,
+        ).first<ChatSession>();
 
-      return {
-        session: session || null,
-        messages: messagesRes.results || [],
-      };
-    } catch (e) {
-      console.warn("[D1 getSessionDetails] error:", e);
+        const messagesRes = await safeBind(
+          d1.prepare("SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC"),
+          safeSessionId,
+        ).all<ChatMessageItem>();
+
+        return {
+          session: session || null,
+          messages: messagesRes.results || [],
+        };
+      } catch (e) {
+        console.error("[D1 getSessionDetails] Database error:", e);
+      }
     }
+  } catch (err) {
+    console.error("[getSessionDetails] Unexpected error:", err);
   }
 
   const store = loadLocalStore();
-  const session = store.sessions[sessionId] || null;
+  const session = store.sessions[safeSessionId] || null;
   const messages = store.messages
-    .filter((m) => m.session_id === sessionId)
+    .filter((m) => m.session_id === safeSessionId)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   return { session, messages };
 }
@@ -325,59 +379,72 @@ export async function addChatMessage(
   audioUrl?: string,
   duration?: number,
 ): Promise<ChatMessageItem> {
+  const safeSessionId = String(sessionId || `session_${Date.now()}`);
   const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const now = new Date().toISOString();
+  const safeSender = sender || "user";
+  const safeSenderName = String(
+    senderName || (sender === "bot" ? "Ko Asistan" : sender === "admin" ? "Yönetici" : "Müşteri"),
+  );
+  const safeContent = String(content || "");
+  const safeType = type === "voice" ? "voice" : "text";
+  const safeAudioUrl = audioUrl ? String(audioUrl) : null;
+  const safeDuration = typeof duration === "number" ? duration : 0;
 
   const msgItem: ChatMessageItem = {
     id,
-    session_id: sessionId,
-    sender,
-    sender_name: senderName,
-    content,
-    type,
-    audio_url: audioUrl,
-    duration: duration || 0,
+    session_id: safeSessionId,
+    sender: safeSender,
+    sender_name: safeSenderName,
+    content: safeContent,
+    type: safeType,
+    audio_url: safeAudioUrl || undefined,
+    duration: safeDuration,
     created_at: now,
   };
 
-  const previewSnippet = type === "voice" ? "🎤 Sesli Mesaj" : content.slice(0, 100);
+  const previewSnippet = safeType === "voice" ? "🎤 Sesli Mesaj" : safeContent.slice(0, 100);
 
-  const d1 = getD1(env);
-  if (d1) {
-    try {
-      await d1
-        .prepare(
-          "INSERT INTO chat_messages (id, session_id, sender, sender_name, content, type, audio_url, duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        )
-        .bind(
+  try {
+    const d1 = getD1(env);
+    if (d1) {
+      try {
+        await safeBind(
+          d1.prepare(
+            "INSERT INTO chat_messages (id, session_id, sender, sender_name, content, type, audio_url, duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          ),
           id,
-          sessionId,
-          sender,
-          senderName,
-          content,
-          type,
-          audioUrl || null,
-          duration || 0,
+          safeSessionId,
+          safeSender,
+          safeSenderName,
+          safeContent,
+          safeType,
+          safeAudioUrl,
+          safeDuration,
           now,
-        )
-        .run();
+        ).run();
 
-      await d1
-        .prepare("UPDATE chat_sessions SET last_message = ?, updated_at = ? WHERE id = ?")
-        .bind(previewSnippet, now, sessionId)
-        .run();
+        await safeBind(
+          d1.prepare("UPDATE chat_sessions SET last_message = ?, updated_at = ? WHERE id = ?"),
+          previewSnippet,
+          now,
+          safeSessionId,
+        ).run();
 
-      return msgItem;
-    } catch (e) {
-      console.warn("[D1 addChatMessage] error:", e);
+        return msgItem;
+      } catch (e) {
+        console.error("[D1 addChatMessage] Database error:", e);
+      }
     }
+  } catch (err) {
+    console.error("[addChatMessage] Unexpected error:", err);
   }
 
   const store = loadLocalStore();
   store.messages.push(msgItem);
-  if (store.sessions[sessionId]) {
-    store.sessions[sessionId].last_message = previewSnippet;
-    store.sessions[sessionId].updated_at = now;
+  if (store.sessions[safeSessionId]) {
+    store.sessions[safeSessionId].last_message = previewSnippet;
+    store.sessions[safeSessionId].updated_at = now;
   }
   saveLocalStore(store);
   return msgItem;
@@ -389,24 +456,32 @@ export async function updateSessionStatus(
   status: "bot" | "transferred" | "active_admin" | "closed",
 ): Promise<boolean> {
   const now = new Date().toISOString();
-  const d1 = getD1(env);
+  const safeSessionId = String(sessionId || "");
+  const safeStatus = status || "bot";
 
-  if (d1) {
-    try {
-      await d1
-        .prepare("UPDATE chat_sessions SET status = ?, updated_at = ? WHERE id = ?")
-        .bind(status, now, sessionId)
-        .run();
-      return true;
-    } catch (e) {
-      console.warn("[D1 updateSessionStatus] error:", e);
+  try {
+    const d1 = getD1(env);
+    if (d1 && safeSessionId) {
+      try {
+        await safeBind(
+          d1.prepare("UPDATE chat_sessions SET status = ?, updated_at = ? WHERE id = ?"),
+          safeStatus,
+          now,
+          safeSessionId,
+        ).run();
+        return true;
+      } catch (e) {
+        console.error("[D1 updateSessionStatus] Database error:", e);
+      }
     }
+  } catch (err) {
+    console.error("[updateSessionStatus] Unexpected error:", err);
   }
 
   const store = loadLocalStore();
-  if (store.sessions[sessionId]) {
-    store.sessions[sessionId].status = status;
-    store.sessions[sessionId].updated_at = now;
+  if (store.sessions[safeSessionId]) {
+    store.sessions[safeSessionId].status = safeStatus;
+    store.sessions[safeSessionId].updated_at = now;
     saveLocalStore(store);
     return true;
   }

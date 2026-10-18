@@ -16,6 +16,12 @@ import {
   recordDeletedProductOnServer,
   recordBatchDeletedProductsOnServer,
 } from "./server/product-delete-sync";
+import {
+  getAllServerUsers,
+  registerOrUpdateServerUser,
+  deleteServerUser,
+} from "./server/user-sync";
+import { FALLBACK_PRODUCTS } from "./data/products";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -32,13 +38,70 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+function isH3SwallowedErrorBody(body: string): boolean {
+  try {
+    const payload = JSON.parse(body) as { unhandled?: unknown; message?: unknown };
+    return payload.unhandled === true && (payload.message === "HTTPError" || payload.unhandled === true);
+  } catch {
+    return false;
+  }
+}
+
 // h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+// {"unhandled":true,"message":"HTTPError"} — normalize and provide meaningful errors.
+async function normalizeCatastrophicSsrResponse(
+  response: Response,
+  url: URL,
+  request: Request,
+): Promise<Response> {
   if (response.status < 500) return response;
+
   const captured = consumeLastCapturedError();
-  const body = await response.clone().text();
-  console.error("SSR 500 captured:", captured, "body:", body);
+  let body = "";
+  try {
+    body = await response.clone().text();
+  } catch (textErr) {
+    console.error("[normalizeCatastrophicSsrResponse] Could not read response text:", textErr);
+  }
+
+  console.error("[SSR/API 500 captured]", {
+    path: url.pathname,
+    status: response.status,
+    captured: captured || "none",
+    bodySnippet: body.slice(0, 1000),
+  });
+
+  const isApi =
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_serverFn") ||
+    request.headers.get("accept")?.includes("application/json") ||
+    isH3SwallowedErrorBody(body);
+
+  if (isApi) {
+    const errorMsg =
+      captured ||
+      (isH3SwallowedErrorBody(body)
+        ? "Sunucuda asenkron işlem sırasında bir hata oluştu. Lütfen istek parametrelerini kontrol edin."
+        : `Sunucu hatası (${response.status})`);
+
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: errorMsg,
+        status: response.status,
+        unhandled: false,
+        details: captured || null,
+      }),
+      {
+        status: response.status >= 500 ? response.status : 500,
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "access-control-allow-origin": "*",
+        },
+      },
+    );
+  }
+
   return new Response(
     renderErrorPage(captured || body || `Server returned status ${response.status}`),
     {
@@ -46,15 +109,6 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
       headers: { "content-type": "text/html; charset=utf-8" },
     },
   );
-}
-
-function isH3SwallowedErrorBody(body: string): boolean {
-  try {
-    const payload = JSON.parse(body) as { unhandled?: unknown; message?: unknown };
-    return payload.unhandled === true && payload.message === "HTTPError";
-  } catch {
-    return false;
-  }
 }
 
 interface ChatRequestBody {
@@ -76,13 +130,45 @@ export default {
     try {
       const url = new URL(request.url);
 
+      // Resolve environment & D1 binding across all Cloudflare Pages / Workers variations
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = typeof globalThis !== "undefined" ? (globalThis as any) : {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reqAny = request as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ctxAny = ctx as any;
+      const safeEnv =
+        env ||
+        ctxAny?.env ||
+        reqAny?.env ||
+        reqAny?.runtime?.cloudflare?.env ||
+        g.__env__ ||
+        g.env ||
+        g ||
+        {};
+
+      if (typeof safeEnv === "object" && safeEnv !== null) {
+        g.__env__ = { ...(g.__env__ || {}), ...safeEnv };
+        if ((safeEnv as any).DB) {
+          g.DB = (safeEnv as any).DB;
+        }
+      }
+
       // Kalıcı Olarak Silinen Ürünler API (Geri gelmemesini sunucuda ve dosyada garanti eder)
       if (url.pathname === "/api/products/deleted") {
         if (request.method === "GET") {
-          const result = getServerDeletedProducts();
-          return new Response(JSON.stringify({ ok: true, ...result }), {
-            headers: { "content-type": "application/json" },
-          });
+          try {
+            const result = getServerDeletedProducts();
+            return new Response(JSON.stringify({ ok: true, ...result }), {
+              headers: { "content-type": "application/json" },
+            });
+          } catch (getDelErr) {
+            console.error("[/api/products/deleted GET] Error:", getDelErr);
+            return new Response(JSON.stringify({ ok: false, error: "Silinenler okunamadı" }), {
+              status: 500,
+              headers: { "content-type": "application/json" },
+            });
+          }
         }
         return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
           status: 405,
@@ -111,7 +197,7 @@ export default {
               headers: { "content-type": "application/json" },
             });
           } catch (delErr) {
-            console.error("Product delete API error:", delErr);
+            console.error("[/api/products/delete POST] Error:", delErr);
             return new Response(JSON.stringify({ ok: false, error: "Silme işlemi başarısız" }), {
               status: 500,
               headers: { "content-type": "application/json" },
@@ -121,6 +207,159 @@ export default {
         return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
           status: 405,
           headers: { "content-type": "application/json" },
+        });
+      }
+
+      // Ürünler API (Cloudflare Pages ve Vite ile tam uyumlu)
+      if (url.pathname === "/api/products") {
+        const jsonHeaders = {
+          "content-type": "application/json; charset=utf-8",
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+          "access-control-allow-headers": "Content-Type",
+        };
+
+        if (request.method === "OPTIONS") {
+          return new Response(null, { status: 204, headers: jsonHeaders });
+        }
+
+        if (request.method === "GET") {
+          try {
+            return new Response(JSON.stringify(FALLBACK_PRODUCTS), {
+              headers: jsonHeaders,
+            });
+          } catch (pErr) {
+            console.error("[/api/products GET] Error:", pErr);
+            return new Response(
+              JSON.stringify({ ok: false, error: "Ürünler listelenemedi" }),
+              { status: 500, headers: jsonHeaders },
+            );
+          }
+        }
+
+        if (request.method === "POST") {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = (await request.json().catch(() => ({}))) as any;
+            const id = data.id || `ko-prod-${Date.now()}`;
+            const product = {
+              id,
+              name: data.name,
+              category: data.category || "gida",
+              unit: data.unit || "koli",
+              description: data.description || "",
+              image_url: data.image_url || null,
+              is_active: data.is_active !== false,
+            };
+            return new Response(JSON.stringify({ ok: true, product }), {
+              headers: jsonHeaders,
+            });
+          } catch (postPErr) {
+            console.error("[/api/products POST] Error:", postPErr);
+            return new Response(
+              JSON.stringify({ ok: false, error: "Geçersiz ürün verisi" }),
+              { status: 500, headers: jsonHeaders },
+            );
+          }
+        }
+
+        if (request.method === "DELETE") {
+          const id = url.searchParams.get("id");
+          return new Response(JSON.stringify({ ok: true, id }), { headers: jsonHeaders });
+        }
+
+        return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
+          status: 405,
+          headers: jsonHeaders,
+        });
+      }
+
+      // Kullanıcılar API (Cloudflare Pages ve Vite ile tam uyumlu)
+      if (url.pathname === "/api/users") {
+        const jsonHeaders = {
+          "content-type": "application/json; charset=utf-8",
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+          "access-control-allow-headers": "Content-Type",
+        };
+
+        if (request.method === "OPTIONS") {
+          return new Response(null, { status: 204, headers: jsonHeaders });
+        }
+
+        if (request.method === "GET") {
+          try {
+            const users = getAllServerUsers();
+            return new Response(JSON.stringify({ ok: true, users }), {
+              headers: jsonHeaders,
+            });
+          } catch (usersErr) {
+            console.error("[/api/users GET] Error:", usersErr);
+            return new Response(
+              JSON.stringify({
+                ok: false,
+                error: "Kullanıcı listesi yüklenemedi",
+                details: usersErr instanceof Error ? usersErr.message : String(usersErr),
+              }),
+              { status: 500, headers: jsonHeaders },
+            );
+          }
+        }
+
+        if (request.method === "POST") {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const body = (await request.json().catch(() => ({}))) as any;
+            if (!body?.phone) {
+              return new Response(
+                JSON.stringify({ ok: false, error: "Telefon numarası zorunludur" }),
+                { status: 400, headers: jsonHeaders },
+              );
+            }
+            const user = registerOrUpdateServerUser(body);
+            return new Response(JSON.stringify({ ok: true, user }), {
+              headers: jsonHeaders,
+            });
+          } catch (postUserErr) {
+            console.error("[/api/users POST] Error:", postUserErr);
+            return new Response(
+              JSON.stringify({
+                ok: false,
+                error: "Kullanıcı kaydı güncellenemedi",
+                details: postUserErr instanceof Error ? postUserErr.message : String(postUserErr),
+              }),
+              { status: 500, headers: jsonHeaders },
+            );
+          }
+        }
+
+        if (request.method === "DELETE") {
+          try {
+            const id = url.searchParams.get("id");
+            if (!id) {
+              return new Response(
+                JSON.stringify({ ok: false, error: "Kullanıcı ID veya telefon gerekli" }),
+                { status: 400, headers: jsonHeaders },
+              );
+            }
+            deleteServerUser(id);
+            return new Response(JSON.stringify({ ok: true }), { headers: jsonHeaders });
+          } catch (delUserErr) {
+            console.error("[/api/users DELETE] Error:", delUserErr);
+            return new Response(
+              JSON.stringify({
+                ok: false,
+                error: "Kullanıcı silinemedi",
+                details: delUserErr instanceof Error ? delUserErr.message : String(delUserErr),
+              }),
+              { status: 500, headers: jsonHeaders },
+            );
+          }
+        }
+
+        return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
+          status: 405,
+          headers: jsonHeaders,
         });
       }
 
@@ -647,9 +886,44 @@ export default {
         });
       }
 
-      const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      const ssrResponse = await normalizeCatastrophicSsrResponse(response);
+      let response: Response;
+      try {
+        const handler = await getServerEntry();
+        response = await handler.fetch(request, safeEnv, ctx);
+      } catch (handlerErr) {
+        console.error("[src/server.ts] ServerEntry fetch error:", handlerErr);
+        const errDetail =
+          handlerErr instanceof Error ? handlerErr.stack || handlerErr.message : String(handlerErr);
+        const isApi =
+          url.pathname.startsWith("/api/") ||
+          url.pathname.startsWith("/_serverFn") ||
+          request.headers.get("accept")?.includes("application/json");
+
+        if (isApi) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: "Sunucu isteği işlenirken bir hata oluştu.",
+              details: errDetail,
+              status: 500,
+              unhandled: false,
+            }),
+            {
+              status: 500,
+              headers: {
+                "content-type": "application/json; charset=utf-8",
+                "access-control-allow-origin": "*",
+              },
+            },
+          );
+        }
+        return new Response(renderErrorPage(errDetail), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
+
+      const ssrResponse = await normalizeCatastrophicSsrResponse(response, url, request);
 
       const newHeaders = new Headers(ssrResponse.headers);
       if (url.pathname.startsWith("/assets/")) {
@@ -670,14 +944,37 @@ export default {
         headers: newHeaders,
       });
     } catch (error) {
-      console.error(error);
-      return new Response(
-        renderErrorPage(error instanceof Error ? error.stack || error.message : error),
-        {
-          status: 500,
-          headers: { "content-type": "text/html; charset=utf-8" },
-        },
-      );
+      console.error("[src/server.ts] Top-level unhandled exception:", error);
+      const reqUrl = new URL(request.url).pathname;
+      const errStr = error instanceof Error ? error.stack || error.message : String(error);
+      const isApi =
+        reqUrl.startsWith("/api/") ||
+        reqUrl.startsWith("/_serverFn") ||
+        request.headers.get("accept")?.includes("application/json");
+
+      if (isApi) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "Sunucuda beklenmeyen bir hata oluştu.",
+            details: errStr,
+            status: 500,
+            unhandled: false,
+          }),
+          {
+            status: 500,
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "access-control-allow-origin": "*",
+            },
+          },
+        );
+      }
+
+      return new Response(renderErrorPage(errStr), {
+        status: 500,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
     }
   },
 };

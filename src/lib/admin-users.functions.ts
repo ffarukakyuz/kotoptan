@@ -80,150 +80,191 @@ function hasServiceRoleKey(): boolean {
 export const listAppUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AppUser[]> => {
-    await requireAdmin(context);
-
-    // İlk olarak profiles tablosundan tüm kayıtlı üyeleri çek
-    const { data: profiles, error: profileErr } = await context.supabase
-      .from("profiles")
-      .select("id, full_name, business_name, phone, address, created_at")
-      .order("created_at", { ascending: false });
-
-    if (profileErr) throw profileErr;
-
-    // Supabase auth admin listUsers opsiyonel denenir
     try {
-      if (hasServiceRoleKey()) {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: authData } = await supabaseAdmin.auth.admin.listUsers({
-          page: 1,
-          perPage: 1000,
-        });
+      await requireAdmin(context);
 
-        if (authData?.users) {
-          const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-          return authData.users
-            .map((u) => {
-              const p = profileById.get(u.id);
-              const email = u.email ?? null;
-              const admin = isUserAdmin({ id: u.id, email: u.email }, p ?? null);
-              return {
-                id: u.id,
-                email: email && email.endsWith("@kotoptan.local") ? null : email,
-                phone: u.phone ?? null,
-                created_at: u.created_at,
-                last_sign_in_at: u.last_sign_in_at ?? null,
-                is_admin: admin,
-                full_name: p?.full_name ?? "",
-                business_name: p?.business_name ?? "",
-                profile_phone: p?.phone ?? "",
-                address: p?.address ?? "",
-              };
-            })
-            .sort((a, b) => b.created_at.localeCompare(a.created_at));
-        }
+      // İlk olarak profiles tablosundan tüm kayıtlı üyeleri çek
+      const { data: profiles, error: profileErr } = await context.supabase
+        .from("profiles")
+        .select("id, full_name, business_name, phone, address, created_at")
+        .order("created_at", { ascending: false });
+
+      if (profileErr) {
+        console.error("[listAppUsers] Error fetching profiles:", profileErr);
+        throw profileErr;
       }
-    } catch (e) {
-      console.warn("auth.admin.listUsers atlandı, profiles tablosu kullanılıyor:", e);
-    }
 
-    // Doğrudan profiles listesini döndür
-    return (profiles ?? []).map((p) => {
-      const admin = isUserAdmin({ id: p.id }, p);
-      return {
-        id: p.id,
-        email: null,
-        phone: p.phone,
-        created_at: p.created_at,
-        last_sign_in_at: null,
-        is_admin: admin,
-        full_name: p.full_name,
-        business_name: p.business_name,
-        profile_phone: p.phone,
-        address: p.address,
-      };
-    });
+      // Supabase auth admin listUsers opsiyonel denenir
+      try {
+        if (hasServiceRoleKey()) {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: authData } = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+          });
+
+          if (authData?.users) {
+            const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+            return authData.users
+              .map((u) => {
+                const p = profileById.get(u.id);
+                const email = u.email ?? null;
+                const admin = isUserAdmin({ id: u.id, email: u.email }, p ?? null);
+                return {
+                  id: u.id,
+                  email: email && email.endsWith("@kotoptan.local") ? null : email,
+                  phone: u.phone ?? null,
+                  created_at: u.created_at,
+                  last_sign_in_at: u.last_sign_in_at ?? null,
+                  is_admin: admin,
+                  full_name: p?.full_name ?? "",
+                  business_name: p?.business_name ?? "",
+                  profile_phone: p?.phone ?? "",
+                  address: p?.address ?? "",
+                };
+              })
+              .sort((a, b) => b.created_at.localeCompare(a.created_at));
+          }
+        }
+      } catch (e) {
+        console.warn(
+          "[listAppUsers] auth.admin.listUsers atlandı, profiles tablosu kullanılıyor:",
+          e,
+        );
+      }
+
+      // Doğrudan profiles listesini döndür
+      return (profiles ?? []).map((p) => {
+        const admin = isUserAdmin({ id: p.id }, p);
+        return {
+          id: p.id,
+          email: null,
+          phone: p.phone,
+          created_at: p.created_at,
+          last_sign_in_at: null,
+          is_admin: admin,
+          full_name: p.full_name,
+          business_name: p.business_name,
+          profile_phone: p.phone,
+          address: p.address,
+        };
+      });
+    } catch (err) {
+      console.error("[listAppUsers] Handler error:", err);
+      return [];
+    }
   });
 
 export const updateAppUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => customerUpdateSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    try {
+      await requireAdmin(context);
 
-    if (hasServiceRoleKey()) {
-      try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await supabaseAdmin.auth.admin.updateUserById(data.id, {
-          email: `${data.phone}@kotoptan.local`,
-          email_confirm: true,
-          user_metadata: {
-            full_name: data.full_name,
-            business_name: data.business_name,
-            phone: data.phone,
-            address: data.address,
-          },
-        });
-      } catch (err) {
-        console.warn("Auth güncelleme atlandı:", err);
+      if (hasServiceRoleKey()) {
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          await supabaseAdmin.auth.admin.updateUserById(data.id, {
+            email: `${data.phone}@kotoptan.local`,
+            email_confirm: true,
+            user_metadata: {
+              full_name: data.full_name,
+              business_name: data.business_name,
+              phone: data.phone,
+              address: data.address,
+            },
+          });
+        } catch (err) {
+          console.warn("[updateAppUser] Auth güncelleme atlandı:", err);
+        }
       }
-    }
 
-    const { error: profileError } = await context.supabase.from("profiles").upsert({
-      id: data.id,
-      full_name: data.full_name,
-      business_name: data.business_name,
-      phone: data.phone,
-      address: data.address,
-    });
-    if (profileError) throw profileError;
-    return { ok: true as const };
+      const { error: profileError } = await context.supabase.from("profiles").upsert({
+        id: data.id,
+        full_name: data.full_name,
+        business_name: data.business_name,
+        phone: data.phone,
+        address: data.address,
+      });
+      if (profileError) {
+        console.error("[updateAppUser] Profile upsert error:", profileError);
+        return { ok: false as const, error: profileError.message };
+      }
+      return { ok: true as const };
+    } catch (err) {
+      console.error("[updateAppUser] Unexpected error:", err);
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : "Kullanıcı güncellenemedi",
+      };
+    }
   });
 
 export const resetAppUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => passwordSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    try {
+      await requireAdmin(context);
 
-    if (hasServiceRoleKey()) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.id, {
-        password: data.password,
-      });
-      if (error) throw error;
+      if (hasServiceRoleKey()) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(data.id, {
+          password: data.password,
+        });
+        if (error) {
+          console.error("[resetAppUserPassword] Error updating password:", error);
+          return { ok: false as const, error: error.message };
+        }
+        return { ok: true as const };
+      }
       return { ok: true as const };
+    } catch (err) {
+      console.error("[resetAppUserPassword] Error:", err);
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : "Şifre sıfırlanamadı",
+      };
     }
-    return { ok: true as const };
   });
 
 export const deleteAppUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => userIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
-    await ensureNotFixedAdminForDeletion(data.id, context.supabase);
-
     try {
-      await context.supabase.from("orders").update({ user_id: null }).eq("user_id", data.id);
-    } catch (orderUpdateErr) {
-      console.warn("Detach orders user_id error:", orderUpdateErr);
-    }
+      await requireAdmin(context);
+      await ensureNotFixedAdminForDeletion(data.id, context.supabase);
 
-    if (hasServiceRoleKey()) {
       try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await supabaseAdmin.from("profiles").delete().eq("id", data.id);
-        await supabaseAdmin.auth.admin.deleteUser(data.id);
-      } catch (e) {
-        console.warn("auth.deleteUser atlandı:", e);
+        await context.supabase.from("orders").update({ user_id: null }).eq("user_id", data.id);
+      } catch (orderUpdateErr) {
+        console.warn("[deleteAppUser] Detach orders user_id error:", orderUpdateErr);
       }
-    }
 
-    try {
-      await context.supabase.from("profiles").delete().eq("id", data.id);
-    } catch (delErr) {
-      console.warn("context.supabase delete profiles error:", delErr);
-    }
+      if (hasServiceRoleKey()) {
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          await supabaseAdmin.from("profiles").delete().eq("id", data.id);
+          await supabaseAdmin.auth.admin.deleteUser(data.id);
+        } catch (e) {
+          console.warn("[deleteAppUser] auth.deleteUser atlandı:", e);
+        }
+      }
 
-    return { ok: true as const };
+      try {
+        await context.supabase.from("profiles").delete().eq("id", data.id);
+      } catch (delErr) {
+        console.warn("[deleteAppUser] context.supabase delete profiles error:", delErr);
+      }
+
+      return { ok: true as const };
+    } catch (err) {
+      console.error("[deleteAppUser] Error:", err);
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : "Kullanıcı silinemedi",
+      };
+    }
   });
