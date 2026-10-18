@@ -33,18 +33,7 @@ type AuthContextValue = {
   loginWithFallbackUser: (fUser: FallbackUser) => void;
 };
 
-const defaultAuthValue: AuthContextValue = {
-  user: null,
-  session: null,
-  profile: null,
-  isAdmin: false,
-  loading: false,
-  refreshProfile: async () => {},
-  signOut: async () => {},
-  loginWithFallbackUser: () => {},
-};
-
-const AuthContext = createContext<AuthContextValue>(defaultAuthValue);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 const LOCAL_SESSION_KEY = "ko_local_auth_session";
 
@@ -210,39 +199,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const rawLocal = localStorage.getItem(LOCAL_SESSION_KEY);
           if (rawLocal) {
-            try {
-              const parsed = JSON.parse(rawLocal);
-              if (
-                parsed &&
-                typeof parsed === "object" &&
-                parsed.user &&
-                typeof parsed.user === "object" &&
-                typeof parsed.user.id === "string"
-              ) {
-                setUser(parsed.user as User);
-                const safeProf: Profile | null =
-                  parsed.profile && typeof parsed.profile === "object"
-                    ? (parsed.profile as Profile)
-                    : null;
-                setProfile(safeProf);
-                setIsAdmin(Boolean(parsed.isAdmin));
-              } else {
-                try {
-                  localStorage.removeItem(LOCAL_SESSION_KEY);
-                } catch {
-                  /* ignore */
-                }
-              }
-            } catch {
-              try {
-                localStorage.removeItem(LOCAL_SESSION_KEY);
-              } catch {
-                /* ignore */
-              }
+            const parsed = JSON.parse(rawLocal);
+            if (parsed && typeof parsed === "object" && parsed.user) {
+              setUser(parsed.user as User);
+              setProfile((parsed.profile as Profile) || null);
+              setIsAdmin(Boolean(parsed.isAdmin));
             }
           }
-        } catch {
-          // ignore
+        } catch (err) {
+          console.warn("[useAuth] Failed parsing local session:", err);
+          try {
+            localStorage.removeItem(LOCAL_SESSION_KEY);
+          } catch {
+            // ignore
+          }
         }
       }
 
@@ -262,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadDetails]);
 
   const refreshProfile = useCallback(async () => {
-    if (user && user.id) await loadDetails(user.id, user);
+    if (user) await loadDetails(user.id, user);
   }, [user, loadDetails]);
 
   const signOut = useCallback(async () => {
@@ -285,13 +255,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") window.location.href = "/giris";
   }, []);
 
-  const value = useMemo<AuthContextValue>(
+  const value = useMemo(
     () => ({
       user,
       session,
       profile,
-      isAdmin: Boolean(isAdmin),
-      loading: Boolean(loading),
+      isAdmin,
+      loading,
       refreshProfile,
       signOut,
       loginWithFallbackUser,
@@ -302,16 +272,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const FALLBACK_AUTH_VALUE: AuthContextValue = {
+  user: null,
+  session: null,
+  profile: null,
+  isAdmin: false,
+  loading: false,
+  refreshProfile: async () => {},
+  signOut: async () => {},
+  loginWithFallbackUser: () => {},
+};
+
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  // Never throw invariant assertion error; always return safe default fallback
-  if (!ctx || typeof ctx !== "object") {
-    return defaultAuthValue;
+  if (!ctx) {
+    return FALLBACK_AUTH_VALUE;
   }
-  return {
-    ...defaultAuthValue,
-    ...ctx,
-    isAdmin: Boolean(ctx.isAdmin),
-    loading: Boolean(ctx.loading),
-  };
+  return ctx;
 }

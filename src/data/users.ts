@@ -120,11 +120,12 @@ export function getDeletedUserIdentifiers(): Set<string> {
   }
 }
 
-export function markUserAsDeleted(idOrPhone: string): void {
+export function markUserAsDeleted(idOrPhone?: string | null): void {
   if (typeof window === "undefined" || !idOrPhone) return;
   try {
     const set = getDeletedUserIdentifiers();
-    const trimmed = String(idOrPhone).trim();
+    const trimmed = String(idOrPhone || "").trim();
+    if (!trimmed) return;
     set.add(trimmed);
     const digits = trimmed.replace(/\D/g, "");
     if (digits) {
@@ -143,7 +144,7 @@ export function isUserDeleted(id?: string | null, phone?: string | null): boolea
   const set = getDeletedUserIdentifiers();
   if (id && set.has(String(id))) return true;
   if (phone) {
-    const ph = String(phone).trim();
+    const ph = String(phone || "").trim();
     if (set.has(ph)) return true;
     const digits = ph.replace(/\D/g, "");
     if (digits) {
@@ -160,11 +161,8 @@ export function getStoredLocalUsers(): FallbackUser[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
     if (!raw) return [];
-    const list = JSON.parse(raw);
-    if (!Array.isArray(list)) return [];
-    return list.filter((u): u is FallbackUser =>
-      Boolean(u && typeof u === "object" && u.phone && !isUserDeleted(u.id, u.phone)),
-    );
+    const list = JSON.parse(raw) as FallbackUser[];
+    return Array.isArray(list) ? list.filter((u) => !isUserDeleted(u.id, u.phone)) : [];
   } catch {
     return [];
   }
@@ -174,13 +172,12 @@ export function deleteLocalUser(idOrPhone?: string | null): void {
   if (typeof window === "undefined" || !idOrPhone) return;
   try {
     markUserAsDeleted(idOrPhone);
-    const digits = String(idOrPhone).replace(/\D/g, "");
+    const digits = String(idOrPhone || "").replace(/\D/g, "");
     const existing = getStoredLocalUsers().filter(
       (u) =>
-        u &&
         u.id !== idOrPhone &&
         u.phone !== idOrPhone &&
-        (digits ? String(u.phone).replace(/\D/g, "") !== digits : true),
+        (digits ? String(u.phone || "").replace(/\D/g, "") !== digits : true),
     );
     localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(existing));
     window.dispatchEvent(new CustomEvent("kotoptan:users-updated"));
@@ -190,13 +187,7 @@ export function deleteLocalUser(idOrPhone?: string | null): void {
 }
 
 export function getAllRegisteredUsers(): FallbackUser[] {
-  try {
-    const fallbackList = Array.isArray(FALLBACK_USERS) ? FALLBACK_USERS : [];
-    const localList = getStoredLocalUsers();
-    return [...fallbackList, ...localList].filter((u) => u && !isUserDeleted(u.id, u.phone));
-  } catch {
-    return Array.isArray(FALLBACK_USERS) ? FALLBACK_USERS : [];
-  }
+  return [...FALLBACK_USERS, ...getStoredLocalUsers()].filter((u) => !isUserDeleted(u.id, u.phone));
 }
 
 export function saveLocalUser(user: Omit<FallbackUser, "id"> & { id?: string }): FallbackUser {
@@ -208,7 +199,7 @@ export function saveLocalUser(user: Omit<FallbackUser, "id"> & { id?: string }):
     try {
       if (user.phone) {
         const set = getDeletedUserIdentifiers();
-        const digits = user.phone.replace(/\D/g, "");
+        const digits = String(user.phone || "").replace(/\D/g, "");
         set.delete(user.phone);
         if (digits) {
           set.delete(digits);
@@ -244,9 +235,11 @@ export function saveLocalUsersBatch(users: FallbackUser[]): void {
 }
 
 export function findFallbackUser(identifier?: string | null): FallbackUser | undefined {
-  if (!identifier || typeof identifier !== "string") return undefined;
-  const rawClean = identifier.trim().toLowerCase();
-  const digits = identifier.replace(/\D/g, "");
+  if (!identifier) return undefined;
+  const rawClean = String(identifier || "")
+    .trim()
+    .toLowerCase();
+  const digits = String(identifier || "").replace(/\D/g, "");
   const normalized = digits.startsWith("0") ? digits.slice(1) : digits;
 
   // Yönetici kısayolları ve hesap eşleştirmesi
@@ -277,14 +270,13 @@ export function findFallbackUser(identifier?: string | null): FallbackUser | und
     );
   }
 
-  const allUsers = getAllRegisteredUsers();
+  const allUsers = [...FALLBACK_USERS, ...getStoredLocalUsers()];
 
   return allUsers.find((u) => {
-    if (!u) return false;
-    if (u.email && u.email.toLowerCase() === rawClean) return true;
+    if (String(u.email || "").toLowerCase() === rawClean) return true;
     if (rawClean === "misafir" && u.normalizedPhone === "misafir") return true;
     if (normalized && u.normalizedPhone === normalized) return true;
-    if (digits && u.phone && u.phone.replace(/\D/g, "") === digits) return true;
+    if (digits && String(u.phone || "").replace(/\D/g, "") === digits) return true;
     return false;
   });
 }

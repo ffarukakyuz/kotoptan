@@ -208,6 +208,195 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="tr" className="bg-black">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function () {
+  if (typeof window === "undefined") return;
+
+  // 0. globalThis polyfill
+  if (typeof globalThis === "undefined") {
+    window.globalThis = window;
+  }
+
+  // 1. String.prototype.replaceAll polyfill
+  if (typeof String.prototype.replaceAll !== "function") {
+    String.prototype.replaceAll = function (search, replacement) {
+      if (search instanceof RegExp) {
+        return this.replace(search, replacement);
+      }
+      return this.split(search).join(replacement);
+    };
+  }
+
+  // 2. Array.prototype.at polyfill
+  if (typeof Array.prototype.at !== "function") {
+    Array.prototype.at = function (n) {
+      n = Math.trunc(n) || 0;
+      if (n < 0) n += this.length;
+      if (n < 0 || n >= this.length) return undefined;
+      return this[n];
+    };
+  }
+
+  // 3. Object.hasOwn polyfill
+  if (typeof Object.hasOwn !== "function") {
+    Object.hasOwn = function (obj, prop) {
+      return Object.prototype.hasOwnProperty.call(obj, prop);
+    };
+  }
+
+  // 4. Promise.allSettled polyfill
+  if (typeof Promise.allSettled !== "function") {
+    Promise.allSettled = function (promises) {
+      return Promise.all(
+        Array.from(promises).map(function (p) {
+          return Promise.resolve(p).then(
+            function (v) { return { status: "fulfilled", value: v }; },
+            function (r) { return { status: "rejected", reason: r }; }
+          );
+        })
+      );
+    };
+  }
+
+  // 5. structuredClone fallback
+  if (typeof window.structuredClone !== "function") {
+    window.structuredClone = function (obj) {
+      if (obj === undefined) return undefined;
+      try {
+        return JSON.parse(JSON.stringify(obj));
+      } catch (e) {
+        return obj;
+      }
+    };
+  }
+
+  // 6. crypto.randomUUID fallback
+  if (typeof window.crypto === "undefined") {
+    window.crypto = {};
+  }
+  if (typeof window.crypto.randomUUID !== "function") {
+    window.crypto.randomUUID = function () {
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        var r = (Math.random() * 16) | 0;
+        var v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    };
+  }
+
+  // 7. requestIdleCallback fallback for iOS Safari < 16.4 & older WebViews
+  if (typeof window.requestIdleCallback !== "function") {
+    window.requestIdleCallback = function (cb) {
+      var start = Date.now();
+      return setTimeout(function () {
+        cb({
+          didTimeout: false,
+          timeRemaining: function () {
+            return Math.max(0, 50 - (Date.now() - start));
+          },
+        });
+      }, 1);
+    };
+  }
+  if (typeof window.cancelIdleCallback !== "function") {
+    window.cancelIdleCallback = function (id) {
+      clearTimeout(id);
+    };
+  }
+
+  // 8. ResizeObserver fallback
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = function () {
+      this.observe = function () {};
+      this.unobserve = function () {};
+      this.disconnect = function () {};
+    };
+  }
+
+  // 9. IntersectionObserver fallback (immediate render)
+  if (typeof window.IntersectionObserver === "undefined") {
+    window.IntersectionObserver = function (cb) {
+      this.observe = function (el) {
+        setTimeout(function () {
+          cb([{ isIntersecting: true, target: el, intersectionRatio: 1 }]);
+        }, 30);
+      };
+      this.unobserve = function () {};
+      this.disconnect = function () {};
+    };
+  }
+
+  // 10. Safari / Private Browsing storage fallback
+  try {
+    var _testKey = "__ko_check__";
+    window.localStorage.setItem(_testKey, "1");
+    window.localStorage.removeItem(_testKey);
+  } catch (_storageErr) {
+    console.warn("[Storage Shield] LocalStorage restricted, activating memory fallback");
+    var _memStore = {};
+    var _mockStorage = {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(_memStore, k) ? _memStore[k] : null; },
+      setItem: function (k, v) { _memStore[k] = String(v); },
+      removeItem: function (k) { delete _memStore[k]; },
+      clear: function () { _memStore = {}; },
+      get length() { return Object.keys(_memStore).length; },
+      key: function (i) { return Object.keys(_memStore)[i] || null; },
+    };
+    try {
+      Object.defineProperty(window, "localStorage", { value: _mockStorage, writable: true, configurable: true });
+      Object.defineProperty(window, "sessionStorage", { value: _mockStorage, writable: true, configurable: true });
+    } catch (_e) {
+      window.localStorage = _mockStorage;
+      window.sessionStorage = _mockStorage;
+    }
+  }
+
+  // 11. Error & unhandled rejection safety shield
+  window.addEventListener(
+    "error",
+    function (evt) {
+      var msg = (evt && evt.error && evt.error.message) || (evt && evt.message) || "";
+      if (typeof msg === "string") {
+        if (
+          msg.indexOf("replaceAll") !== -1 ||
+          msg.indexOf("Invariant failed") !== -1 ||
+          msg.indexOf("useStore") !== -1 ||
+          msg.indexOf("reading 'replaceAll'") !== -1 ||
+          msg.indexOf("ResizeObserver") !== -1
+        ) {
+          console.warn("[Global Shield] Intercepted runtime error:", msg);
+          if (evt.preventDefault) evt.preventDefault();
+          if (evt.stopPropagation) evt.stopPropagation();
+        }
+      }
+    },
+    true,
+  );
+
+  window.addEventListener(
+    "unhandledrejection",
+    function (evt) {
+      var reason = evt && evt.reason;
+      var msg = (reason && reason.message) || String(reason || "");
+      if (
+        msg.indexOf("replaceAll") !== -1 ||
+        msg.indexOf("Invariant failed") !== -1 ||
+        msg.indexOf("useStore") !== -1 ||
+        msg.indexOf("reading 'replaceAll'") !== -1 ||
+        msg.indexOf("ResizeObserver") !== -1
+      ) {
+        console.warn("[Global Shield] Intercepted unhandled rejection:", msg);
+        if (evt.preventDefault) evt.preventDefault();
+      }
+    },
+    true,
+  );
+})();
+`,
+          }}
+        />
         <HeadContent />
       </head>
       <body className="min-h-screen bg-black text-foreground antialiased font-sans">
@@ -220,22 +409,22 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const fallbackRootQueryClient = new QueryClient();
+const defaultFallbackQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 1000 * 60 * 5,
+    },
+  },
+});
 
 function RootComponent() {
-  let qc = fallbackRootQueryClient;
-  try {
-    const ctx = Route.useRouteContext?.();
-    if (ctx?.queryClient) {
-      qc = ctx.queryClient;
-    }
-  } catch {
-    qc = fallbackRootQueryClient;
-  }
+  const ctx = Route.useRouteContext({ shouldThrow: false });
+  const queryClient = ctx?.queryClient ?? defaultFallbackQueryClient;
 
   return (
     <GlobalErrorBoundary>
-      <QueryClientProvider client={qc}>
+      <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <CartProvider>
             <RootAppContent />
@@ -247,17 +436,13 @@ function RootComponent() {
 }
 
 function RootAppContent() {
-  const router = useRouter();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter({ warn: false });
+  const pathname = useRouterState({
+    select: (s) => s.location.pathname,
+  });
+
   const { user, loading } = useAuth();
   const isAuthPage = pathname === "/giris";
-
-  // Giriş zorunludur: Oturum açılmamışsa doğrudan giriş/kayıt ekranına yönlendir
-  useEffect(() => {
-    if (!loading && !user && !isAuthPage) {
-      void router.navigate({ to: "/giris", replace: true });
-    }
-  }, [user, loading, isAuthPage, router]);
 
   // Mobil Safari / WebKit hata ve önbellek koruma mekanizmaları
   useEffect(() => {
@@ -265,7 +450,7 @@ function RootAppContent() {
 
     // Mobil Safari BFCache: Geri/İleri tuşunda sonsuz reload döngüsünü engelleyerek router'ı tazele
     const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
+      if (event.persisted && router) {
         try {
           router.invalidate();
         } catch {
@@ -283,19 +468,19 @@ function RootAppContent() {
     };
     window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
-    // Invariant ve useStore çöküşlerini yakalayarak beyaz ekran oluşmasını engelle
-    const handleWindowError = (event: ErrorEvent) => {
-      const msg = String(event?.message || event?.error?.message || "");
+    // replaceAll, Invariant veya useStore hatalarının ekranı beyaz ekrana düşürmesini engelle
+    const handleError = (event: ErrorEvent) => {
+      const msg = event?.message || (event?.error && event.error.message) || "";
       if (
-        msg.includes("Invariant failed") ||
-        msg.includes("useStore") ||
-        msg.includes("Cannot read properties of undefined")
+        typeof msg === "string" &&
+        (msg.includes("replaceAll") || msg.includes("useStore") || msg.includes("Invariant"))
       ) {
-        console.warn("[Root] Invariant/useStore hatası güvenle absorbe edildi:", msg);
+        console.warn("[Root Shield] Intercepted runtime error:", msg);
         event.preventDefault();
+        event.stopPropagation();
       }
     };
-    window.addEventListener("error", handleWindowError);
+    window.addEventListener("error", handleError, true);
 
     // Varsa eski/bozuk service worker kayıtlarını temizleyip bayat JS/CSS çakışmasını engelle
     if ("serviceWorker" in navigator) {
@@ -312,9 +497,24 @@ function RootAppContent() {
     return () => {
       window.removeEventListener("pageshow", handlePageShow);
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
-      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("error", handleError, true);
     };
   }, [router]);
+
+  // Giriş zorunludur: Giriş yapılmamışsa ve /giris sayfasında değilsek derhal /giris'e yönlendir.
+  useEffect(() => {
+    if (!loading && !user && !isAuthPage) {
+      if (router) {
+        void router.navigate({ to: "/giris", replace: true }).catch(() => {});
+      }
+      const timer = setTimeout(() => {
+        if (typeof window !== "undefined" && window.location.pathname !== "/giris") {
+          window.location.replace("/giris");
+        }
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading, isAuthPage, router]);
 
   if (isAuthPage) {
     return (
@@ -329,12 +529,12 @@ function RootAppContent() {
     );
   }
 
-  // Oturum kontrol edilirken şık yükleniyor animasyonu
-  if (loading) {
-    return <SplashScreen message="KasımOğulları — Oturum kontrol ediliyor..." />;
+  // Oturum kontrol ediliyorken kullanıcı henüz yoksa şık Splash Screen animasyonu göster
+  if (loading && !user) {
+    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
   }
 
-  // Giriş yapılmamışsa giriş ekranına yönlendir
+  // Kullanıcı giriş yapmamışsa yönlendirme tamamlanana kadar yönlendirme ekranı göster
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-black text-white">

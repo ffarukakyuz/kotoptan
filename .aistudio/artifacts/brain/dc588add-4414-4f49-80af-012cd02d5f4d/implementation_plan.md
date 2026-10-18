@@ -40,7 +40,6 @@ Kullanıcının yüklediği görseldeki parlak zümrüt yeşili, keskin kavisli 
 ```
 
 ### Görsel Kimlik Detayları:
-
 1. **Harf Anatomisi**:
    - Üst ve alt kolları kavisli, hançer formunda keskin bitişli zümrüt yeşili ve siyah gölgeli gövde.
    - İki kolun ortadan kesiştiği aerodinamik, güçlü vurgu.

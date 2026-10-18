@@ -164,26 +164,19 @@ function AdminOrdersRoutePage() {
   }, [qc]);
 
   // Aktif vs Geçmiş ayrımı
-  const safeRawOrders = useMemo(
-    () => (Array.isArray(rawOrders) ? rawOrders.filter(Boolean) : []),
-    [rawOrders],
-  );
-
   const activeOrders = useMemo(() => {
-    return safeRawOrders.filter((o) => o && !isArchivedOrder(o));
-  }, [safeRawOrders]);
+    return rawOrders.filter((o) => !isArchivedOrder(o));
+  }, [rawOrders]);
 
   const pastOrders = useMemo(() => {
-    return safeRawOrders.filter((o) => o && isArchivedOrder(o));
-  }, [safeRawOrders]);
+    return rawOrders.filter((o) => isArchivedOrder(o));
+  }, [rawOrders]);
 
   const scopedOrders = view === "arsiv" ? pastOrders : activeOrders;
 
   // Seçilen ilçe kapsamındaki siparişler
   const districtOrders = useMemo(() => {
-    return (Array.isArray(scopedOrders) ? scopedOrders : []).filter(
-      (o) => o && matchesDistrictFilter(o.district, district),
-    );
+    return scopedOrders.filter((o) => matchesDistrictFilter(o.district, district));
   }, [scopedOrders, district]);
 
   // Durum filtresine göre süzme

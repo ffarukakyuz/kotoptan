@@ -100,43 +100,219 @@ try {
     }
   }
 
-  const tsrBootstrap = `<script class="$tsr" id="$tsr-stream-barrier">
-(function(){
+  const autoHealScript = `<script>
+(function() {
+  if (typeof window === "undefined") return;
+
+  // 0. globalThis
+  if (typeof globalThis === "undefined") {
+    window.globalThis = window;
+  }
+
+  // 1. replaceAll
+  if (typeof String.prototype.replaceAll !== "function") {
+    String.prototype.replaceAll = function(search, replacement) {
+      if (search instanceof RegExp) return this.replace(search, replacement);
+      return this.split(search).join(replacement);
+    };
+  }
+
+  // 2. at
+  if (typeof Array.prototype.at !== "function") {
+    Array.prototype.at = function(n) {
+      n = Math.trunc(n) || 0;
+      if (n < 0) n += this.length;
+      if (n < 0 || n >= this.length) return undefined;
+      return this[n];
+    };
+  }
+
+  // 3. hasOwn
+  if (typeof Object.hasOwn !== "function") {
+    Object.hasOwn = function(obj, prop) {
+      return Object.prototype.hasOwnProperty.call(obj, prop);
+    };
+  }
+
+  // 4. Promise.allSettled
+  if (typeof Promise.allSettled !== "function") {
+    Promise.allSettled = function(promises) {
+      return Promise.all(
+        Array.from(promises).map(function(p) {
+          return Promise.resolve(p).then(
+            function(v) { return { status: "fulfilled", value: v }; },
+            function(r) { return { status: "rejected", reason: r }; }
+          );
+        })
+      );
+    };
+  }
+
+  // 5. structuredClone
+  if (typeof window.structuredClone !== "function") {
+    window.structuredClone = function(obj) {
+      if (obj === undefined) return undefined;
+      try { return JSON.parse(JSON.stringify(obj)); } catch (e) { return obj; }
+    };
+  }
+
+  // 6. crypto.randomUUID
+  if (typeof window.crypto === "undefined") window.crypto = {};
+  if (typeof window.crypto.randomUUID !== "function") {
+    window.crypto.randomUUID = function() {
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        var r = (Math.random() * 16) | 0;
+        var v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    };
+  }
+
+  // 7. requestIdleCallback
+  if (typeof window.requestIdleCallback !== "function") {
+    window.requestIdleCallback = function(cb) {
+      var start = Date.now();
+      return setTimeout(function() {
+        cb({ didTimeout: false, timeRemaining: function() { return Math.max(0, 50 - (Date.now() - start)); } });
+      }, 1);
+    };
+  }
+  if (typeof window.cancelIdleCallback !== "function") {
+    window.cancelIdleCallback = function(id) { clearTimeout(id); };
+  }
+
+  // 8. ResizeObserver
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = function() {
+      this.observe = function() {};
+      this.unobserve = function() {};
+      this.disconnect = function() {};
+    };
+  }
+
+  // 9. IntersectionObserver
+  if (typeof window.IntersectionObserver === "undefined") {
+    window.IntersectionObserver = function(cb) {
+      this.observe = function(el) {
+        setTimeout(function() { cb([{ isIntersecting: true, target: el, intersectionRatio: 1 }]); }, 30);
+      };
+      this.unobserve = function() {};
+      this.disconnect = function() {};
+    };
+  }
+
+  // 10. Storage shield
   try {
-    self.$R = self.$R || {};
-    self.$R["tsr"] = [];
-    var p = (typeof window !== "undefined" && window.location.pathname) || "/";
-    var m = [{ i: "__root__", id: "__root__", status: "success" }];
-    if (p.indexOf("/giris") === 0) {
-      m.push({ i: "/giris", id: "/giris", status: "success" });
-    } else {
-      m.push({ i: "/_authenticated", id: "/_authenticated", status: "success" });
-      if (p === "/" || p === "") {
-        m.push({ i: "/_authenticated/", id: "/_authenticated/", status: "success" });
-      } else {
-        var sub = p.replace(/^\\/_authenticated/, "").replace(/^\\//, "");
-        var subId = "/_authenticated/" + sub;
-        m.push({ i: subId, id: subId, status: "success" });
+    if (window.localStorage) {
+      var keys = [
+        "ko_local_auth_session",
+        "custom_added_products",
+        "custom_product_overrides",
+        "permanently_deleted_product_ids",
+        "permanently_deleted_product_names",
+        "custom_product_archived_status",
+        "custom_product_stock_status",
+        "ko_local_orders",
+        "ko_order_status_overrides",
+        "ko_deleted_order_ids"
+      ];
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        try {
+          var raw = localStorage.getItem(k);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed === null || typeof parsed === "undefined") {
+              localStorage.removeItem(k);
+            }
+          }
+        } catch (err) {
+          try { localStorage.removeItem(k); } catch (e) {}
+        }
+      }
+      for (var j = 0; j < localStorage.length; j++) {
+        var itemKey = localStorage.key(j);
+        if (itemKey && (itemKey.indexOf("depo-sepet-") === 0 || itemKey.indexOf("kotoptan_ai_chat_") === 0)) {
+          try {
+            var val = localStorage.getItem(itemKey);
+            if (val) JSON.parse(val);
+          } catch (e) {
+            try { localStorage.removeItem(itemKey); } catch (e2) {}
+          }
+        }
       }
     }
-    var lastId = m[m.length - 1].id;
-    self.$_TSR = {
-      h: function() { this.hydrated = true; this.c(); },
-      e: function() { this.streamEnded = true; this.c(); },
-      c: function() { if (this.hydrated && this.streamEnded) { delete self.$_TSR; delete self.$R.tsr; } },
-      p: function(fn) { this.initialized ? fn() : this.buffer.push(fn); },
-      buffer: [],
-      router: {
-        manifest: { routes: {} },
-        matches: m,
-        lastMatchId: lastId,
-        dehydratedData: {}
-      }
+  } catch (e) {
+    var _memStore = {};
+    var _mock = {
+      getItem: function(k) { return _memStore[k] || null; },
+      setItem: function(k, v) { _memStore[k] = String(v); },
+      removeItem: function(k) { delete _memStore[k]; },
+      clear: function() { _memStore = {}; },
+      get length() { return Object.keys(_memStore).length; },
+      key: function(i) { return Object.keys(_memStore)[i] || null; }
     };
-    self.$_TSR.e();
-  } catch(e) {
-    console.warn("[TSR Bootstrap Fallback]:", e);
+    try {
+      window.localStorage = _mock;
+      window.sessionStorage = _mock;
+    } catch (_ignore) {}
   }
+
+  window.addEventListener("error", function(evt) {
+    if (evt && evt.error && typeof evt.error.message === "string") {
+      var msg = evt.error.message;
+      if (
+        msg.indexOf("replaceAll") !== -1 ||
+        msg.indexOf("Invariant failed") !== -1 ||
+        msg.indexOf("useStore") !== -1 ||
+        msg.indexOf("reading 'replaceAll'") !== -1 ||
+        msg.indexOf("ResizeObserver") !== -1
+      ) {
+        console.warn("[Invariant & replaceAll Shield] Intercepted:", msg);
+        if (evt.preventDefault) evt.preventDefault();
+        if (evt.stopPropagation) evt.stopPropagation();
+      }
+    }
+  }, true);
+
+  window.addEventListener("unhandledrejection", function(evt) {
+    var reason = evt && evt.reason;
+    var msg = (reason && reason.message) || String(reason || "");
+    if (
+      msg.indexOf("replaceAll") !== -1 ||
+      msg.indexOf("Invariant failed") !== -1 ||
+      msg.indexOf("useStore") !== -1 ||
+      msg.indexOf("reading 'replaceAll'") !== -1 ||
+      msg.indexOf("ResizeObserver") !== -1
+    ) {
+      console.warn("[Invariant & replaceAll Shield] Intercepted unhandled rejection:", msg);
+      if (evt.preventDefault) evt.preventDefault();
+    }
+  }, true);
+})();
+</script>`;
+
+  const tsrBootstrap = `<script class="$tsr" id="$tsr-stream-barrier">
+(function() {
+  self.$R = self.$R || {};
+  self.$R["tsr"] = [];
+  var p = (typeof window !== "undefined" && window.location && window.location.pathname) ? window.location.pathname : "/";
+  var rId = (p === "/" || p === "") ? "/_authenticated/" : (p.indexOf("/giris") === 0 ? "/giris" : (p.indexOf("/yonetim") === 0 ? "/_authenticated/yonetim" : (p.indexOf("/sepet") === 0 ? "/_authenticated/sepet" : (p.indexOf("/siparis") === 0 ? "/_authenticated/siparisler" : "/_authenticated/"))));
+  var rootMatch = { id: "__root__", routeId: "__root__", status: "success", _nonReactive: {}, params: {} };
+  var childMatch = { id: rId, routeId: rId, status: "success", _nonReactive: {}, params: {} };
+  self.$_TSR = {
+    h: function() { this.hydrated = true; this.c(); },
+    e: function() { this.streamEnded = true; this.c(); },
+    c: function() { if (this.hydrated && this.streamEnded) { delete self.$_TSR; delete self.$R.tsr; } },
+    p: function(e) { this.initialized ? e() : this.buffer.push(e); },
+    buffer: [],
+    router: {
+      manifest: { routes: {} },
+      matches: [rootMatch, childMatch],
+      lastMatchId: rId
+    }
+  };
+  self.$_TSR.e();
 })();
 </script>`;
 
@@ -154,26 +330,6 @@ try {
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Kotoptan" />
     <meta name="format-detection" content="telephone=no" />
-    <script>
-      (function(){
-        try {
-          if (typeof window !== "undefined" && window.localStorage) {
-            var keys = Object.keys(localStorage);
-            for (var i = 0; i < keys.length; i++) {
-              var k = keys[i];
-              if (k.indexOf("depo-") === 0 || k.indexOf("ko_") === 0 || k.indexOf("custom_") === 0) {
-                try {
-                  var v = localStorage.getItem(k);
-                  if (v) JSON.parse(v);
-                } catch(e) {
-                  localStorage.removeItem(k);
-                }
-              }
-            }
-          }
-        } catch(e) {}
-      })();
-    </script>
     <title>Kotoptan — Toptan Gıda ve Market Tüketim Malları Dağıtımı</title>
     <meta name="description" content="Kotoptan toptan gıda ve tüketim malları sipariş ve katalog yönetim platformu. Bitlis, Tatvan ve çevre ilçelere toptan gıda ve temizlik ürünleri dağıtımı." />
     <meta name="keywords" content="kotoptan, toptan gıda, toptan market, tatvan toptan, bitlis toptancı, gıda toptan, temizlik ürünleri toptan, bakliyat toptan, toptan satış" />
@@ -194,14 +350,37 @@ try {
     <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
     <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />
+    ${autoHealScript}
     ${styleTag}
   </head>
   <body>
-    <div id="root"></div>
-    ${tsrBootstrap}
-    ${scriptTag}
+    <div id="root">
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050b07;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;text-align:center;box-sizing:border-box;">
+        <div style="width:110px;height:110px;border-radius:24px;overflow:hidden;border:2px solid #10b981;box-shadow:0 10px 25px rgba(0,0,0,0.8);margin-bottom:20px;background:#000;">
+          <img src="/kotoptan-logo.jpg?v=20261018-official-k" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">
+          Ko<span style="color:#22c55e;">toptan</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#34d399;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:24px;">
+          Toptan Dağıtım
+        </div>
+        <div style="width:180px;height:6px;background:#13231a;border-radius:999px;overflow:hidden;margin-bottom:16px;">
+          <div style="width:70%;height:100%;background:#10b981;border-radius:999px;"></div>
+        </div>
+        <div style="font-size:13px;color:#9ca3af;margin-bottom:18px;">
+          Sistem yükleniyor...
+        </div>
+        <a href="/giris" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(16,185,129,0.35);">
+          Giriş Yap / Kataloğu Aç →
+        </a>
+      </div>
+    </div>
+    \${tsrBootstrap}
+    \${scriptTag}
   </body>
-</html>`;
+</html>
+`;
 
   // Always write dist/index.html and dist/404.html to guarantee SPA loads
   const distIndexPath = path.join(distDir, "index.html");
@@ -276,6 +455,47 @@ export { renderIndexHTML as default };
         }
       }
     }
+  }
+
+  // 5.6 Defensively patch ANY .replaceAll call in all generated dist & output chunks
+  function patchReplaceAllRecursively(dir) {
+    if (!fs.existsSync(dir)) return;
+    const items = fs.readdirSync(dir, { withFileTypes: true });
+    for (const item of items) {
+      const full = path.join(dir, item.name);
+      if (item.isDirectory()) {
+        patchReplaceAllRecursively(full);
+      } else if (/\.(js|mjs|cjs)$/.test(item.name)) {
+        let text = fs.readFileSync(full, "utf-8");
+        let changed = false;
+        // 1. Any variable.replaceAll(
+        const patched = text.replace(
+          /(?<![.\w$\x22\x27\x60])([a-zA-Z0-9_$]+)\.replaceAll\(/g,
+          '($1 || "").replaceAll(',
+        );
+        if (patched !== text) {
+          text = patched;
+          changed = true;
+        }
+        // 2. Explicit patterns
+        if (text.includes("id.replaceAll(")) {
+          text = text.replace(/id\.replaceAll\(/g, '(id || "").replaceAll(');
+          changed = true;
+        }
+        if (text.includes("segment.replaceAll(")) {
+          text = text.replace(/segment\.replaceAll\(/g, '(segment || "").replaceAll(');
+          changed = true;
+        }
+        if (changed) {
+          fs.writeFileSync(full, text, "utf-8");
+          console.log(`Defensively patched replaceAll in: ${item.name}`);
+        }
+      }
+    }
+  }
+  patchReplaceAllRecursively(distDir);
+  if (fs.existsSync(outputDir)) {
+    patchReplaceAllRecursively(outputDir);
   }
 
   const distFilesCount = fs.readdirSync(distDir).length;
