@@ -150,7 +150,7 @@ export function SiteHeader() {
               <img
                 src={BRAND_MOTIF_SRC}
                 alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
-                className="h-6 w-6 sm:h-7 sm:w-7 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] select-none translate-y-[1px]"
+                className="h-5 w-5 sm:h-5.5 sm:w-5.5 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)] select-none self-center"
                 title="İhlâs, Felâk, Nâs ve Nazar Duası"
               />
             </div>

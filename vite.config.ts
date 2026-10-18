@@ -432,7 +432,12 @@ export default defineConfig({
     define: {
       "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
     },
+    esbuild: {
+      target: "es2018",
+    },
     build: {
+      target: ["es2018", "chrome78", "edge79", "firefox68", "safari12"],
+      cssTarget: ["chrome78", "firefox68", "safari12"],
       sourcemap: false,
       rollupOptions: {
         output: {

@@ -354,9 +354,30 @@ try {
     ${styleTag}
   </head>
   <body>
-    <div id="root"></div>
-    ${tsrBootstrap}
-    ${scriptTag}
+    <div id="root">
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050b07;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;text-align:center;box-sizing:border-box;">
+        <div style="width:110px;height:110px;border-radius:24px;overflow:hidden;border:2px solid #10b981;box-shadow:0 10px 25px rgba(0,0,0,0.8);margin-bottom:20px;background:#000;">
+          <img src="/kotoptan-logo.jpg?v=20261010-k-emblem" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">
+          Ko<span style="color:#22c55e;">toptan</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#34d399;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:24px;">
+          Toptan Dağıtım
+        </div>
+        <div style="width:180px;height:6px;background:#13231a;border-radius:999px;overflow:hidden;margin-bottom:16px;">
+          <div style="width:70%;height:100%;background:#10b981;border-radius:999px;"></div>
+        </div>
+        <div style="font-size:13px;color:#9ca3af;margin-bottom:18px;">
+          Sistem yükleniyor...
+        </div>
+        <a href="/giris" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(16,185,129,0.35);">
+          Giriş Yap / Kataloğu Aç →
+        </a>
+      </div>
+    </div>
+    \${tsrBootstrap}
+    \${scriptTag}
   </body>
 </html>
 `;
