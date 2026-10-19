@@ -9,6 +9,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-attr 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' * data:; style-src-elem 'self' 'unsafe-inline' * data:; font-src 'self' * data: https:; img-src 'self' * data: blob: https: http:; connect-src * blob: data: chrome-extension: moz-extension:; worker-src 'self' * blob: data: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' * data: blob:;"
+    />
     <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -278,6 +282,7 @@
   <body>
     <div id="root">
       <div
+        id="initial-preloader"
         style="
           min-height: 100vh;
           display: flex;
@@ -292,6 +297,7 @@
           padding: 20px;
           text-align: center;
           box-sizing: border-box;
+          transition: opacity 0.35s ease-out;
         "
       >
         <div
@@ -358,5 +364,36 @@
         </a>
       </div>
     </div>
+    <script>
+      (function () {
+        var preloader = document.getElementById("initial-preloader");
+        if (!preloader) return;
+
+        var dismissed = false;
+        function dismissPreloader() {
+          if (dismissed || !preloader) return;
+          dismissed = true;
+          preloader.style.transition = "opacity 0.35s ease-out";
+          preloader.style.opacity = "0";
+          preloader.style.pointerEvents = "none";
+          setTimeout(function () {
+            if (preloader) {
+              preloader.style.display = "none";
+            }
+          }, 380);
+        }
+
+        // Emniyet zamanlayıcısı: En geç 1.5 - 1.8 saniye (1600ms) içerisinde preloader'ı kaldır
+        setTimeout(dismissPreloader, 1600);
+
+        // Herhangi bir JS veya Promise hatası olduğunda beklemeden preloader'ı kaldır
+        window.addEventListener("error", function () {
+          setTimeout(dismissPreloader, 250);
+        });
+        window.addEventListener("unhandledrejection", function () {
+          setTimeout(dismissPreloader, 250);
+        });
+      })();
+    </script>
   </body>
 </html>

@@ -350,13 +350,13 @@ try {
     <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
     <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; style-src * 'unsafe-inline'; font-src * data: https:; img-src * data: blob: https:; connect-src *;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-attr 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' * data:; style-src-elem 'self' 'unsafe-inline' * data:; font-src 'self' * data: https:; img-src 'self' * data: blob: https: http:; connect-src * blob: data: chrome-extension: moz-extension:; worker-src 'self' * blob: data: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' * data: blob:;" />
     ${autoHealScript}
     ${styleTag}
   </head>
   <body>
     <div id="root">
-      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050b07;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;text-align:center;box-sizing:border-box;">
+      <div id="initial-preloader" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050b07;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;text-align:center;box-sizing:border-box;transition:opacity 0.35s ease-out;">
         <div style="width:110px;height:110px;border-radius:24px;overflow:hidden;border:2px solid #10b981;box-shadow:0 10px 25px rgba(0,0,0,0.8);margin-bottom:20px;background:#000;">
           <img src="/kotoptan-logo.jpg?v=20261019-clean-box" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
         </div>
@@ -377,6 +377,34 @@ try {
         </a>
       </div>
     </div>
+    <script>
+      (function () {
+        var preloader = document.getElementById("initial-preloader");
+        if (!preloader) return;
+
+        var dismissed = false;
+        function dismissPreloader() {
+          if (dismissed || !preloader) return;
+          dismissed = true;
+          preloader.style.transition = "opacity 0.35s ease-out";
+          preloader.style.opacity = "0";
+          preloader.style.pointerEvents = "none";
+          setTimeout(function () {
+            if (preloader) {
+              preloader.style.display = "none";
+            }
+          }, 380);
+        }
+
+        setTimeout(dismissPreloader, 1600);
+        window.addEventListener("error", function () {
+          setTimeout(dismissPreloader, 250);
+        });
+        window.addEventListener("unhandledrejection", function () {
+          setTimeout(dismissPreloader, 250);
+        });
+      })();
+    </script>
     \${tsrBootstrap}
     \${scriptTag}
   </body>

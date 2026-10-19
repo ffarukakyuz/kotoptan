@@ -37,11 +37,28 @@ function AuthenticatedLayout() {
   }, [user, loading, navigate, isStrictlyProtected]);
 
   if (loading && isStrictlyProtected) {
-    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
+    return (
+      <SplashScreen
+        message="KasımOğulları — Oturum açılıyor..."
+        minDuration={600}
+        maxTimeout={1500}
+      />
+    );
   }
 
   if (!user && isStrictlyProtected) {
-    return <SplashScreen message="Giriş ekranına yönlendiriliyor..." />;
+    return (
+      <SplashScreen
+        message="Giriş ekranına yönlendiriliyor..."
+        minDuration={600}
+        maxTimeout={1500}
+        onFinish={() => {
+          if (typeof window !== "undefined") {
+            window.location.replace("/giris");
+          }
+        }}
+      />
+    );
   }
 
   return (

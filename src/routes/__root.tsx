@@ -178,7 +178,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         httpEquiv: "Content-Security-Policy",
         content:
-          "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; style-src * 'unsafe-inline'; font-src * data: https:; img-src * data: blob: https:; connect-src *;",
+          "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-attr 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' * data:; style-src-elem 'self' 'unsafe-inline' * data:; font-src 'self' * data: https:; img-src 'self' * data: blob: https: http:; connect-src * blob: data: chrome-extension: moz-extension:; worker-src 'self' * blob: data: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' * data: blob:;",
       },
     ],
     links: [

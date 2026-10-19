@@ -175,13 +175,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Emniyet mekanizması: En geç 1.5 saniye içinde loading durumunu kesin olarak false yap
+    const safetyTimer = setTimeout(() => {
+      if (active) {
+        setLoading(false);
+      }
+    }, 1500);
+
     // İlk oturum kontrolü (Hibrit: Supabase -> Yerel Depolama)
     void (async () => {
       let foundUser: User | null = null;
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-          setTimeout(() => resolve({ data: { session: null } }), 1200),
+          setTimeout(() => resolve({ data: { session: null } }), 1000),
         );
         const { data } = await Promise.race([sessionPromise, timeoutPromise]);
         if (data?.session?.user) {
@@ -223,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      clearTimeout(safetyTimer);
       try {
         sub?.subscription?.unsubscribe();
       } catch {

@@ -1,58 +1,101 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 interface SplashScreenProps {
   onFinish?: () => void;
   message?: string;
   minDuration?: number;
+  maxTimeout?: number;
 }
 
 export function SplashScreen({
   onFinish,
   message = "Kotoptan — Oturum açılıyor...",
-  minDuration = 800,
+  minDuration = 700,
+  maxTimeout = 1600,
 }: SplashScreenProps) {
-  const [progress, setProgress] = useState(15);
+  const [progress, setProgress] = useState(20);
   const [fadeOut, setFadeOut] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [showDirectButton, setShowDirectButton] = useState(false);
+  const hasFinishedRef = useRef(false);
+
+  const triggerDismiss = useCallback(() => {
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
+    setFadeOut(true);
+    setTimeout(() => {
+      setHidden(true);
+      if (onFinish) {
+        try {
+          onFinish();
+        } catch (err) {
+          console.warn("[SplashScreen] onFinish error:", err);
+        }
+      }
+    }, 320);
+  }, [onFinish]);
 
   useEffect(() => {
     // Akıcı ilerleme simülasyonu
-    const timer1 = setTimeout(() => setProgress(45), 150);
-    const timer2 = setTimeout(() => setProgress(85), 400);
-    const timer3 = setTimeout(() => setProgress(100), Math.max(minDuration - 200, 600));
+    const timer1 = setTimeout(() => setProgress(55), 150);
+    const timer2 = setTimeout(() => setProgress(88), 350);
+    const timer3 = setTimeout(() => setProgress(100), Math.min(minDuration - 100, 600));
 
-    // Yalnızca onFinish geri çağrımı verilmişse otomatik kararma yap; aksi halde yükleme bitene kadar ekranda kalmalı!
-    let finishTimer: ReturnType<typeof setTimeout> | undefined;
+    // 1. Normal akış: onFinish sağlandıysa minDuration (varsayılan 700ms) sonunda kapat
+    let normalTimer: ReturnType<typeof setTimeout> | undefined;
     if (onFinish) {
-      finishTimer = setTimeout(() => {
-        setFadeOut(true);
-        setTimeout(() => {
-          onFinish();
-        }, 350);
+      normalTimer = setTimeout(() => {
+        triggerDismiss();
       }, minDuration);
     }
 
-    // Mobil veya tablet cihazlarda yönlendirme gecikirse 1.6 saniye sonra doğrudan geçiş butonu göster
+    // 2. Kilitlenme önleyici emniyet zamanlayıcısı (Watchdog Timer):
+    // En geç 1.5 - 2 saniye (varsayılan 1600ms) içerisinde ekranı yumuşakça (fade-out) kaldırıp görünürlüğü kapat (display: none)
+    const safetyFallbackTimer = setTimeout(() => {
+      triggerDismiss();
+    }, maxTimeout);
+
+    // 3. Herhangi bir JavaScript veya Promise hatası durumunda ekranın kilitlenmesini engelle
+    const handleRuntimeError = () => {
+      setTimeout(() => {
+        triggerDismiss();
+      }, 150);
+    };
+    window.addEventListener("error", handleRuntimeError, { once: true });
+    window.addEventListener("unhandledrejection", handleRuntimeError, { once: true });
+
+    // 4. Doğrudan geçiş / Acil durum butonu (1000ms sonra görünür)
     const emergencyTimer = setTimeout(() => {
       setShowDirectButton(true);
-    }, 1600);
+    }, 1000);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
-      if (finishTimer) clearTimeout(finishTimer);
+      if (normalTimer) clearTimeout(normalTimer);
+      clearTimeout(safetyFallbackTimer);
       clearTimeout(emergencyTimer);
+      window.removeEventListener("error", handleRuntimeError);
+      window.removeEventListener("unhandledrejection", handleRuntimeError);
     };
-  }, [minDuration, onFinish]);
+  }, [minDuration, maxTimeout, onFinish, triggerDismiss]);
+
+  if (hidden) {
+    return null;
+  }
 
   return (
     <div
       className={`fixed inset-0 z-[9999] flex min-h-[100dvh] flex-col items-center justify-center bg-[#050b07] text-white transition-opacity duration-300 select-none ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
-      style={{ WebkitTapHighlightColor: "transparent" }}
+      style={{
+        display: hidden ? "none" : "flex",
+        WebkitTapHighlightColor: "transparent",
+      }}
+      aria-live="polite"
     >
       {/* Arka plan koyu yeşil - siyah derin atmosferik ışık efekti */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.22)_0%,rgba(5,11,7,0.98)_75%)] pointer-events-none" />
@@ -96,17 +139,18 @@ export function SplashScreen({
           <p className="text-xs sm:text-sm font-semibold text-white/85 tracking-wide">{message}</p>
         </div>
 
-        {/* Mobil Acil Durum Butonu */}
+        {/* Mobil / Masaüstü Acil Durum Butonu */}
         {showDirectButton && (
           <div className="mt-5 animate-in fade-in flex flex-col items-center gap-2">
-            <a
-              href="/giris"
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md active:scale-95 transition-all"
+            <button
+              type="button"
+              onClick={triggerDismiss}
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md active:scale-95 transition-all cursor-pointer"
             >
-              Giriş Ekranına Devam Et →
-            </a>
+              Kataloğa Devam Et →
+            </button>
             <p className="text-[10px] text-white/50">
-              Cihazınızda yönlendirme geciktiyse butona dokunun
+              Yükleme geciktiyse butona tıklayarak devam edebilirsiniz
             </p>
           </div>
         )}
