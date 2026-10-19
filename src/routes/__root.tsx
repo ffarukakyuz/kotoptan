@@ -211,7 +211,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="tr" className="bg-black">
+    <html lang="tr" className="dark bg-black">
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -448,6 +448,7 @@ function RootAppContent() {
 
   const normalizedPath = (pathname || "").replace(/\/+$/, "") || "/";
   const isAuthPage = normalizedPath === "/giris" || normalizedPath.startsWith("/giris");
+  const isYonetimPage = normalizedPath === "/yonetim" || normalizedPath.startsWith("/yonetim");
 
   // Mobil Safari / WebKit hata ve önbellek koruma mekanizmaları
   useEffect(() => {
@@ -522,20 +523,34 @@ function RootAppContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col font-sans bg-black text-foreground relative overflow-x-hidden">
+    <div
+      className={`flex min-h-screen flex-col font-sans ${
+        isYonetimPage ? "admin-light bg-slate-50 text-slate-900" : "bg-black text-foreground"
+      } relative overflow-x-hidden`}
+    >
       {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
-      <div aria-hidden="true" className="watermark-overlay" />
+      {!isYonetimPage && <div aria-hidden="true" className="watermark-overlay" />}
       <div className="relative z-10 flex min-h-screen flex-col">
-        <PWAInstallBanner />
-        <WelcomeBanner />
+        {!isYonetimPage && <PWAInstallBanner />}
+        {!isYonetimPage && <WelcomeBanner />}
         <SiteHeader />
-        <main className="flex-1">
+        <main className={`flex-1 ${isYonetimPage ? "bg-slate-50 text-slate-900" : ""}`}>
           {/* Required: nested routes render here. */}
           <Outlet />
         </main>
-        <footer className="mt-auto border-t border-white/10 bg-black py-8 text-zinc-400">
+        <footer
+          className={`mt-auto border-t py-8 ${
+            isYonetimPage
+              ? "border-slate-200 bg-white text-slate-600"
+              : "border-white/10 bg-black text-zinc-400"
+          }`}
+        >
           <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-white/20 bg-zinc-900">
+            <span
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border ${
+                isYonetimPage ? "border-slate-200 bg-slate-100" : "border-white/20 bg-zinc-900"
+              }`}
+            >
               <img
                 src={BRAND_LOGO_SRC}
                 alt="KasımOğulları Logo"
@@ -544,8 +559,10 @@ function RootAppContent() {
               />
             </span>
             <div>
-              <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
-              <p className="mt-0.5 text-xs text-zinc-400">
+              <p className={`font-semibold ${isYonetimPage ? "text-slate-900" : "text-white"}`}>
+                KasımOğulları Ltd. Şti.
+              </p>
+              <p className={`mt-0.5 text-xs ${isYonetimPage ? "text-slate-600" : "text-zinc-400"}`}>
                 Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır,
                 ödeme teslimat sırasında yapılır.
               </p>
@@ -553,7 +570,7 @@ function RootAppContent() {
           </div>
         </footer>
         <SupportChat />
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" richColors theme={isYonetimPage ? "light" : "dark"} />
       </div>
     </div>
   );

@@ -12,46 +12,37 @@ function AuthenticatedLayout() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-  const isStrictlyProtected =
-    pathname.startsWith("/profil") || pathname.startsWith("/siparislerim");
-
-  // Sadece kişisel hesap ve sipariş geçmişi sayfalarında oturum zorunludur.
-  // Ana sayfa, ürün kataloğu ve yönetim/sevkiyat sayfaları ziyaretçilere açıktır.
+  // DEĞİŞMEZ KURAL: Sitede tüm sayfalar (katalog, sepet, siparişler, yönetim vb.)
+  // için oturum açma ZORUNLUDUR. İlk girişte veya oturumsuz durumda derhal /giris ekranına yönlendirilir.
   useEffect(() => {
-    if (!loading && !user && isStrictlyProtected) {
+    if (!loading && !user) {
       if (navigate) {
         void navigate({ to: "/giris", replace: true }).catch(() => {});
       }
-      const timer = setTimeout(() => {
-        if (
-          typeof window !== "undefined" &&
-          (window.location.pathname.startsWith("/profil") ||
-            window.location.pathname.startsWith("/siparislerim"))
-        ) {
-          window.location.replace("/giris");
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
+      if (typeof window !== "undefined") {
+        window.location.replace("/giris");
+      }
     }
-  }, [user, loading, navigate, isStrictlyProtected]);
+  }, [user, loading, navigate]);
 
-  if (loading && isStrictlyProtected) {
+  // Oturum kontrol ediliyor (en geç 1.5 sn sonra fallback ile kapanır)
+  if (loading) {
     return (
       <SplashScreen
-        message="KasımOğulları — Oturum açılıyor..."
-        minDuration={600}
+        message="Kotoptan — Oturum kontrol ediliyor..."
+        minDuration={400}
         maxTimeout={1500}
       />
     );
   }
 
-  if (!user && isStrictlyProtected) {
+  // Kullanıcı giriş yapmamışsa kesinlikle içeriği açma, doğrudan giriş ekranına aktar
+  if (!user) {
     return (
       <SplashScreen
         message="Giriş ekranına yönlendiriliyor..."
-        minDuration={600}
-        maxTimeout={1500}
+        minDuration={200}
+        maxTimeout={1000}
         onFinish={() => {
           if (typeof window !== "undefined") {
             window.location.replace("/giris");
