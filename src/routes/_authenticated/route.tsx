@@ -14,8 +14,7 @@ function AuthenticatedLayout() {
 
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const isStrictlyProtected =
-    pathname.startsWith("/profil") ||
-    pathname.startsWith("/siparislerim");
+    pathname.startsWith("/profil") || pathname.startsWith("/siparislerim");
 
   // Sadece kişisel hesap ve sipariş geçmişi sayfalarında oturum zorunludur.
   // Ana sayfa, ürün kataloğu ve yönetim/sevkiyat sayfaları ziyaretçilere açıktır.
@@ -25,7 +24,11 @@ function AuthenticatedLayout() {
         void navigate({ to: "/giris", replace: true }).catch(() => {});
       }
       const timer = setTimeout(() => {
-        if (typeof window !== "undefined" && (window.location.pathname.startsWith("/profil") || window.location.pathname.startsWith("/siparislerim"))) {
+        if (
+          typeof window !== "undefined" &&
+          (window.location.pathname.startsWith("/profil") ||
+            window.location.pathname.startsWith("/siparislerim"))
+        ) {
           window.location.replace("/giris");
         }
       }, 1000);

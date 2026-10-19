@@ -15,6 +15,7 @@ Sarı detaylar, fazla oklar ve gereksiz karmaşık süslemeler tamamen kaldırı
 ---
 
 ### Site Geneline Uygulandı:
+
 - Üst Menü (`SiteHeader`)
 - Vitrin Alanı (`Hero`)
 - Giriş Ekranı (`/giris`)
