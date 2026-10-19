@@ -359,10 +359,8 @@ try {
         <div style="width:110px;height:110px;border-radius:24px;overflow:hidden;border:2px solid #10b981;box-shadow:0 10px 25px rgba(0,0,0,0.8);margin-bottom:20px;background:#000;">
           <img src="/kotoptan-logo.jpg?v=20261018-official-k" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
         </div>
-        <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px;">
-          <span>Ko<span style="color:#22c55e;">toptan</span></span>
-          <img src="/kotoptan-motif.png" alt="Kotoptan Motifi" style="width:24px;height:24px;object-fit:contain;border-radius:999px;vertical-align:middle;" />
-          <img src="/kotoptan-koruma-halkasi.jpg" alt="Koruma Halkası" style="width:24px;height:24px;object-fit:cover;border-radius:999px;vertical-align:middle;" />
+        <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">
+          Ko<span style="color:#22c55e;">toptan</span>
         </div>
         <div style="font-size:12px;font-weight:600;color:#34d399;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:24px;">
           Toptan Dağıtım
@@ -378,8 +376,8 @@ try {
         </a>
       </div>
     </div>
-    ${tsrBootstrap}
-    ${scriptTag}
+    \${tsrBootstrap}
+    \${scriptTag}
   </body>
 </html>
 `;
@@ -397,7 +395,7 @@ try {
     `Generated dist/index.html & dist/404.html with JS: ${jsEntryFile}, CSS: ${cssEntryFile}`,
   );
 
-  // 5. Patch _worker.js renderer-template so worker returns working SSR or SPA HTML instead of throwing or blank template
+  // 5. Patch _worker.js renderer-template so worker returns working SSR or SPA HTML instead of blank template
   const workerRendererChunkPath = path.join(
     distDir,
     "_worker.js",
@@ -406,16 +404,14 @@ try {
   );
   if (fs.existsSync(workerRendererChunkPath)) {
     const escapedHtml = JSON.stringify(htmlContent);
-    const patchedRendererCode = `const fallbackHtml = ${escapedHtml};
-const rendererTemplate = () => new Response(fallbackHtml, {
-  status: 200,
-  headers: { "content-type": "text/html; charset=utf-8" }
-});
+    const patchedRendererCode = `import { i as HTTPResponse } from "../_libs/h3+rou3+srvx.mjs";
+const fallbackHtml = ${escapedHtml};
+const rendererTemplate = () => new HTTPResponse(fallbackHtml, { headers: { "content-type": "text/html; charset=utf-8" } });
 
 async function renderIndexHTML(event) {
-  try {
-    const ssr = globalThis.__nitro_vite_envs__?.["ssr"];
-    if (ssr && typeof ssr.fetch === "function") {
+  const ssr = globalThis.__nitro_vite_envs__?.["ssr"];
+  if (ssr && typeof ssr.fetch === "function") {
+    try {
       const rawReq = event.web?.request || event.req?.raw || event.node?.req || event.req;
       if (rawReq) {
         const response = await ssr.fetch(rawReq);
@@ -423,66 +419,19 @@ async function renderIndexHTML(event) {
           return response;
         }
       }
+    } catch (ssrError) {
+      console.warn("[Cloudflare Pages SSR Fallback to SPA HTML]:", ssrError);
     }
-  } catch (ssrError) {
-    console.warn("[Cloudflare Pages SSR Fallback to SPA HTML]:", ssrError);
   }
-  return rendererTemplate();
+  return rendererTemplate(event.req);
 }
 
 export { renderIndexHTML as default };
 `;
     fs.writeFileSync(workerRendererChunkPath, patchedRendererCode, "utf-8");
     console.log(
-      "Patched dist/_worker.js/_chunks/renderer-template.mjs with SSR dispatch and native Response SPA fallback.",
+      "Patched dist/_worker.js/_chunks/renderer-template.mjs with SSR dispatch and SPA fallback.",
     );
-  }
-
-  // 5.1 Patch worker index.js error handler so unhandled errors never show {"error":true,"status":500,"unhandled":true} on page loads
-  const workerIndexPath = path.join(distDir, "_worker.js", "index.js");
-  if (fs.existsSync(workerIndexPath)) {
-    let workerIndex = fs.readFileSync(workerIndexPath, "utf-8");
-    const escapedFallbackHtml = JSON.stringify(htmlContent);
-    const safeErrorHook = `
-  const reqUrl = event && event.req && event.req.url ? event.req.url : "";
-  const acceptHeader = event && event.req && event.req.headers && typeof event.req.headers.get === "function" ? event.req.headers.get("accept") : "";
-  const isApiReq = reqUrl.includes("/api/") || reqUrl.includes("/_serverFn") || (acceptHeader && acceptHeader.includes("application/json") && !acceptHeader.includes("text/html"));
-  if (!isApiReq) {
-    return new FastResponse(${escapedFallbackHtml}, {
-      status: 200,
-      headers: new Headers({ "content-type": "text/html; charset=utf-8" })
-    });
-  }
-`;
-    if (workerIndex.includes("var errorHandler = (error, event) => {")) {
-      workerIndex = workerIndex.replace(
-        "var errorHandler = (error, event) => {",
-        `var errorHandler = (error, event) => {${safeErrorHook}`,
-      );
-      fs.writeFileSync(workerIndexPath, workerIndex, "utf-8");
-      console.log("Patched dist/_worker.js/index.js with SPA fallback error shield.");
-    }
-  }
-
-  // 5.2 Ensure _routes.json excludes all public assets so Cloudflare CDN serves them directly
-  const routesJsonPath = path.join(distDir, "_routes.json");
-  if (fs.existsSync(routesJsonPath)) {
-    try {
-      const routesData = JSON.parse(fs.readFileSync(routesJsonPath, "utf-8"));
-      if (Array.isArray(routesData.exclude)) {
-        const publicFiles = fs.readdirSync(staticPublicDir);
-        for (const pf of publicFiles) {
-          const entry = `/${pf}`;
-          if (!routesData.exclude.includes(entry)) {
-            routesData.exclude.push(entry);
-          }
-        }
-        fs.writeFileSync(routesJsonPath, JSON.stringify(routesData, null, 2), "utf-8");
-        console.log("Updated dist/_routes.json with all public assets excluded.");
-      }
-    } catch (routeErr) {
-      console.warn("Could not update _routes.json:", routeErr);
-    }
   }
 
   // 5.5 Polyfill jsxDEV on worker React chunks so SSR never throws "jsxDEV is not a function"

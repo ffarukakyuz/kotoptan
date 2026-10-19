@@ -184,7 +184,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Manrope:wght@400;500;600;700;800&display=swap",
       },
       { rel: "manifest", href: "/manifest.webmanifest?v=20261010-k" },
       { rel: "icon", type: "image/png", href: "/favicon.png?v=20261010-k" },
@@ -519,6 +519,8 @@ function RootAppContent() {
   if (isAuthPage) {
     return (
       <div className="flex min-h-screen flex-col bg-[#050b07] font-sans text-white pt-[env(safe-area-inset-top,0px)] relative overflow-x-hidden">
+        {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
+        <div aria-hidden="true" className="watermark-overlay" />
         {/* Splash screen animasyonu ile birebir aynı atmosferik koyu yeşil - siyah radyal derin ışık */}
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.22)_0%,rgba(5,11,7,0.98)_75%)]" />
         <main className="flex flex-1 items-center justify-center p-4 relative z-10">
@@ -544,35 +546,39 @@ function RootAppContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col font-sans bg-background text-foreground">
-      <PWAInstallBanner />
-      <WelcomeBanner />
-      <SiteHeader />
-      <main className="flex-1">
-        {/* Required: nested routes render here. */}
-        <Outlet />
-      </main>
-      <footer className="mt-auto border-t border-white/10 bg-black py-8 text-zinc-400">
-        <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-white/20 bg-zinc-900">
-            <img
-              src={BRAND_LOGO_SRC}
-              alt="KasımOğulları Logo"
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </span>
-          <div>
-            <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır, ödeme
-              teslimat sırasında yapılır.
-            </p>
+    <div className="flex min-h-screen flex-col font-sans bg-black text-foreground relative overflow-x-hidden">
+      {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
+      <div aria-hidden="true" className="watermark-overlay" />
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <PWAInstallBanner />
+        <WelcomeBanner />
+        <SiteHeader />
+        <main className="flex-1">
+          {/* Required: nested routes render here. */}
+          <Outlet />
+        </main>
+        <footer className="mt-auto border-t border-white/10 bg-black py-8 text-zinc-400">
+          <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-white/20 bg-zinc-900">
+              <img
+                src={BRAND_LOGO_SRC}
+                alt="KasımOğulları Logo"
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </span>
+            <div>
+              <p className="font-semibold text-white">KasımOğulları Ltd. Şti.</p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                Market ve bakkallar için toptan ürün kataloğu. Siparişleriniz tarafımıza ulaşır,
+                ödeme teslimat sırasında yapılır.
+              </p>
+            </div>
           </div>
-        </div>
-      </footer>
-      <SupportChat />
-      <Toaster position="top-center" richColors />
+        </footer>
+        <SupportChat />
+        <Toaster position="top-center" richColors />
+      </div>
     </div>
   );
 }

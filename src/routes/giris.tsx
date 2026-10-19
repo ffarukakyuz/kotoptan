@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SplashScreen } from "@/components/SplashScreen";
-import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC, BRAND_PROTECTION_SEAL_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC } from "@/lib/branding";
 import { MapLocationDialog } from "@/components/MapLocationDialog";
 import { BitlisMapPicker } from "@/components/BitlisMapPicker";
 import { DISTRICTS, districtLabel } from "@/lib/catalog";
@@ -694,25 +694,11 @@ function AuthPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 sm:gap-2.5 mb-1">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-1 flex items-center justify-center">
+          <span>
             Ko<span className="text-[#22c55e]">toptan</span>
-          </h1>
-          <div className="flex items-center gap-1.5 shrink-0 self-center">
-            <img
-              src={BRAND_MOTIF_SRC}
-              alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
-              className="h-6 w-6 sm:h-7 sm:w-7 object-contain shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] select-none rounded-full transition-transform hover:scale-105"
-              title="İhlâs, Felâk, Nâs ve Nazar Duası"
-            />
-            <img
-              src={BRAND_PROTECTION_SEAL_SRC}
-              alt="Kotoptan Koruma Halkası"
-              className="h-6 w-6 sm:h-7 sm:w-7 object-cover shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] select-none rounded-full transition-transform hover:scale-105"
-              title="Kotoptan Koruma Halkası"
-            />
-          </div>
-        </div>
+          </span>
+        </h1>
         <p className="text-[11px] sm:text-xs font-semibold text-emerald-400 tracking-wider uppercase mt-1 mb-4">
           Toptan Dağıtım
         </p>
@@ -767,20 +753,12 @@ function AuthPage() {
                   <Label htmlFor="si-phone" className="text-emerald-200/90 font-semibold text-xs">
                     Telefon Numarası
                   </Label>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <img
-                      src={BRAND_MOTIF_SRC}
-                      alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
-                      className="h-7 w-7 sm:h-8 sm:w-8 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none rounded-full transition-transform hover:scale-105"
-                      title="İhlâs, Felâk, Nâs ve Nazar Duası"
-                    />
-                    <img
-                      src={BRAND_PROTECTION_SEAL_SRC}
-                      alt="Kotoptan Koruma Halkası"
-                      className="h-7 w-7 sm:h-8 sm:w-8 object-cover shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none rounded-full transition-transform hover:scale-105"
-                      title="Kotoptan Koruma Halkası"
-                    />
-                  </div>
+                  <img
+                    src={BRAND_MOTIF_SRC}
+                    alt="Kotoptan Motifi"
+                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
+                    title="Kotoptan"
+                  />
                 </div>
                 <Input
                   id="si-phone"
@@ -879,20 +857,12 @@ function AuthPage() {
                   <Label htmlFor="su-phone" className="text-emerald-200/90 font-semibold text-xs">
                     Cep Telefonu Numarası
                   </Label>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <img
-                      src={BRAND_MOTIF_SRC}
-                      alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
-                      className="h-7 w-7 sm:h-8 sm:w-8 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none rounded-full transition-transform hover:scale-105"
-                      title="İhlâs, Felâk, Nâs ve Nazar Duası"
-                    />
-                    <img
-                      src={BRAND_PROTECTION_SEAL_SRC}
-                      alt="Kotoptan Koruma Halkası"
-                      className="h-7 w-7 sm:h-8 sm:w-8 object-cover shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none rounded-full transition-transform hover:scale-105"
-                      title="Kotoptan Koruma Halkası"
-                    />
-                  </div>
+                  <img
+                    src={BRAND_MOTIF_SRC}
+                    alt="Kotoptan Motifi"
+                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
+                    title="Kotoptan"
+                  />
                 </div>
                 <Input
                   id="su-phone"

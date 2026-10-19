@@ -434,3 +434,34 @@
     animation: none !important;
   }
 }
+
+/* =========================================================================
+   Kalem Suresi (Nazar Âyeti) Arka Plan Filigranı (Ghost Watermark Texture)
+   1. Opaklık: %0.028 (~%0.03) seviyesinde göz yormayan hayalet doku
+   2. Metin rengi: koyu yeşilimsi gri (#1b3b2b / #223322) - siyah zeminle kusursuz uyum
+   3. Desen: Dikey ve yatayda kusursuz kesintisiz tekrar, fixed pozisyon
+   ========================================================================= */
+
+.watermark-overlay,
+.nazar-watermark-overlay,
+.bg-nazar-watermark,
+.bg-watermark {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("/nazar-watermark.svg?v=20261019-visible");
+  background-repeat: repeat;
+  background-size: 580px 240px;
+  background-position: center top;
+  background-attachment: fixed;
+  opacity: 0.075; /* Net görünen fakat göz yormayan asil zümrüt filigran dokusu */
+}
+
+.bg-nazar-watermark-pattern {
+  background-image: url("/nazar-watermark.svg?v=20261019-visible");
+  background-repeat: repeat;
+  background-size: 580px 240px;
+  background-position: center top;
+  background-attachment: fixed;
+}

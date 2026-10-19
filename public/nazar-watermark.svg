@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="260" viewBox="0 0 680 260">
+  <defs>
+    <style>
+      .watermark-text {
+        font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade', 'Noto Naskh Arabic', 'Geeza Pro', 'Segoe UI', Tahoma, sans-serif;
+        font-weight: 700;
+        fill: #10b981;
+        letter-spacing: 1.5px;
+        text-anchor: middle;
+      }
+      .watermark-sub {
+        font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade', 'Noto Naskh Arabic', 'Geeza Pro', 'Segoe UI', Tahoma, sans-serif;
+        font-weight: 700;
+        fill: #34d399;
+        letter-spacing: 1px;
+        text-anchor: middle;
+      }
+      .verse-mark {
+        fill: #10b981;
+        font-size: 16px;
+      }
+    </style>
+  </defs>
+
+  <!-- Row 1: Centered -->
+  <g transform="translate(340, 58)">
+    <text y="0" class="watermark-text" font-size="22" dir="rtl">وَإِن يَكَادُ الَّذِينَ كَفَرُوا لَيُزْلِقُونَكَ بِأَبْصَارِهِمْ لَمَّا سَمِعُوا الذِّكْرَ</text>
+    <text y="38" class="watermark-sub" font-size="20" dir="rtl">وَيَقُولُونَ إِنَّهُ لَمَجْنُونٌ <tspan class="verse-mark">۝</tspan> وَمَا هُوَ إِلَّا ذِكْرٌ لِّلْعَالَمِينَ</text>
+  </g>
+
+  <!-- Row 2: Staggered for seamless infinite repeat -->
+  <g transform="translate(0, 185)">
+    <text y="0" class="watermark-text" font-size="22" dir="rtl">وَإِن يَكَادُ الَّذِينَ كَفَرُوا لَيُزْلِقُونَكَ بِأَبْصَارِهِمْ لَمَّا سَمِعُوا الذِّكْرَ</text>
+    <text y="38" class="watermark-sub" font-size="20" dir="rtl">وَيَقُولُونَ إِنَّهُ لَمَجْنُونٌ <tspan class="verse-mark">۝</tspan> وَمَا هُوَ إِلَّا ذِكْرٌ لِّلْعَالَمِينَ</text>
+  </g>
+  <g transform="translate(680, 185)">
+    <text y="0" class="watermark-text" font-size="22" dir="rtl">وَإِن يَكَادُ الَّذِينَ كَفَرُوا لَيُزْلِقُونَكَ بِأَبْصَارِهِمْ لَمَّا سَمِعُوا الذِّكْرَ</text>
+    <text y="38" class="watermark-sub" font-size="20" dir="rtl">وَيَقُولُونَ إِنَّهُ لَمَجْنُونٌ <tspan class="verse-mark">۝</tspan> وَمَا هُوَ إِلَّا ذِكْرٌ لِّلْعَالَمِينَ</text>
+  </g>
+</svg>
