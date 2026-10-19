@@ -357,7 +357,7 @@ try {
     <div id="root">
       <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050b07;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;text-align:center;box-sizing:border-box;">
         <div style="width:110px;height:110px;border-radius:24px;overflow:hidden;border:2px solid #10b981;box-shadow:0 10px 25px rgba(0,0,0,0.8);margin-bottom:20px;background:#000;">
-          <img src="/kotoptan-logo.jpg?v=20261018-official-k" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
+          <img src="/kotoptan-logo.jpg?v=20261019-box-logo" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
         </div>
         <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">
           Ko<span style="color:#22c55e;">toptan</span>
@@ -404,33 +404,32 @@ try {
   );
   if (fs.existsSync(workerRendererChunkPath)) {
     const escapedHtml = JSON.stringify(htmlContent);
-    const patchedRendererCode = `import { i as HTTPResponse } from "../_libs/h3+rou3+srvx.mjs";
-const fallbackHtml = ${escapedHtml};
-const rendererTemplate = () => new HTTPResponse(fallbackHtml, { headers: { "content-type": "text/html; charset=utf-8" } });
+    const patchedRendererCode = `const fallbackHtml = ${escapedHtml};
+const rendererTemplate = () => new Response(fallbackHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
 
 async function renderIndexHTML(event) {
-  const ssr = globalThis.__nitro_vite_envs__?.["ssr"];
-  if (ssr && typeof ssr.fetch === "function") {
-    try {
-      const rawReq = event.web?.request || event.req?.raw || event.node?.req || event.req;
+  try {
+    const ssr = globalThis.__nitro_vite_envs__?.["ssr"];
+    if (ssr && typeof ssr.fetch === "function") {
+      const rawReq = event?.web?.request || event?.req?.raw || event?.node?.req || event?.req;
       if (rawReq) {
         const response = await ssr.fetch(rawReq);
         if (response && response.status && response.status < 500) {
           return response;
         }
       }
-    } catch (ssrError) {
-      console.warn("[Cloudflare Pages SSR Fallback to SPA HTML]:", ssrError);
     }
+  } catch (ssrError) {
+    console.warn("[Cloudflare Pages SSR Fallback to SPA HTML]:", ssrError);
   }
-  return rendererTemplate(event.req);
+  return rendererTemplate();
 }
 
 export { renderIndexHTML as default };
 `;
     fs.writeFileSync(workerRendererChunkPath, patchedRendererCode, "utf-8");
     console.log(
-      "Patched dist/_worker.js/_chunks/renderer-template.mjs with SSR dispatch and SPA fallback.",
+      "Patched dist/_worker.js/_chunks/renderer-template.mjs with standard Response and resilient SPA fallback.",
     );
   }
 
