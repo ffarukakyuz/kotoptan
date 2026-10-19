@@ -373,25 +373,26 @@
         function dismissPreloader() {
           if (dismissed || !preloader) return;
           dismissed = true;
-          preloader.style.transition = "opacity 0.35s ease-out";
+          preloader.style.transition = "opacity 0.3s ease-out";
           preloader.style.opacity = "0";
           preloader.style.pointerEvents = "none";
           setTimeout(function () {
             if (preloader) {
               preloader.style.display = "none";
+              preloader.setAttribute("aria-hidden", "true");
             }
-          }, 380);
+          }, 320);
         }
 
-        // Emniyet zamanlayıcısı: En geç 1.5 - 1.8 saniye (1600ms) içerisinde preloader'ı kaldır
-        setTimeout(dismissPreloader, 1600);
+        // DOMContentLoaded veya window.onload olaylarına bağlı kalmaksızın 1.5 saniye sonra yükleme ekranını zorla kapat
+        setTimeout(dismissPreloader, 1500);
 
-        // Herhangi bir JS veya Promise hatası olduğunda beklemeden preloader'ı kaldır
+        // Herhangi bir JS veya Promise hatası olduğunda beklemeden derhal preloader'ı kapat
         window.addEventListener("error", function () {
-          setTimeout(dismissPreloader, 250);
+          setTimeout(dismissPreloader, 120);
         });
         window.addEventListener("unhandledrejection", function () {
-          setTimeout(dismissPreloader, 250);
+          setTimeout(dismissPreloader, 120);
         });
       })();
     </script>

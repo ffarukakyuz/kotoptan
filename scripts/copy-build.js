@@ -77,27 +77,40 @@ try {
   console.log("Enforced Cloudflare Pages _redirects SPA rule in dist/");
 
   // 4. Generate complete client SPA HTML with JS and CSS asset tags
-  const assetsDir = path.join(distDir, "assets");
+  const searchDirs = [path.join(distDir, "assets"), path.join(outputPublicDir, "assets")];
   let scriptTag = "";
   let styleTag = "";
   let jsEntryFile = "";
   let cssEntryFile = "";
 
-  if (fs.existsSync(assetsDir)) {
-    const assetFiles = fs.readdirSync(assetsDir);
-    const jsEntry =
-      assetFiles.find((f) => f.startsWith("index-") && f.endsWith(".js")) ||
-      assetFiles.find((f) => f.startsWith("client-entry-") && f.endsWith(".js"));
-    const cssEntry = assetFiles.find((f) => f.endsWith(".css"));
+  for (const sDir of searchDirs) {
+    if (fs.existsSync(sDir)) {
+      const assetFiles = fs.readdirSync(sDir);
+      if (!jsEntryFile) {
+        const jsCandidate =
+          assetFiles.find((f) => f.startsWith("index-") && f.endsWith(".js")) ||
+          assetFiles.find((f) => f.startsWith("client-entry-") && f.endsWith(".js")) ||
+          assetFiles.find(
+            (f) =>
+              f.endsWith(".js") &&
+              !f.includes("chunk") &&
+              !f.includes("leaflet") &&
+              !f.includes("catalog"),
+          );
+        if (jsCandidate) jsEntryFile = jsCandidate;
+      }
+      if (!cssEntryFile) {
+        const cssCandidate = assetFiles.find((f) => f.endsWith(".css"));
+        if (cssCandidate) cssEntryFile = cssCandidate;
+      }
+    }
+  }
 
-    if (cssEntry) {
-      cssEntryFile = cssEntry;
-      styleTag = `<link rel="stylesheet" href="/assets/${cssEntry}">`;
-    }
-    if (jsEntry) {
-      jsEntryFile = jsEntry;
-      scriptTag = `<script type="module" src="/assets/${jsEntry}"></script>`;
-    }
+  if (cssEntryFile) {
+    styleTag = `<link rel="stylesheet" href="/assets/${cssEntryFile}">`;
+  }
+  if (jsEntryFile) {
+    scriptTag = `<script type="module" src="/assets/${jsEntryFile}"></script>`;
   }
 
   const autoHealScript = `<script>
@@ -316,7 +329,7 @@ try {
 })();
 </script>`;
 
-  const htmlContent = `<!DOCTYPE html>
+  let htmlContent = `<!DOCTYPE html>
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
@@ -386,30 +399,40 @@ try {
         function dismissPreloader() {
           if (dismissed || !preloader) return;
           dismissed = true;
-          preloader.style.transition = "opacity 0.35s ease-out";
+          preloader.style.transition = "opacity 0.3s ease-out";
           preloader.style.opacity = "0";
           preloader.style.pointerEvents = "none";
           setTimeout(function () {
             if (preloader) {
               preloader.style.display = "none";
+              preloader.setAttribute("aria-hidden", "true");
             }
-          }, 380);
+          }, 320);
         }
 
-        setTimeout(dismissPreloader, 1600);
+        // DOMContentLoaded veya window.onload olaylarına bağlı kalmaksızın 1.5 saniye sonra yükleme ekranını zorla kapat
+        setTimeout(dismissPreloader, 1500);
         window.addEventListener("error", function () {
-          setTimeout(dismissPreloader, 250);
+          setTimeout(dismissPreloader, 150);
         });
         window.addEventListener("unhandledrejection", function () {
-          setTimeout(dismissPreloader, 250);
+          setTimeout(dismissPreloader, 150);
         });
       })();
     </script>
-    \${tsrBootstrap}
-    \${scriptTag}
+    ${tsrBootstrap || ""}
+    ${scriptTag || ""}
   </body>
 </html>
 `;
+
+  // Ham şablon değişkenlerinin (örn. ${tsrBootstrap}, ${scriptTag}) sayfaya kaçmasını engelleyen kesin temizlik
+  htmlContent = htmlContent
+    .replaceAll("${tsrBootstrap}", tsrBootstrap || "")
+    .replaceAll("${scriptTag}", scriptTag || "")
+    .replaceAll("${styleTag}", styleTag || "")
+    .replaceAll("${autoHealScript}", autoHealScript || "")
+    .replace(/\$\{[a-zA-Z0-9_$]+\}/g, "");
 
   // Always write dist/index.html and dist/404.html to guarantee SPA loads
   const distIndexPath = path.join(distDir, "index.html");

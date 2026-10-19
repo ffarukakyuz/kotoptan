@@ -12,7 +12,7 @@ export function SplashScreen({
   onFinish,
   message = "Kotoptan — Oturum açılıyor...",
   minDuration = 700,
-  maxTimeout = 1600,
+  maxTimeout = 1500,
 }: SplashScreenProps) {
   const [progress, setProgress] = useState(20);
   const [fadeOut, setFadeOut] = useState(false);
