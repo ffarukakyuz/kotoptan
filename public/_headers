@@ -38,8 +38,9 @@
 /icons/*
   Cache-Control: public, max-age=0, must-revalidate
 
-# 5. HTML Shell and Pages: prevent stale mobile browser cache
+# 5. HTML Shell and Pages: prevent stale mobile browser cache & allow extensions/unsafe-eval
 /*
   Cache-Control: no-cache, no-store, must-revalidate
   Pragma: no-cache
   Expires: 0
+  Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; style-src * 'unsafe-inline'; font-src * data: https:; img-src * data: blob: https:; connect-src *;

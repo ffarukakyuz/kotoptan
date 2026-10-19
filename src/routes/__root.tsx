@@ -175,6 +175,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { httpEquiv: "Cache-Control", content: "no-cache, no-store, must-revalidate" },
       { httpEquiv: "Pragma", content: "no-cache" },
       { httpEquiv: "Expires", content: "0" },
+      {
+        httpEquiv: "Content-Security-Policy",
+        content:
+          "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; style-src * 'unsafe-inline'; font-src * data: https:; img-src * data: blob: https:; connect-src *;",
+      },
     ],
     links: [
       { rel: "canonical", href: "https://kotoptan.pages.dev/" },
@@ -441,8 +446,8 @@ function RootAppContent() {
     select: (s) => s.location.pathname,
   });
 
-  const { user, loading } = useAuth();
-  const isAuthPage = pathname === "/giris";
+  const normalizedPath = (pathname || "").replace(/\/+$/, "") || "/";
+  const isAuthPage = normalizedPath === "/giris" || normalizedPath.startsWith("/giris");
 
   // Mobil Safari / WebKit hata ve önbellek koruma mekanizmaları
   useEffect(() => {
@@ -501,21 +506,6 @@ function RootAppContent() {
     };
   }, [router]);
 
-  // Giriş zorunludur: Giriş yapılmamışsa ve /giris sayfasında değilsek derhal /giris'e yönlendir.
-  useEffect(() => {
-    if (!loading && !user && !isAuthPage) {
-      if (router) {
-        void router.navigate({ to: "/giris", replace: true }).catch(() => {});
-      }
-      const timer = setTimeout(() => {
-        if (typeof window !== "undefined" && window.location.pathname !== "/giris") {
-          window.location.replace("/giris");
-        }
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [user, loading, isAuthPage, router]);
-
   if (isAuthPage) {
     return (
       <div className="flex min-h-screen flex-col bg-[#050b07] font-sans text-white pt-[env(safe-area-inset-top,0px)] relative overflow-x-hidden">
@@ -527,20 +517,6 @@ function RootAppContent() {
           <Outlet />
         </main>
         <Toaster position="top-center" richColors theme="dark" />
-      </div>
-    );
-  }
-
-  // Oturum kontrol ediliyorken kullanıcı henüz yoksa şık Splash Screen animasyonu göster
-  if (loading && !user) {
-    return <SplashScreen message="KasımOğulları — Oturum açılıyor..." />;
-  }
-
-  // Kullanıcı giriş yapmamışsa yönlendirme tamamlanana kadar yönlendirme ekranı göster
-  if (!user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-black text-white">
-        <SplashScreen message="Giriş ekranına yönlendiriliyor..." />
       </div>
     );
   }

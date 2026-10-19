@@ -350,6 +350,7 @@ try {
     <link rel="icon" type="image/png" href="/favicon.png?v=20261010-k" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261010-k" />
     <link rel="manifest" href="/manifest.webmanifest?v=20261010-k" />
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob: chrome-extension:; style-src * 'unsafe-inline'; font-src * data: https:; img-src * data: blob: https:; connect-src *;" />
     ${autoHealScript}
     ${styleTag}
   </head>
