@@ -12,7 +12,10 @@
     "format": "prettier --write ."
   },
   "overrides": {
-    "rolldown": "1.2.1"
+    "rolldown": "1.2.1",
+    "@typescript-eslint/eslint-plugin": "8.56.1",
+    "@typescript-eslint/parser": "8.56.1",
+    "typescript-eslint": "8.56.1"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
@@ -89,7 +92,9 @@
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.56.1",
+    "@typescript-eslint/eslint-plugin": "8.56.1",
+    "@typescript-eslint/parser": "8.56.1",
+    "typescript-eslint": "8.56.1",
     "vite": "8.1.5"
   }
 }
