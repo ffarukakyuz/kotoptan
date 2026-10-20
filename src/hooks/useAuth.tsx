@@ -37,12 +37,44 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const LOCAL_SESSION_KEY = "ko_local_auth_session";
 
+function getInitialStoredAuth(): {
+  user: User | null;
+  profile: Profile | null;
+  isAdmin: boolean;
+  hasStoredSession: boolean;
+} {
+  if (typeof window === "undefined") {
+    return { user: null, profile: null, isAdmin: false, hasStoredSession: false };
+  }
+  try {
+    const rawLocal = localStorage.getItem(LOCAL_SESSION_KEY);
+    if (rawLocal) {
+      const parsed = JSON.parse(rawLocal);
+      if (parsed && typeof parsed === "object" && parsed.user) {
+        return {
+          user: parsed.user as User,
+          profile: (parsed.profile as Profile) || null,
+          isAdmin: Boolean(parsed.isAdmin),
+          hasStoredSession: true,
+        };
+      }
+    }
+    const hasSbToken = Object.keys(localStorage).some(
+      (k) => k.startsWith("sb-") && k.endsWith("-auth-token"),
+    );
+    return { user: null, profile: null, isAdmin: false, hasStoredSession: hasSbToken };
+  } catch {
+    return { user: null, profile: null, isAdmin: false, hasStoredSession: false };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [initial] = useState(getInitialStoredAuth);
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(initial.user);
+  const [profile, setProfile] = useState<Profile | null>(initial.profile);
+  const [isAdmin, setIsAdmin] = useState(initial.isAdmin);
+  const [loading, setLoading] = useState(initial.hasStoredSession && !initial.user);
 
   const loadDetails = useCallback(async (userId: string, currentUser?: User | null) => {
     let prof: Profile | null = null;

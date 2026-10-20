@@ -507,6 +507,22 @@ function RootAppContent() {
     };
   }, [router]);
 
+  // Yönetim sayfasında arka planı tertemiz beyaz (light theme), ana mağaza sayfalarında koyu tema yap
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (isYonetimPage) {
+      document.documentElement.classList.remove("dark");
+      document.documentElement.classList.add("light", "admin-light");
+      document.body.classList.remove("bg-black", "dark");
+      document.body.classList.add("bg-white", "light", "admin-light");
+    } else {
+      document.documentElement.classList.remove("light", "admin-light");
+      document.documentElement.classList.add("dark");
+      document.body.classList.remove("bg-white", "light", "admin-light");
+      document.body.classList.add("bg-black", "dark");
+    }
+  }, [isYonetimPage]);
+
   if (isAuthPage) {
     return (
       <div className="flex min-h-screen flex-col bg-[#050b07] font-sans text-white pt-[env(safe-area-inset-top,0px)] relative overflow-x-hidden">
@@ -525,7 +541,7 @@ function RootAppContent() {
   return (
     <div
       className={`flex min-h-screen flex-col font-sans ${
-        isYonetimPage ? "admin-light bg-slate-50 text-slate-900" : "bg-black text-foreground"
+        isYonetimPage ? "admin-light bg-white text-slate-900" : "bg-black text-foreground"
       } relative overflow-x-hidden`}
     >
       {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
@@ -534,7 +550,7 @@ function RootAppContent() {
         {!isYonetimPage && <PWAInstallBanner />}
         {!isYonetimPage && <WelcomeBanner />}
         <SiteHeader />
-        <main className={`flex-1 ${isYonetimPage ? "bg-slate-50 text-slate-900" : ""}`}>
+        <main className={`flex-1 ${isYonetimPage ? "bg-white text-slate-900" : ""}`}>
           {/* Required: nested routes render here. */}
           <Outlet />
         </main>

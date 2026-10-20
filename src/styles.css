@@ -230,8 +230,12 @@
 }
 
 .admin-light,
-.light {
-  --background: #f8fafc;
+.light,
+html.light,
+html.admin-light,
+body.light,
+body.admin-light {
+  --background: #ffffff;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
@@ -239,7 +243,7 @@
   --popover-foreground: #0f172a;
   --primary: #10b981;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --secondary: #f8fafc;
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
@@ -251,6 +255,30 @@
   --input: #e2e8f0;
   --ring: #10b981;
   color-scheme: light;
+}
+
+html.admin-light,
+html.admin-light body,
+.admin-light {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.admin-light .bg-card,
+.admin-light .bg-card {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.admin-light .bg-background,
+.admin-light .bg-background {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.admin-light .text-foreground,
+.admin-light .text-foreground {
+  color: #0f172a !important;
 }
 
 @layer base {

@@ -23,17 +23,17 @@ export function SplashScreen({
   const triggerDismiss = useCallback(() => {
     if (hasFinishedRef.current) return;
     hasFinishedRef.current = true;
+    if (onFinish) {
+      try {
+        onFinish();
+      } catch (err) {
+        console.warn("[SplashScreen] onFinish error:", err);
+      }
+    }
     setFadeOut(true);
     setTimeout(() => {
       setHidden(true);
-      if (onFinish) {
-        try {
-          onFinish();
-        } catch (err) {
-          console.warn("[SplashScreen] onFinish error:", err);
-        }
-      }
-    }, 320);
+    }, 380);
   }, [onFinish]);
 
   useEffect(() => {
@@ -103,13 +103,13 @@ export function SplashScreen({
       <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-sm w-full">
         {/* Logo ve Animasyon Alanı */}
         <div className="relative mb-5 flex items-center justify-center">
-          <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl animate-pulse pointer-events-none" />
+          <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl pointer-events-none" />
 
           <div className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-black/80 border border-emerald-500/40 ring-4 ring-emerald-500/20 bg-[#040806] transition-transform duration-700 hover:scale-105">
             <img
               src={BRAND_LOGO_SRC}
               alt="Kotoptan Logo"
-              className="h-full w-full object-cover animate-pulse"
+              className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
             />
           </div>
