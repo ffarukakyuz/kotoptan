@@ -26,7 +26,7 @@ export function SiteHeader() {
   const { user, isAdmin, profile, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [showPwaGuide, setShowPwaGuide] = useState(false);
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const { isInstallable, isInstalled, platform, install } = usePWAInstall();
   const router = useRouter();
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
@@ -183,9 +183,9 @@ export function SiteHeader() {
               </span>
               <img
                 src={BRAND_MOTIF_SRC}
-                alt="İhlâs, Felâk ve Nâs Hat Madalyonu"
+                alt="Koruma Halkası"
                 className="h-5 w-5 sm:h-5.5 sm:w-5.5 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] select-none self-center"
-                title="İhlâs, Felâk, Nâs ve Nazar Duası"
+                title="Koruma Halkası"
               />
             </div>
             <span
@@ -383,7 +383,7 @@ export function SiteHeader() {
         </div>
       )}
 
-      {showPwaGuide && <PWAInstallModal isIOS={isIOS} onClose={() => setShowPwaGuide(false)} />}
+      {showPwaGuide && <PWAInstallModal initialPlatform={platform} onClose={() => setShowPwaGuide(false)} />}
     </header>
   );
 }

@@ -188,7 +188,7 @@ function generateDynamicAssistantResponse(
 
   if (containsGreeting && !hasSpecificQuestion) {
     const greetings = [
-      `${userGreetingPrefix}KasımOğulları Tatvan toptan şirketimize hoş geldiniz! Hayırlı işler, bereketli kazançlar dilerim. Şirketimizdeki 197 çeşit gıda, bakliyat ve temizlik ürünü, koli bilgileri ve teslimat süreçleri hakkında size nasıl yardımcı olabilirim?`,
+      `${userGreetingPrefix}KasımOğulları Tatvan toptan şirketimize hoş geldiniz! Hayırlı işler, bereketli kazançlar dilerim. Şirketimizdeki onlarca çeşit gıda, bakliyat ve temizlik ürünü, koli bilgileri ve teslimat süreçleri hakkında size nasıl yardımcı olabilirim?`,
       `Aleykümselam ${customerName ? customerName + " Bey" : ""}, hoş geldiniz! Hayırlı ve bol kazançlı günler dilerim. Şirketimizden toptan siparişleriniz, koli adetleri veya ürün sorgulamalarınız için buradayım. Hangi ürünlerimizi incelemek istersiniz?`,
       `${userGreetingPrefix}KasımOğulları Tatvan toptan şirket sipariş hattına hoş geldiniz. Tatvan merkezimizden Bitlis, Ahlat, Adilcevaz, Güroymak ve Hizan'daki marketlerimize toptan servis yapmaktayız. Aklınıza takılan her şeyi sorabilirsiniz.`,
     ];
@@ -265,7 +265,7 @@ function generateDynamicAssistantResponse(
   ) {
     return (
       "KasımOğulları toptan kataloğundan sipariş vermek çok kolaydır:\n\n" +
-      "1️⃣ **Ürünleri Seçin:** Ana sayfadaki 197 çeşit ürün arasından ihtiyacınız olanları koli/çuval adedi belirterek sepetinize ekleyin.\n" +
+      "1️⃣ **Ürünleri Seçin:** Ana sayfadaki onlarca çeşit ürün arasından ihtiyacınız olanları koli/çuval adedi belirterek sepetinize ekleyin.\n" +
       "2️⃣ **Sepeti İnceleyin:** Sağ üstteki sepet simgesine tıklayarak listenizi kontrol edin.\n" +
       "3️⃣ **Bilgilerinizi Girin:** Market adınız, ilçeniz ve açık teslimat adresinizi yazarak siparişi tamamlayın.\n" +
       "4️⃣ **Depo Onayı & Teslimat:** Depo yöneticimiz siparişinizi onaylayıp servis aracımızla teslimata çıkarır."

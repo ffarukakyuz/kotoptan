@@ -755,9 +755,9 @@ function AuthPage() {
                   </Label>
                   <img
                     src={BRAND_MOTIF_SRC}
-                    alt="Kotoptan Motifi"
+                    alt="Koruma Halkası"
                     className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
-                    title="Kotoptan"
+                    title="Koruma Halkası"
                   />
                 </div>
                 <Input
@@ -859,9 +859,9 @@ function AuthPage() {
                   </Label>
                   <img
                     src={BRAND_MOTIF_SRC}
-                    alt="Kotoptan Motifi"
+                    alt="Koruma Halkası"
                     className="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none transition-transform hover:scale-105"
-                    title="Kotoptan"
+                    title="Koruma Halkası"
                   />
                 </div>
                 <Input

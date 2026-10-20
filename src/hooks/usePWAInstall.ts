@@ -5,30 +5,57 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+export type PWAPlatform = "ios" | "android" | "desktop";
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isSafari, setIsSafari] = useState(false);
+  const [platform, setPlatform] = useState<PWAPlatform>("android");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Detect standalone mode (already added as shortcut/PWA)
+    // Standalone / PWA kontrolü (Zaten ana ekrana eklenmiş mi?)
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
-    // Detect iOS devices
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    const ua = window.navigator.userAgent.toLowerCase();
+
+    // iOS Tespiti (iPhone, iPad, iPod ve modern iPadOS MacIntel touch desteği)
+    const isIOSDevice =
+      /iphone|ipad|ipod/.test(ua) ||
+      (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
     setIsIOS(isIOSDevice);
 
+    // Android tespiti
+    const isAndroidDevice = /android/.test(ua);
+    setIsAndroid(isAndroidDevice);
+
+    // Mobil genel tespiti
     const isMobileDevice =
-      isIOSDevice || /android|webos|blackberry|iemobile|opera mini/i.test(userAgent);
+      isIOSDevice || isAndroidDevice || /webos|blackberry|iemobile|opera mini/i.test(ua);
     setIsMobile(isMobileDevice);
 
+    // Safari tespiti (iOS Safari veya Mac Safari)
+    const isSafariBrowser = /safari/.test(ua) && !/chrome|crios|crmo|android|edg/.test(ua);
+    setIsSafari(isSafariBrowser);
+
+    // Platform belirle
+    if (isIOSDevice) {
+      setPlatform("ios");
+    } else if (isAndroidDevice) {
+      setPlatform("android");
+    } else {
+      setPlatform("desktop");
+    }
+
+    // Chromium tabanlı tarayıcılarda (Chrome, Edge, Samsung Internet vb.) yerel yükleme olayı
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -50,12 +77,16 @@ export function usePWAInstall() {
 
   const install = async () => {
     if (!deferredPrompt) return false;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      return true;
+    try {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+        return true;
+      }
+    } catch (err) {
+      console.warn("PWA install error:", err);
     }
     return false;
   };
@@ -64,7 +95,10 @@ export function usePWAInstall() {
     isInstallable: !!deferredPrompt,
     isInstalled,
     isIOS,
+    isAndroid,
     isMobile,
+    isSafari,
+    platform,
     install,
   };
 }

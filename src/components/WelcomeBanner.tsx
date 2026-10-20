@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 export function WelcomeBanner() {
   const { user, profile } = useAuth();
-  const { isInstallable, isIOS, install } = usePWAInstall();
+  const { isInstallable, platform, install } = usePWAInstall();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -133,7 +133,7 @@ export function WelcomeBanner() {
       )}
 
       {showInstallGuide && (
-        <PWAInstallModal isIOS={isIOS} onClose={() => setShowInstallGuide(false)} />
+        <PWAInstallModal initialPlatform={platform} onClose={() => setShowInstallGuide(false)} />
       )}
     </>
   );
