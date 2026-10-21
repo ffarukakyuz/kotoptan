@@ -39,7 +39,7 @@ export const FALLBACK_PRODUCTS: Product[] = [
   },
   {
     id: "custom-1792273562598",
-    name: "eros Matik 10 Kg",
+    name: "Peros Matik 10 Kg",
     category: "temizlik",
     unit: "adet",
     description: "",

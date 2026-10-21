@@ -17,9 +17,7 @@ export function isBogusProductName(name: string): boolean {
   if (
     n.includes("30000002") ||
     n.includes("1650x1650") ||
-    n.includes("0b1937") ||
-    n.includes("peos") ||
-    n.includes("peros")
+    n.includes("0b1937")
   ) {
     return true;
   }
@@ -42,7 +40,6 @@ export function isBannedProductName(name?: string | null): boolean {
   if (!name || typeof name !== "string") return false;
   const n = name.toLowerCase().trim();
   if (n.includes("başhan") || n.includes("bashan")) return true;
-  if (n.includes("peos") || n.includes("peros")) return true;
   return isBogusProductName(name);
 }
 

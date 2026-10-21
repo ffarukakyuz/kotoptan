@@ -1866,14 +1866,14 @@ function ProductsPanel({
                   ) : (
                     // AKTİF ÜRÜN İÇİN BUTONLAR: Stok Durumu, Düzenle, Arşive Kaldır (Sil)
                     <>
-                      {/* STOKTA VAR / YOK BUTONU */}
+                      {/* STOKTA VAR / YOK BUTONU (Yazısız, sadece tik veya çarpı) */}
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
+                        size="icon"
                         disabled={isBusy}
                         onClick={() => void toggleStockStatus(p)}
-                        className={`h-7 sm:h-8 px-1.5 sm:px-2.5 text-[11px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                        className={`h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg border transition-all cursor-pointer ${
                           inStock
                             ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50"
                             : "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50"
@@ -1885,15 +1885,12 @@ function ProductsPanel({
                         }
                       >
                         {isBusy ? (
-                          <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : inStock ? (
-                          <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         ) : (
-                          <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-600 dark:text-rose-400" />
+                          <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                         )}
-                        <span className="ml-1 text-[10.5px] sm:text-xs">
-                          {inStock ? "Var" : "Yok"}
-                        </span>
                       </Button>
 
                       <Button
@@ -1913,6 +1910,7 @@ function ProductsPanel({
                             unit: p.unit || "adet",
                             image_url: p.image_url ?? "",
                             is_active: p.is_active ?? true,
+                            in_stock: inStock,
                           });
                         }}
                         title="Ürünü Düzenle"
