@@ -9,11 +9,23 @@ export const Route = createFileRoute("/_authenticated")({
     // İlk girişte veya oturumsuz durumda derhal /giris ekranına yönlendirilir.
     if (typeof window !== "undefined") {
       try {
+        let hasValidSession = false;
         const localSession = localStorage.getItem("ko_local_auth_session");
+        if (localSession) {
+          try {
+            const parsed = JSON.parse(localSession);
+            if (parsed && parsed.user && parsed.user.id) {
+              hasValidSession = true;
+            }
+          } catch {
+            // invalid JSON
+          }
+        }
         const hasSbToken = Object.keys(localStorage).some(
-          (k) => k.startsWith("sb-") && k.endsWith("-auth-token"),
+          (k) =>
+            k.startsWith("sb-") && k.endsWith("-auth-token") && Boolean(localStorage.getItem(k)),
         );
-        if (!localSession && !hasSbToken) {
+        if (!hasValidSession && !hasSbToken) {
           throw redirect({
             to: "/giris",
             replace: true,

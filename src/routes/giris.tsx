@@ -269,17 +269,6 @@ function AuthPage() {
     setMapOpen(true);
   };
 
-  const handleGuestEnter = () => {
-    const guest =
-      FALLBACK_USERS.find((u) => u.normalizedPhone === "misafir") ||
-      FALLBACK_USERS[FALLBACK_USERS.length - 1];
-    if (guest) {
-      loginWithFallbackUser(guest);
-      setSuccessEntering(true);
-      toast.success("Katalog misafir modunda açılıyor...");
-    }
-  };
-
   useEffect(() => {
     if (!loading && user && pathname === "/giris") {
       void navigate({ to: "/" });
@@ -446,7 +435,7 @@ function AuthPage() {
       });
       loginWithFallbackUser(autoUser);
       setSuccessEntering(true);
-      toast.success("Giriş yapıldı. Hoş geldiniz!");
+      toast.success("Hesabınız oluşturuldu ve giriş yapıldı. Hoş geldiniz!");
       return;
     }
 
@@ -711,8 +700,9 @@ function AuthPage() {
           <span>Giriş Yapılması Zorunludur</span>
         </div>
         <p className="mt-1 text-[11px] text-emerald-200/75 leading-relaxed">
-          Toptan ürün kataloğumuzu incelemek ve sipariş oluşturmak için lütfen telefon numaranızla
-          giriş yapın veya işletme hesabı açın.
+          Toptan ürün kataloğumuza erişmek ve sipariş vermek için giriş yapmanız zorunludur.
+          Hesabınız yoksa &quot;Hesap Oluştur&quot; sekmesinden hemen işletme hesabınızı
+          açabilirsiniz.
         </p>
       </div>
 

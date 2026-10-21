@@ -57,7 +57,11 @@ export function PWAInstallBanner() {
   // Zaten yüklüyse veya bu oturumda gizlendiyse banner'ı gösterme
   if (isInstalled || dismissed) {
     return (
-      <>{showGuide && <PWAInstallModal initialPlatform={platform} onClose={() => setShowGuide(false)} />}</>
+      <>
+        {showGuide && (
+          <PWAInstallModal initialPlatform={platform} onClose={() => setShowGuide(false)} />
+        )}
+      </>
     );
   }
 
@@ -143,7 +147,9 @@ export function PWAInstallBanner() {
         </div>
       </div>
 
-      {showGuide && <PWAInstallModal initialPlatform={platform} onClose={() => setShowGuide(false)} />}
+      {showGuide && (
+        <PWAInstallModal initialPlatform={platform} onClose={() => setShowGuide(false)} />
+      )}
     </>
   );
 }
@@ -190,7 +196,9 @@ export function PWAInstallModal({
                   Uygulama
                 </span>
               </div>
-              <p className="text-xs text-white/60">Tüm cihazlarda (iPhone, Android, PC) kolay kurulum</p>
+              <p className="text-xs text-white/60">
+                Tüm cihazlarda (iPhone, Android, PC) kolay kurulum
+              </p>
             </div>
           </div>
           <button
@@ -255,7 +263,9 @@ export function PWAInstallModal({
             />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-emerald-400">Ana Ekranınızda Görünecek İkon:</p>
+            <p className="text-[11px] font-semibold text-emerald-400">
+              Ana Ekranınızda Görünecek İkon:
+            </p>
             <p className="text-sm font-bold text-white truncate">Kotoptan</p>
             <p className="text-[11px] text-white/65">Bitlis & Tatvan Toptan Dağıtım Merkezi</p>
           </div>
@@ -302,7 +312,9 @@ export function PWAInstallModal({
                   3
                 </span>
                 <p className="text-xs leading-relaxed">
-                  Sağ üst köşedeki <strong className="text-emerald-300 font-bold">"Ekle"</strong> butonuna dokunun. Kotoptan yeşil sürat logolu ikonu telefonunuzun ana ekranına uygulama gibi gelecektir.
+                  Sağ üst köşedeki <strong className="text-emerald-300 font-bold">"Ekle"</strong>{" "}
+                  butonuna dokunun. Kotoptan yeşil sürat logolu ikonu telefonunuzun ana ekranına
+                  uygulama gibi gelecektir.
                 </p>
               </div>
             </div>
@@ -367,7 +379,8 @@ export function PWAInstallModal({
                   3
                 </span>
                 <p className="text-xs leading-relaxed">
-                  Onay kutusunda <strong className="text-emerald-300 font-bold">"Yükle"</strong> butonuna basın. Kotoptan logosu ana ekranınıza yerleşecektir.
+                  Onay kutusunda <strong className="text-emerald-300 font-bold">"Yükle"</strong>{" "}
+                  butonuna basın. Kotoptan logosu ana ekranınıza yerleşecektir.
                 </p>
               </div>
             </div>
@@ -393,7 +406,8 @@ export function PWAInstallModal({
                   1
                 </span>
                 <p className="text-xs leading-relaxed">
-                  Google Chrome veya Microsoft Edge tarayıcınızın üst adres çubuğunun en sağında yer alan{" "}
+                  Google Chrome veya Microsoft Edge tarayıcınızın üst adres çubuğunun en sağında yer
+                  alan{" "}
                   <strong className="text-white font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">
                     "Uygulamayı Yükle" (⊕ veya ekran simgesi)
                   </strong>{" "}
@@ -406,7 +420,11 @@ export function PWAInstallModal({
                   2
                 </span>
                 <p className="text-xs leading-relaxed">
-                  Veya tarayıcı menüsünden (üç nokta ⋮) <strong className="text-white font-bold">"Yayınla, Kaydet ve Paylaş" &gt; "Kotoptan uygulamasını yükle"</strong> seçeneğini seçin.
+                  Veya tarayıcı menüsünden (üç nokta ⋮){" "}
+                  <strong className="text-white font-bold">
+                    "Yayınla, Kaydet ve Paylaş" &gt; "Kotoptan uygulamasını yükle"
+                  </strong>{" "}
+                  seçeneğini seçin.
                 </p>
               </div>
 
@@ -415,7 +433,8 @@ export function PWAInstallModal({
                   3
                 </span>
                 <p className="text-xs leading-relaxed">
-                  Masaüstünüzde doğrudan açılan bağımsız Kotoptan penceresiyle hızlı sipariş verebilirsiniz.
+                  Masaüstünüzde doğrudan açılan bağımsız Kotoptan penceresiyle hızlı sipariş
+                  verebilirsiniz.
                 </p>
               </div>
             </div>

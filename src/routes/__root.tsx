@@ -449,6 +449,7 @@ function RootAppContent() {
   const normalizedPath = (pathname || "").replace(/\/+$/, "") || "/";
   const isAuthPage = normalizedPath === "/giris" || normalizedPath.startsWith("/giris");
   const isYonetimPage = normalizedPath === "/yonetim" || normalizedPath.startsWith("/yonetim");
+  const isUrunPage = normalizedPath === "/urun" || normalizedPath.startsWith("/urun");
 
   // Mobil Safari / WebKit hata ve önbellek koruma mekanizmaları
   useEffect(() => {
@@ -507,10 +508,10 @@ function RootAppContent() {
     };
   }, [router]);
 
-  // Yönetim sayfasında arka planı tertemiz beyaz (light theme), ana mağaza sayfalarında koyu tema yap
+  // Yönetim ve Ürün Detay sayfalarında gövdeyi tertemiz beyaz (light theme), ana mağaza sayfalarında koyu tema yap (Üst panel SiteHeader her zaman siyah kalır)
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (isYonetimPage) {
+    if (isYonetimPage || isUrunPage) {
       document.documentElement.classList.remove("dark");
       document.documentElement.classList.add("light", "admin-light");
       document.body.classList.remove("bg-black", "dark");
@@ -521,7 +522,7 @@ function RootAppContent() {
       document.body.classList.remove("bg-white", "light", "admin-light");
       document.body.classList.add("bg-black", "dark");
     }
-  }, [isYonetimPage]);
+  }, [isYonetimPage, isUrunPage]);
 
   if (isAuthPage) {
     return (
@@ -541,22 +542,24 @@ function RootAppContent() {
   return (
     <div
       className={`flex min-h-screen flex-col font-sans ${
-        isYonetimPage ? "admin-light bg-white text-slate-900" : "bg-black text-foreground"
+        isYonetimPage || isUrunPage
+          ? "admin-light bg-white text-slate-900"
+          : "bg-black text-foreground"
       } relative overflow-x-hidden`}
     >
       {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
-      {!isYonetimPage && <div aria-hidden="true" className="watermark-overlay" />}
+      {!isYonetimPage && !isUrunPage && <div aria-hidden="true" className="watermark-overlay" />}
       <div className="relative z-10 flex min-h-screen flex-col">
-        {!isYonetimPage && <PWAInstallBanner />}
-        {!isYonetimPage && <WelcomeBanner />}
+        {!isYonetimPage && !isUrunPage && <PWAInstallBanner />}
+        {!isYonetimPage && !isUrunPage && <WelcomeBanner />}
         <SiteHeader />
-        <main className={`flex-1 ${isYonetimPage ? "bg-white text-slate-900" : ""}`}>
+        <main className={`flex-1 ${isYonetimPage || isUrunPage ? "bg-white text-slate-900" : ""}`}>
           {/* Required: nested routes render here. */}
           <Outlet />
         </main>
         <footer
           className={`mt-auto border-t py-8 ${
-            isYonetimPage
+            isYonetimPage || isUrunPage
               ? "border-slate-200 bg-white text-slate-600"
               : "border-white/10 bg-black text-zinc-400"
           }`}

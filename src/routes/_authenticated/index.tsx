@@ -467,7 +467,9 @@ function Index() {
               <div>
                 <h3 className="font-semibold text-white text-sm mb-2">Ko Toptan Hakkında</h3>
                 <p>
-                  Ko Toptan (Kotoptan), Bitlis, Tatvan ve çevre ilçelerdeki bakkal, market ve süpermarketlere toptan bakliyat, temizlik, gıda, kişisel bakım, ve tüketim malları tedarik eden ana toptan satış platformudur.
+                  Ko Toptan (Kotoptan), Bitlis, Tatvan ve çevre ilçelerdeki bakkal, market ve
+                  süpermarketlere toptan bakliyat, temizlik, gıda, kişisel bakım, ve tüketim malları
+                  tedarik eden ana toptan satış platformudur.
                 </p>
               </div>
 
@@ -829,15 +831,16 @@ function HeroProductCard({
 
           {isAdmin ? (
             <div className="flex items-center gap-2">
-              {/* Solda: Stokta Var / Yok Butonu */}
+              {/* Solda: Stokta Var / Yok Butonu (Yazı olmadan, sadece tik veya çarpı) */}
               <button
                 type="button"
                 disabled={togglingHeroStock}
                 onClick={handleToggleHeroStock}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all border shadow-xs active:scale-95 cursor-pointer ${
+                aria-label={inStock ? "Stokta Var (Stokta Yok Yap)" : "Stokta Yok (Stokta Var Yap)"}
+                className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl transition-all border shadow-xs active:scale-95 cursor-pointer ${
                   inStock
-                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
-                    : "bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300"
+                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300"
+                    : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300"
                 }`}
                 title={
                   inStock
@@ -846,24 +849,23 @@ function HeroProductCard({
                 }
               >
                 {togglingHeroStock ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : inStock ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <Check className="h-5 w-5 stroke-[2.8] text-emerald-600" />
                 ) : (
-                  <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                  <X className="h-5 w-5 stroke-[2.8] text-rose-600" />
                 )}
-                <span>{inStock ? "Stokta Var" : "Stokta Yok"}</span>
               </button>
 
-              {/* Sağında: Ürünü Düzenle Butonu */}
+              {/* Sağında: Ürünü Düzenle Butonu (Yazı olmadan, sadece kalem) */}
               <Link
                 to="/yonetim"
                 search={{ tab: "products", edit: current.id }}
-                className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold bg-[#166534] hover:bg-[#14532d] text-white shadow-md transition-all active:scale-95 cursor-pointer"
+                aria-label="Ürünü Düzenle"
+                className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-[#166534] hover:bg-[#14532d] text-white shadow-md transition-all active:scale-95 cursor-pointer"
                 title="Ürün bilgilerini düzenle"
               >
-                <Pencil className="h-3.5 w-3.5" />
-                <span>Ürünü Düzenle</span>
+                <Pencil className="h-5 w-5 stroke-[2.2]" />
               </Link>
             </div>
           ) : (
@@ -1076,16 +1078,17 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
 
       <div className="mt-3 pt-2.5 border-t border-slate-100">
         {isAdmin ? (
-          <div className="flex items-center gap-1.5 w-full">
-            {/* Solda: Stokta Var / Yok Butonu */}
+          <div className="flex items-center gap-2 w-full">
+            {/* Solda: Stokta Var / Yok Butonu (Yazı olmadan, sadece tik veya çarpı) */}
             <button
               type="button"
               disabled={togglingStock}
               onClick={handleToggleStock}
-              className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 px-1.5 text-xs font-bold transition-all border shadow-xs active:scale-95 cursor-pointer ${
+              aria-label={inStock ? "Stokta Var (Stokta Yok Yap)" : "Stokta Yok (Stokta Var Yap)"}
+              className={`flex-1 h-9 flex items-center justify-center rounded-xl transition-all border shadow-xs active:scale-95 cursor-pointer ${
                 inStock
-                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
-                  : "bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300"
+                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300"
+                  : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300"
               }`}
               title={
                 inStock
@@ -1094,26 +1097,23 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
               }
             >
               {togglingStock ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
               ) : inStock ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <Check className="h-5 w-5 stroke-[2.8] text-emerald-600 shrink-0" />
               ) : (
-                <XCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                <X className="h-5 w-5 stroke-[2.8] text-rose-600 shrink-0" />
               )}
-              <span className="truncate text-[11px] sm:text-xs">
-                {inStock ? "Stokta Var" : "Stokta Yok"}
-              </span>
             </button>
 
-            {/* Sağında: Ürünü Düzenle Butonu */}
+            {/* Sağında: Ürünü Düzenle Butonu (Yazı olmadan, sadece kalem) */}
             <Link
               to="/yonetim"
               search={{ tab: "products", edit: product.id }}
-              className="flex-1 flex items-center justify-center gap-1 rounded-lg py-2 px-1.5 text-xs font-bold bg-[#166534] hover:bg-[#14532d] text-white shadow-xs transition-all active:scale-95 text-center cursor-pointer"
+              aria-label="Ürünü Düzenle"
+              className="flex-1 h-9 flex items-center justify-center rounded-xl bg-[#166534] hover:bg-[#14532d] text-white shadow-xs transition-all active:scale-95 text-center cursor-pointer"
               title="Ürün bilgilerini düzenle"
             >
-              <Pencil className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate text-[11px] sm:text-xs">Ürünü Düzenle</span>
+              <Pencil className="h-4 w-4 stroke-[2.2] shrink-0" />
             </Link>
           </div>
         ) : (
@@ -1155,7 +1155,7 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
               }`}
             >
               {!inStock ? (
-                <span>Tükendi</span>
+                <X className="h-4 w-4 stroke-[2.5] text-rose-600" />
               ) : added ? (
                 <>
                   <Check className="h-3.5 w-3.5" />
