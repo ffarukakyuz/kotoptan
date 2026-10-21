@@ -21,6 +21,8 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { BRAND_LOGO_SRC } from "@/lib/branding";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
+import { SadWatermark } from "@/components/SadWatermark";
+import { getSadWatermarkGlobalMode, type SadWatermarkGlobalMode } from "@/lib/sad-watermark";
 
 function NotFoundComponent() {
   return (
@@ -457,6 +459,24 @@ function RootAppContent() {
   const isYonetimPage = normalizedPath === "/yonetim" || normalizedPath.startsWith("/yonetim");
   const isUrunPage = normalizedPath === "/urun" || normalizedPath.startsWith("/urun");
 
+  const [sadWatermarkMode, setSadWatermarkMode] = useState<SadWatermarkGlobalMode>(() =>
+    getSadWatermarkGlobalMode(),
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleWatermarkChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ mode?: SadWatermarkGlobalMode }>;
+      setSadWatermarkMode(customEvent.detail?.mode || getSadWatermarkGlobalMode());
+    };
+    window.addEventListener("sad_watermark_changed", handleWatermarkChange);
+    window.addEventListener("storage", handleWatermarkChange);
+    return () => {
+      window.removeEventListener("sad_watermark_changed", handleWatermarkChange);
+      window.removeEventListener("storage", handleWatermarkChange);
+    };
+  }, []);
+
   // Mobil Safari / WebKit hata ve önbellek koruma mekanizmaları
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -535,6 +555,8 @@ function RootAppContent() {
       <div className="flex min-h-screen flex-col bg-[#050b07] font-sans text-white pt-[env(safe-area-inset-top,0px)] relative overflow-x-hidden">
         {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
         <div aria-hidden="true" className="watermark-overlay" />
+        {/* Satış Bereket Filigranı (7 Adet Sad Harfi) — Site Geneli */}
+        {sadWatermarkMode === "all" && <SadWatermark variant="site" />}
         {/* Splash screen animasyonu ile birebir aynı atmosferik koyu yeşil - siyah radyal derin ışık */}
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.22)_0%,rgba(5,11,7,0.98)_75%)]" />
         <main className="flex flex-1 items-center justify-center p-4 relative z-10">
@@ -555,6 +577,8 @@ function RootAppContent() {
     >
       {/* Kalem Suresi (Nazar Âyeti) Hayalet Filigranı */}
       {!isYonetimPage && !isUrunPage && <div aria-hidden="true" className="watermark-overlay" />}
+      {/* Satış Bereket Filigranı (7 Adet Sad Harfi) — Site Geneli */}
+      {sadWatermarkMode === "all" && <SadWatermark variant="site" />}
       <div className="relative z-10 flex min-h-screen flex-col">
         {!isYonetimPage && !isUrunPage && <PWAInstallBanner />}
         {!isYonetimPage && !isUrunPage && <WelcomeBanner />}

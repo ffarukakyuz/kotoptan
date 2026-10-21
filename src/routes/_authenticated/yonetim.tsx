@@ -40,6 +40,7 @@ import {
   Route as RouteIcon,
   Truck,
   PauseCircle,
+  Sparkles,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -55,6 +56,12 @@ import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product
 import { ProductGitSyncModal } from "@/components/ProductGitSyncModal";
 import { MasterSaveSyncModal } from "@/components/MasterSaveSyncModal";
 import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
+import {
+  getSadWatermarkGlobalMode,
+  setSadWatermarkGlobalMode,
+  type SadWatermarkGlobalMode,
+  SAD_WATERMARK_TEXT,
+} from "@/lib/sad-watermark";
 
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { FALLBACK_PRODUCTS } from "@/data/products";
@@ -71,6 +78,7 @@ import {
   batchMarkProductsPermanentlyDeleted,
   getPermanentlyDeletedIds,
   getPermanentlyDeletedNames,
+  toggleProductSadWatermark,
 } from "@/lib/custom-products";
 import {
   mergeOrdersWithLocal,
@@ -196,6 +204,7 @@ const productSchema = z.object({
   image_url: z.string().trim().max(400000),
   is_active: z.boolean(),
   in_stock: z.boolean().optional(),
+  hasSadWatermark: z.boolean().optional(),
 });
 
 const emptyProduct = {
@@ -206,6 +215,7 @@ const emptyProduct = {
   image_url: "",
   is_active: true,
   in_stock: true,
+  hasSadWatermark: false,
 };
 
 type AdminOrderItem = { id: string; product_name: string; unit: string; quantity: number };
@@ -561,6 +571,21 @@ function ProductsPanel({
   const [productSearch, setProductSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("hepsi");
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [globalWatermarkMode, setGlobalWatermarkMode] = useState<SadWatermarkGlobalMode>(() =>
+    getSadWatermarkGlobalMode(),
+  );
+
+  const handleGlobalWatermarkChange = (mode: SadWatermarkGlobalMode) => {
+    setGlobalWatermarkMode(mode);
+    setSadWatermarkGlobalMode(mode);
+    toast.success(
+      mode === "all"
+        ? "Bereket Filigranı tüm sitede ve tüm ürünlerde aktif edildi."
+        : mode === "selected"
+          ? "Bereket Filigranı sadece seçili ürünlerde aktif olarak ayarlandı."
+          : "Bereket Filigranı tamamen kapatıldı.",
+    );
+  };
 
   const pickImage = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -611,6 +636,7 @@ function ProductsPanel({
         image_url: target.image_url ?? "",
         is_active: target.is_active ?? true,
         in_stock: targetInStock,
+        hasSadWatermark: Boolean(target.hasSadWatermark),
       });
       toast.info(`"${target.name}" düzenleme için hazırlandı.`);
       setTimeout(() => {
@@ -694,6 +720,7 @@ function ProductsPanel({
       description: finalDesc,
       image_url: normalizedImageUrl || null,
       in_stock: inStock,
+      hasSadWatermark: Boolean(form.hasSadWatermark),
     };
     setBusy(true);
     const isEdit = Boolean(editingId);
@@ -707,6 +734,7 @@ function ProductsPanel({
       image_url: payload.image_url,
       is_active: payload.is_active,
       in_stock: inStock,
+      hasSadWatermark: Boolean(form.hasSadWatermark),
     };
     setProductStockStatusLocal(finalId, inStock);
     saveCustomProduct(customProd, isEdit);
@@ -1201,6 +1229,32 @@ function ProductsPanel({
               />
             </div>
 
+            {/* Bereket Filigranı Ekle (7 Sad Harfi) switch */}
+            <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 px-3 py-2.5 bg-emerald-500/5">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Label
+                    htmlFor="add-pr-sad"
+                    className="text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer"
+                  >
+                    Bereket Filigranı Ekle (7 Sad Harfi)
+                  </Label>
+                  <span className="text-[11px] font-serif text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/30">
+                    {SAD_WATERMARK_TEXT}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Ürün kartının ve detayının arka planında çok hafif (%3) estetik 7 Sad harfi yer
+                  alır.
+                </p>
+              </div>
+              <Switch
+                id="add-pr-sad"
+                checked={Boolean(form.hasSadWatermark)}
+                onCheckedChange={(v) => setForm({ ...form, hasSadWatermark: v })}
+              />
+            </div>
+
             <DialogFooter className="gap-2 border-t border-border/80 pt-3">
               <Button
                 type="button"
@@ -1260,6 +1314,26 @@ function ProductsPanel({
 
         {/* Sağ: Yeni Ürün Ekle Butonu & Aksiyonlar */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Bereket Filigranı Modu Seçimi */}
+          <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 px-2 py-1 rounded-xl shadow-xs">
+            <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">7 Sad Filigranı:</span>
+            </span>
+            <select
+              value={globalWatermarkMode}
+              onChange={(e) =>
+                handleGlobalWatermarkChange(e.target.value as SadWatermarkGlobalMode)
+              }
+              className="h-7 text-[11px] font-bold rounded-lg border border-emerald-500/40 bg-white dark:bg-card px-2 py-0 text-emerald-900 dark:text-emerald-200 cursor-pointer focus:ring-1 focus:ring-emerald-500"
+              title="Satış Bereket Filigranı (7 Sad Harfi) Modu"
+            >
+              <option value="selected">Sadece Seçili Ürünlerde</option>
+              <option value="all">Tüm Sitede & Ürünlerde</option>
+              <option value="off">Kapalı</option>
+            </select>
+          </div>
+
           <Button
             type="button"
             onClick={() => {
@@ -1697,6 +1771,31 @@ function ProductsPanel({
                             {form.is_active ? "● Aktif (Yayında)" : "● Arşivde (Gizli)"}
                           </button>
                         </div>
+
+                        {/* Bereket Filigranı (7 Sad Harfi) */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-muted-foreground">
+                            Bereket Filigranı:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                hasSadWatermark: !prev.hasSadWatermark,
+                              }))
+                            }
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border cursor-pointer transition-colors flex items-center gap-1.5 ${
+                              form.hasSadWatermark
+                                ? "border-emerald-500 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs"
+                                : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
+                            }`}
+                            title="7 Adet Sad Harfi (صصصصصصص) Bereket Filigranı"
+                          >
+                            <span className="font-serif text-xs font-bold text-emerald-600">ص</span>
+                            <span>{form.hasSadWatermark ? "● 7 Sad Aktif" : "Kapalı"}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1828,6 +1927,15 @@ function ProductsPanel({
                           ● Tükendi
                         </span>
                       )}
+                      {p.hasSadWatermark && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 px-1.5 py-0.2 rounded"
+                          title="7 Sad Harfi Bereket Filigranı Aktif"
+                        >
+                          <span className="font-serif text-xs">صصصصصصص</span>
+                          <span className="hidden sm:inline">Bereket</span>
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1864,8 +1972,38 @@ function ProductsPanel({
                       </Button>
                     </>
                   ) : (
-                    // AKTİF ÜRÜN İÇİN BUTONLAR: Stok Durumu, Düzenle, Arşive Kaldır (Sil)
+                    // AKTİF ÜRÜN İÇİN BUTONLAR: Bereket Filigranı, Stok Durumu, Düzenle, Arşive Kaldır (Sil)
                     <>
+                      {/* BEREKET FİLİGRANI (7 SAD) HIZLI AÇ/KAPAT BUTONU */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Bereket Filigranı Aç/Kapat"
+                        className={`h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg border transition-all cursor-pointer ${
+                          p.hasSadWatermark
+                            ? "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                            : "border-border text-muted-foreground/60 hover:text-foreground hover:bg-muted"
+                        }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const newStatus = toggleProductSadWatermark(p.id);
+                          toast.success(
+                            newStatus
+                              ? `"${p.name}" için 7 Sad Bereket Filigranı eklendi.`
+                              : `"${p.name}" için Bereket Filigranı kaldırıldı.`,
+                          );
+                        }}
+                        title={
+                          p.hasSadWatermark
+                            ? "Bereket Filigranı (7 Sad Harfi) AKTİF (Kaldırmak için tıklayın)"
+                            : "Bereket Filigranı (7 Sad Harfi) EKLE"
+                        }
+                      >
+                        <span className="font-serif text-sm font-bold">ص</span>
+                      </Button>
+
                       {/* STOKTA VAR / YOK BUTONU (Yazısız, sadece tik veya çarpı) */}
                       <Button
                         type="button"
@@ -1911,6 +2049,7 @@ function ProductsPanel({
                             image_url: p.image_url ?? "",
                             is_active: p.is_active ?? true,
                             in_stock: inStock,
+                            hasSadWatermark: Boolean(p.hasSadWatermark),
                           });
                         }}
                         title="Ürünü Düzenle"

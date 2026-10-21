@@ -275,6 +275,7 @@ function apiGeminiPlugin() {
                 description: data.description || "",
                 image_url: data.image_url || null,
                 is_active: data.is_active !== false,
+                hasSadWatermark: data.hasSadWatermark === true,
               };
               res.setHeader("Content-Type", "application/json");
               res.end(JSON.stringify({ ok: true, product }));

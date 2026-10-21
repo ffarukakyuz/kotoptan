@@ -114,6 +114,7 @@ export type Product = {
   image?: string | null;
   is_active: boolean;
   in_stock?: boolean;
+  hasSadWatermark?: boolean;
 };
 
 export function cleanProductDescription(desc?: string | null): string {

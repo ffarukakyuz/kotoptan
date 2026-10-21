@@ -145,7 +145,7 @@ export function SiteHeader() {
             <img
               src={BRAND_LOGO_SRC}
               alt="Kotoptan Logo"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-0.5"
               referrerPolicy="no-referrer"
             />
           </span>

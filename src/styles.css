@@ -519,3 +519,28 @@ html.admin-light .text-foreground,
   background-position: center top;
   background-attachment: fixed;
 }
+
+/* =========================================================================
+   Satış Bereket Filigranı (7 Adet Sad Harfi - صصصصصصص)
+   Opaklık: %3 seviyesinde, pointer-events: none, user-select: none, z-index: 0
+   ========================================================================= */
+.sad-watermark-overlay {
+  pointer-events: none;
+  user-select: none;
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.032;
+  font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif;
+  direction: rtl;
+}
+
+.sad-calligraphy {
+  font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif;
+  direction: rtl;
+}
+

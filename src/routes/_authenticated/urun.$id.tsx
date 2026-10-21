@@ -58,6 +58,8 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
 });
 
 import { getAllCatalogProducts, isProductPermanentlyDeleted } from "@/lib/custom-products";
+import { SadWatermark } from "@/components/SadWatermark";
+import { shouldDisplaySadWatermark } from "@/lib/sad-watermark";
 
 async function fetchSingleProduct(id: string): Promise<Product | null> {
   if (isProductPermanentlyDeleted(id)) {
@@ -210,6 +212,9 @@ function ProductDetail() {
 
         <div className="mt-5 grid gap-8 md:grid-cols-2">
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm relative group">
+            {/* Satış Bereket Filigranı (7 Adet Sad Harfi) */}
+            {shouldDisplaySadWatermark(product) && <SadWatermark variant="detail" />}
+
             {/* SOL ÜSTTE: Koli İçi (Kırmızı) / Paket İçi (Mor) / Adet (Mavi) Rozeti */}
             <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1 pointer-events-none">
               {extractPackageOrBoxInfo(
@@ -289,6 +294,15 @@ function ProductDetail() {
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-200">
                     <XCircle className="h-3.5 w-3.5 text-rose-600" />
                     Stokta Yok / Tükendi
+                  </span>
+                )}
+                {shouldDisplaySadWatermark(product) && (
+                  <span
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-xs"
+                    title="Bu üründe Satış Bereket Filigranı (7 Sad Harfi) aktiftir"
+                  >
+                    <span className="font-serif text-sm text-emerald-600 font-bold">صصصصصصص</span>
+                    <span>Bereket Filigranı</span>
                   </span>
                 )}
               </div>

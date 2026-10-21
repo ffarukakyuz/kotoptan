@@ -253,6 +253,7 @@ export default {
               description: data.description || "",
               image_url: data.image_url || null,
               is_active: data.is_active !== false,
+              hasSadWatermark: data.hasSadWatermark === true,
             };
             return new Response(JSON.stringify({ ok: true, product }), {
               headers: jsonHeaders,

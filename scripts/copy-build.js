@@ -371,7 +371,7 @@ try {
     <div id="root">
       <div id="initial-preloader" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050b07;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;text-align:center;box-sizing:border-box;transition:opacity 0.35s ease-out;">
         <div style="width:110px;height:110px;border-radius:24px;overflow:hidden;border:2px solid #10b981;box-shadow:0 10px 25px rgba(0,0,0,0.8);margin-bottom:20px;background:#000;">
-          <img src="/kotoptan-logo.jpg?v=20261019-clean-box" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
+          <img src="/kotoptan-speed-k-logo.jpg?v=20261021-speed-k-box" alt="Kotoptan" style="width:100%;height:100%;object-fit:cover;" />
         </div>
         <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">
           Ko<span style="color:#22c55e;">toptan</span>

@@ -14,11 +14,7 @@ const DELETED_NAMES_STORAGE_KEY = "permanently_deleted_product_names";
 export function isBogusProductName(name: string): boolean {
   if (!name || typeof name !== "string") return true;
   const n = name.toLowerCase().trim();
-  if (
-    n.includes("30000002") ||
-    n.includes("1650x1650") ||
-    n.includes("0b1937")
-  ) {
+  if (n.includes("30000002") || n.includes("1650x1650") || n.includes("0b1937")) {
     return true;
   }
   // Çözünürlük formatı (Örn: 1650x1650, 1080x1920)
@@ -545,6 +541,35 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
  */
 export function deleteCustomProduct(id: string): void {
   markProductPermanentlyDeleted(id);
+}
+
+/**
+ * Ürünün Satış Bereket Filigranı (7 Sad Harfi) durumunu tersine çevirir ve kaydeder
+ */
+export function toggleProductSadWatermark(productId: string): boolean {
+  if (typeof window === "undefined" || !productId) return false;
+  try {
+    const all = getAllCatalogProducts();
+    const product = all.find((p) => p.id === productId);
+    if (!product) return false;
+
+    const newWatermarkStatus = !product.hasSadWatermark;
+    const updatedProduct: Product = {
+      ...product,
+      hasSadWatermark: newWatermarkStatus,
+    };
+
+    saveCustomProduct(updatedProduct, true);
+    window.dispatchEvent(
+      new CustomEvent("sad_watermark_changed", {
+        detail: { productId, hasSadWatermark: newWatermarkStatus },
+      }),
+    );
+    return newWatermarkStatus;
+  } catch (err) {
+    console.warn("[toggleProductSadWatermark] Error:", err);
+    return false;
+  }
 }
 
 /**

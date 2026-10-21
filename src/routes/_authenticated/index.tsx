@@ -54,6 +54,8 @@ import {
   isBannedProductName,
   isProductPermanentlyDeleted,
 } from "@/lib/custom-products";
+import { SadWatermark } from "@/components/SadWatermark";
+import { shouldDisplaySadWatermark } from "@/lib/sad-watermark";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
   return getAllCatalogProducts();
@@ -125,9 +127,11 @@ function Index() {
     };
     window.addEventListener("product_stock_status_changed", handleStockChange);
     window.addEventListener("catalog_updated", handleCatalogUpdate);
+    window.addEventListener("sad_watermark_changed", handleCatalogUpdate);
     return () => {
       window.removeEventListener("product_stock_status_changed", handleStockChange);
       window.removeEventListener("catalog_updated", handleCatalogUpdate);
+      window.removeEventListener("sad_watermark_changed", handleCatalogUpdate);
     };
   }, []);
 
@@ -650,6 +654,9 @@ function HeroProductCard({
 
   return (
     <div className="relative mx-auto max-w-[340px] sm:max-w-[390px] w-full rounded-[28px] sm:rounded-[32px] bg-white p-5 sm:p-6 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_45px_rgba(34,197,94,0.35)] border-2 border-emerald-500/50 transition-all select-none overflow-hidden group">
+      {/* Satış Bereket Filigranı (7 Adet Sad Harfi) */}
+      {shouldDisplaySadWatermark(current) && <SadWatermark variant="hero" />}
+
       {/* 3 SANİYELİK DİNAMİK İLERLEME ÇUBUĞU (Hava Civa Efekti) */}
       {isPlaying && slides.length > 1 && (
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100 overflow-hidden z-20">
@@ -980,7 +987,9 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
 
   return (
     <article className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-3 sm:p-4 text-slate-900 shadow-md hover:shadow-xl transition-all duration-200 border border-slate-100 relative">
-      <div>
+      {/* Satış Bereket Filigranı (7 Adet Sad Harfi) */}
+      {shouldDisplaySadWatermark(product) && <SadWatermark variant="card" />}
+      <div className="relative z-10">
         <Link
           to="/urun/$id"
           params={{ id: product.id }}
