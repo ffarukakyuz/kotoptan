@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --host 0.0.0.0 --port 3000",
+    "dev": "node scripts/patch-modules.js && vite dev --host 0.0.0.0 --port 3000",
     "build": "node scripts/patch-modules.js && NODE_ENV=production vite build && node scripts/copy-build.js",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",

@@ -157,7 +157,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Ko Toptan — Bitlis, Tatvan, Ahlat, Adilcevaz, Güroymak ve Hizan marketlerine toptan gıda, bakliyat ve temizlik ürünleri doğrudan depo teslimatı.",
       },
-      { property: "og:image", content: "https://kotoptan.pages.dev/kotoptan-logo-v2.jpg" },
+      {
+        property: "og:image",
+        content: "https://kotoptan.pages.dev/kotoptan-official-logo.png?v=20261021-user-box-v1",
+      },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { property: "og:locale", content: "tr_TR" },
@@ -171,7 +174,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Ko Toptan — Bitlis ve Tatvan merkezli bakkal ve marketlere toptan gıda, bakliyat ve temizlik ürünleri dağıtımı.",
       },
-      { name: "twitter:image", content: "https://kotoptan.pages.dev/kotoptan-logo-v2.jpg" },
+      {
+        name: "twitter:image",
+        content: "https://kotoptan.pages.dev/kotoptan-official-logo.png?v=20261021-user-box-v1",
+      },
       { httpEquiv: "Cache-Control", content: "no-cache, no-store, must-revalidate" },
       { httpEquiv: "Pragma", content: "no-cache" },
       { httpEquiv: "Expires", content: "0" },
