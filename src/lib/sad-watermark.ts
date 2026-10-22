@@ -19,7 +19,7 @@ const GLOBAL_WATERMARK_STORAGE_KEY = "ko_sad_watermark_global_mode";
  * - "off": Tamamen devre dışı bırakılır.
  */
 export function getSadWatermarkGlobalMode(): SadWatermarkGlobalMode {
-  if (typeof window === "undefined") return "selected";
+  if (typeof window === "undefined") return "all";
   try {
     const saved = localStorage.getItem(GLOBAL_WATERMARK_STORAGE_KEY);
     if (saved === "all" || saved === "selected" || saved === "off") {
@@ -28,7 +28,7 @@ export function getSadWatermarkGlobalMode(): SadWatermarkGlobalMode {
   } catch {
     // ignore
   }
-  return "selected";
+  return "all";
 }
 
 /**

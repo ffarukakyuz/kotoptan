@@ -534,7 +534,7 @@ html.admin-light .text-foreground,
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.032;
+  opacity: 0.028; /* %2.8 opaklık (%2.5 - %3 aralığında) */
   font-family: "Amiri", "Traditional Arabic", "Scheherazade New", "Noto Naskh Arabic", serif;
   direction: rtl;
 }

@@ -197,14 +197,14 @@ export const Route = createFileRoute("/_authenticated/yonetim")({
 });
 
 const productSchema = z.object({
-  name: z.string().trim().min(2, "Ürün adı gerekli").max(120),
-  description: z.string().trim().max(500),
-  category: z.string().trim().min(1),
-  unit: z.string().trim().min(1, "Birim gerekli").max(30),
-  image_url: z.string().trim().max(400000),
-  is_active: z.boolean(),
-  in_stock: z.boolean().optional(),
-  hasSadWatermark: z.boolean().optional(),
+  name: z.string().trim().min(1, "Ürün adı gerekli").max(300),
+  description: z.string().trim().max(1000).optional().default(""),
+  category: z.string().trim().optional().default("gida"),
+  unit: z.string().trim().max(50).optional().default("adet"),
+  image_url: z.string().trim().max(2000000).optional().nullable().default(""),
+  is_active: z.boolean().optional().default(true),
+  in_stock: z.boolean().optional().default(true),
+  hasSadWatermark: z.boolean().optional().default(false),
 });
 
 const emptyProduct = {
@@ -692,6 +692,7 @@ function ProductsPanel({
   }, [syncCatalogToServer]);
 
   const reset = () => {
+    setBusy(false);
     setEditingId(null);
     setForm({ ...emptyProduct });
     setIsAddDialogOpen(false);
@@ -707,68 +708,92 @@ function ProductsPanel({
       toast.error(parsed.error.issues[0]?.message ?? "Bilgileri kontrol edin");
       return;
     }
-    const inStock = form.in_stock !== false;
-    const baseDesc = cleanProductDescription(parsed.data.description);
-    const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
-
-    const normalizedImageUrl = parsed.data.image_url?.trim()
-      ? getPublicProductImageUrl(parsed.data.image_url)
-      : null;
-
-    const payload = {
-      ...parsed.data,
-      description: finalDesc,
-      image_url: normalizedImageUrl || null,
-      in_stock: inStock,
-      hasSadWatermark: Boolean(form.hasSadWatermark),
-    };
     setBusy(true);
-    const isEdit = Boolean(editingId);
-    const finalId = editingId || `custom-${Date.now()}`;
-    const customProd: Product = {
-      id: finalId,
-      name: payload.name,
-      category: payload.category as Product["category"],
-      unit: payload.unit,
-      description: payload.description,
-      image_url: payload.image_url,
-      is_active: payload.is_active,
-      in_stock: inStock,
-      hasSadWatermark: Boolean(form.hasSadWatermark),
-    };
-    setProductStockStatusLocal(finalId, inStock);
-    saveCustomProduct(customProd, isEdit);
-
     try {
-      if (editingId) {
-        await supabase.from("products").update(payload).eq("id", editingId);
-      } else {
-        await supabase.from("products").insert({ ...payload, id: finalId });
-      }
-    } catch {
-      // ignore
-    }
-    setBusy(false);
+      const inStock = form.in_stock !== false;
+      const baseDesc = cleanProductDescription(parsed.data.description || "");
+      const finalDesc = inStock ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
-    // Optimistic cache update: Düzenlenen ürünü kendi yerinde güncelle, yeni ürünü başa ekle
-    const updateInCache = (old: Product[] | undefined) => {
-      if (!old) return old;
-      if (isEdit) {
-        return old.map((p) => (p.id === finalId ? { ...p, ...customProd } : p));
-      }
-      return [customProd, ...old];
-    };
-    qc.setQueryData<Product[]>(["admin-products"], updateInCache);
-    qc.setQueryData<Product[]>(["products", "active"], updateInCache);
-    qc.setQueryData<Product[]>(["live-supabase-products"], updateInCache);
+      const normalizedImageUrl = parsed.data.image_url?.trim()
+        ? getPublicProductImageUrl(parsed.data.image_url)
+        : null;
 
-    toast.success(isEdit ? "Ürün güncellendi" : "Ürün eklendi");
-    reset();
-    void qc.invalidateQueries({ queryKey: ["admin-products"] });
-    void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("catalog_updated"));
+      const payload = {
+        name: parsed.data.name.trim(),
+        category: parsed.data.category || "gida",
+        unit: parsed.data.unit || "adet",
+        description: finalDesc,
+        image_url: normalizedImageUrl || null,
+        is_active: parsed.data.is_active !== false,
+        in_stock: inStock,
+        hasSadWatermark: Boolean(form.hasSadWatermark),
+      };
+
+      const isEdit = Boolean(editingId);
+      const finalId = editingId || `custom-${Date.now()}`;
+      const customProd: Product = {
+        id: finalId,
+        name: payload.name,
+        category: payload.category as Product["category"],
+        unit: payload.unit,
+        description: payload.description,
+        image_url: payload.image_url,
+        is_active: payload.is_active,
+        in_stock: inStock,
+        hasSadWatermark: Boolean(form.hasSadWatermark),
+      };
+
+      setProductStockStatusLocal(finalId, inStock);
+      saveCustomProduct(customProd, isEdit);
+
+      // Supabase senkronizasyonu
+      try {
+        if (editingId) {
+          await supabase.from("products").update(payload).eq("id", editingId);
+        } else {
+          await supabase.from("products").insert({ ...payload, id: finalId });
+        }
+      } catch (err) {
+        console.warn("[Product Submit] Supabase note:", err);
+      }
+
+      // Sunucu yerel API'sine de bildir
+      try {
+        await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, id: finalId }),
+        });
+      } catch {
+        // ignore
+      }
+
+      // Optimistic cache update: Düzenlenen ürünü kendi yerinde güncelle, yeni ürünü başa ekle
+      const updateInCache = (old: Product[] | undefined) => {
+        if (!old) return [customProd];
+        if (isEdit) {
+          return old.map((p) => (p.id === finalId ? { ...p, ...customProd } : p));
+        }
+        return [customProd, ...old.filter((p) => p.id !== finalId)];
+      };
+      qc.setQueryData<Product[]>(["admin-products"], updateInCache);
+      qc.setQueryData<Product[]>(["products", "active"], updateInCache);
+      qc.setQueryData<Product[]>(["live-supabase-products"], updateInCache);
+
+      toast.success(isEdit ? "Ürün başarıyla güncellendi" : "Ürün başarıyla eklendi");
+      reset();
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("catalog_updated"));
+        window.dispatchEvent(new Event("storage"));
+      }
+    } catch (err) {
+      console.error("[Product Submit Error]:", err);
+      toast.error("Ürün kaydedilirken bir hata oluştu");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -948,7 +973,7 @@ function ProductsPanel({
   const normalizedData = useMemo(
     () =>
       data
-        .filter((p) => !isBannedProductName(p.name) && !isProductPermanentlyDeleted(p.id, p.name))
+        .filter((p) => p && !isProductPermanentlyDeleted(p.id, p.name))
         .map(normalizeProductWithOverrides),
     [data],
   );
@@ -1047,9 +1072,9 @@ function ProductsPanel({
               <Input
                 id="add-pr-name"
                 value={form.name}
-                maxLength={120}
+                maxLength={300}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Örn: Çaykur Rize Turist Çay 1000g"
+                placeholder="Örn: Peros Matik 10 kg, Çaykur Rize Çay 1000g..."
                 autoFocus
               />
             </div>
@@ -1586,8 +1611,8 @@ function ProductsPanel({
                           <Input
                             value={form.name}
                             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                            placeholder="Ürün adı yazın..."
-                            maxLength={120}
+                            placeholder="Örn: Peros Matik 10 kg..."
+                            maxLength={300}
                             className="h-8 pr-8 text-xs sm:text-sm font-bold bg-background text-foreground border-emerald-500/50 focus:border-emerald-500"
                             autoFocus
                           />
@@ -1629,7 +1654,7 @@ function ProductsPanel({
                               setForm((prev) => ({ ...prev, description: e.target.value }))
                             }
                             placeholder="Örn: Koli içi 12 Adet veya Paket içi 6 Adet"
-                            maxLength={300}
+                            maxLength={1000}
                             className="h-7 pr-8 text-[11px] sm:text-xs bg-background text-foreground border-border"
                           />
                           {form.description && (
@@ -1771,31 +1796,34 @@ function ProductsPanel({
                             {form.is_active ? "● Aktif (Yayında)" : "● Arşivde (Gizli)"}
                           </button>
                         </div>
+                      </div>
 
-                        {/* Bereket Filigranı (7 Sad Harfi) */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-semibold text-muted-foreground">
-                            Bereket Filigranı:
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                hasSadWatermark: !prev.hasSadWatermark,
-                              }))
-                            }
-                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border cursor-pointer transition-colors flex items-center gap-1.5 ${
-                              form.hasSadWatermark
-                                ? "border-emerald-500 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs"
-                                : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
-                            }`}
-                            title="7 Adet Sad Harfi (صصصصصصص) Bereket Filigranı"
-                          >
-                            <span className="font-serif text-xs font-bold text-emerald-600">ص</span>
-                            <span>{form.hasSadWatermark ? "● 7 Sad Aktif" : "Kapalı"}</span>
-                          </button>
+                      {/* Bereket Filigranı Ekle (7 Sad Harfi) switch */}
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-500/30 px-3 py-2 bg-emerald-500/5 mt-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <Label
+                              htmlFor={`edit-pr-sad-${p.id}`}
+                              className="text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer"
+                            >
+                              Bereket Filigranı Ekle (7 Sad Harfi)
+                            </Label>
+                            <span className="text-[11px] font-serif text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/30">
+                              {SAD_WATERMARK_TEXT}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Ürün kartının ve detayının arka planında çok hafif (%2.5 - %3) estetik 7
+                            Sad harfi yer alır.
+                          </p>
                         </div>
+                        <Switch
+                          id={`edit-pr-sad-${p.id}`}
+                          checked={Boolean(form.hasSadWatermark)}
+                          onCheckedChange={(v) =>
+                            setForm((prev) => ({ ...prev, hasSadWatermark: v }))
+                          }
+                        />
                       </div>
                     </div>
                   </div>

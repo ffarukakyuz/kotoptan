@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_authenticated/urun/$id")({
 
 import { getAllCatalogProducts, isProductPermanentlyDeleted } from "@/lib/custom-products";
 import { SadWatermark } from "@/components/SadWatermark";
-import { shouldDisplaySadWatermark } from "@/lib/sad-watermark";
+import { shouldDisplaySadWatermark, SAD_WATERMARK_TEXT } from "@/lib/sad-watermark";
 
 async function fetchSingleProduct(id: string): Promise<Product | null> {
   if (isProductPermanentlyDeleted(id)) {
@@ -202,13 +202,29 @@ function ProductDetail() {
   return (
     <div className="w-full bg-white text-slate-900 min-h-[calc(100vh-4rem)]">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#166534] transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Katalog
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#166534] transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Katalog
+          </Link>
+
+          {/* Ürün fotosunun üstünde, Katalog yazısının sağında saydam 7 Sad Harfi (صصصصصصص) */}
+          <span
+            aria-hidden="true"
+            dir="rtl"
+            title="Bereket Filigranı (7 Sad Harfi)"
+            className="pointer-events-none select-none text-xl sm:text-2xl font-serif text-slate-800/35 dark:text-emerald-300/35 tracking-widest font-bold leading-none select-none"
+            style={{
+              fontFamily:
+                "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
+            }}
+          >
+            {SAD_WATERMARK_TEXT}
+          </span>
+        </div>
 
         <div className="mt-5 grid gap-8 md:grid-cols-2">
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm relative group">

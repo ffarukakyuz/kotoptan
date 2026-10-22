@@ -55,7 +55,7 @@ import {
   isProductPermanentlyDeleted,
 } from "@/lib/custom-products";
 import { SadWatermark } from "@/components/SadWatermark";
-import { shouldDisplaySadWatermark } from "@/lib/sad-watermark";
+import { shouldDisplaySadWatermark, SAD_WATERMARK_TEXT } from "@/lib/sad-watermark";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
   return getAllCatalogProducts();
@@ -193,10 +193,7 @@ function Index() {
           : getAllCatalogProducts();
     // Soft-deleted/archived products and banned products are completely hidden from customer catalog
     return (Array.isArray(base) ? base : [])
-      .filter(
-        (p) =>
-          p && p.name && !isBannedProductName(p.name) && !isProductPermanentlyDeleted(p.id, p.name),
-      )
+      .filter((p) => p && p.name && !isProductPermanentlyDeleted(p.id, p.name))
       .map(normalizeProductWithOverrides)
       .filter((p) => p && p.is_active !== false);
   }, [clientProducts, dbProducts, stockTick]);
@@ -689,6 +686,21 @@ function HeroProductCard({
           <span className="tracking-wide">CANLI VİTRİN • 3 SN</span>
         </div>
 
+        {/* Saydam Bereket Filigranı (7 Sad Harfi - صصصصصصص) */}
+        {shouldDisplaySadWatermark(current) && (
+          <span
+            aria-hidden="true"
+            dir="rtl"
+            className="text-slate-800/35 dark:text-emerald-300/35 text-xs sm:text-sm font-serif tracking-widest font-bold select-none pointer-events-none"
+            style={{
+              fontFamily:
+                "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
+            }}
+          >
+            {SAD_WATERMARK_TEXT}
+          </span>
+        )}
+
         <div className="flex items-center gap-1.5">
           <button
             type="button"
@@ -996,9 +1008,10 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
 
   return (
     <article className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-3 sm:p-4 text-slate-900 shadow-md hover:shadow-xl transition-all duration-200 border border-slate-100 relative">
-      {/* Satış Bereket Filigranı (7 Adet Sad Harfi) */}
-      {shouldDisplaySadWatermark(product) && <SadWatermark variant="card" />}
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col flex-1">
+        {/* Üst İnce Kısım: Saydam Bereket Filigranı (7 Sad Harfi - صصصصصصص) - Kart ile birlikte hareket eder */}
+        {shouldDisplaySadWatermark(product) && <SadWatermark variant="strip" />}
+
         <Link
           to="/urun/$id"
           params={{ id: product.id }}

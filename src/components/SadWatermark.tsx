@@ -4,23 +4,23 @@ import { SAD_WATERMARK_TEXT } from "@/lib/sad-watermark";
 interface SadWatermarkProps {
   /**
    * Gösterim varyantı:
-   * - "card": Ürün kartı arka planı
-   * - "hero": Canlı vitrin slaytı arka planı
-   * - "detail": Ürün detay sayfası görsel ve içerik arka planı
+   * - "strip" / "card": Ürün kartının üst ince kısmına yerleşen, kartla birlikte hareket eden saydam hat
+   * - "hero": Canlı vitrin slaytı üst ince kısmı
+   * - "detail": Ürün detay sayfası görsel ve başlık alanı
    * - "site": Site geneli tam sayfa zemin filigranı
    */
-  variant?: "card" | "hero" | "detail" | "site";
+  variant?: "strip" | "card" | "hero" | "detail" | "site";
   className?: string;
 }
 
 /**
  * Satış Bereket Filigranı (7 Adet Sad Harfi - صصصصصصص)
  *
- * Ürün kartının veya sayfanın arka planına %3 opaklıkta, tıklanamayan ve seçilemeyen
- * estetik Arapça el yazısı 7 adet Sad harfi yerleştirir.
+ * Ürün kartının üst ince kısmına veya detay sayfasına zarif, saydam,
+ * tıklamaları engellemeyen (%35 saydamlık) estetik Arapça 7 adet Sad harfi yerleştirir.
  */
 export const SadWatermark = memo(function SadWatermark({
-  variant = "card",
+  variant = "strip",
   className = "",
 }: SadWatermarkProps) {
   if (variant === "site") {
@@ -29,7 +29,7 @@ export const SadWatermark = memo(function SadWatermark({
         aria-hidden="true"
         className={`pointer-events-none select-none fixed inset-0 z-0 overflow-hidden flex flex-wrap items-center justify-around gap-20 p-8 ${className}`}
         style={{
-          opacity: 0.028, // ~%3 opaklık
+          opacity: 0.028,
           direction: "rtl",
         }}
       >
@@ -53,30 +53,18 @@ export const SadWatermark = memo(function SadWatermark({
     return (
       <div
         aria-hidden="true"
-        className={`pointer-events-none select-none absolute inset-0 z-0 overflow-hidden flex flex-col items-center justify-center gap-6 p-4 ${className}`}
-        style={{
-          opacity: 0.035, // ~%3.5 opaklık
-          direction: "rtl",
-        }}
+        dir="rtl"
+        className={`pointer-events-none select-none w-full flex items-center justify-center py-1.5 overflow-hidden ${className}`}
       >
-        <div
-          className="text-6xl sm:text-8xl md:text-9xl font-serif text-emerald-950 dark:text-emerald-300 rotate-[-12deg] tracking-widest whitespace-nowrap"
+        <span
+          className="text-slate-800/35 dark:text-emerald-300/35 text-base sm:text-lg font-serif tracking-[0.25em] font-bold leading-none whitespace-nowrap select-none"
           style={{
             fontFamily:
               "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
           }}
         >
           {SAD_WATERMARK_TEXT}
-        </div>
-        <div
-          className="text-4xl sm:text-6xl font-serif text-emerald-950 dark:text-emerald-300 rotate-[-12deg] tracking-widest whitespace-nowrap opacity-60"
-          style={{
-            fontFamily:
-              "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
-          }}
-        >
-          {SAD_WATERMARK_TEXT}
-        </div>
+        </span>
       </div>
     );
   }
@@ -85,44 +73,38 @@ export const SadWatermark = memo(function SadWatermark({
     return (
       <div
         aria-hidden="true"
-        className={`pointer-events-none select-none absolute inset-0 z-0 overflow-hidden flex items-center justify-center ${className}`}
-        style={{
-          opacity: 0.032, // ~%3 opaklık
-          direction: "rtl",
-        }}
+        dir="rtl"
+        className={`pointer-events-none select-none w-full flex items-center justify-center py-0.5 overflow-hidden ${className}`}
       >
-        <div
-          className="text-7xl sm:text-8xl font-serif text-emerald-950 dark:text-emerald-300 rotate-[-14deg] tracking-widest whitespace-nowrap select-none"
+        <span
+          className="text-slate-800/35 dark:text-emerald-400/35 text-xs sm:text-sm font-serif tracking-[0.25em] font-bold leading-none whitespace-nowrap select-none"
           style={{
             fontFamily:
               "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
           }}
         >
           {SAD_WATERMARK_TEXT}
-        </div>
+        </span>
       </div>
     );
   }
 
-  // Varsayılan: "card" (Ürün kartı)
+  // Varsayılan: "strip" / "card" (Ürün kartının üst ince kısmına yerleşen, kartla birlikte hareket eden saydam şerit)
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none select-none absolute inset-0 z-0 overflow-hidden flex items-center justify-center p-2 ${className}`}
-      style={{
-        opacity: 0.032, // ~%3 opaklık
-        direction: "rtl",
-      }}
+      dir="rtl"
+      className={`pointer-events-none select-none w-full flex items-center justify-center -mt-0.5 sm:-mt-1 mb-1.5 py-0.5 overflow-hidden ${className}`}
     >
-      <div
-        className="text-4xl sm:text-5xl font-serif text-emerald-950 dark:text-emerald-300 rotate-[-14deg] tracking-widest whitespace-nowrap select-none"
+      <span
+        className="text-slate-800/35 dark:text-emerald-950/35 text-xs sm:text-sm font-serif tracking-[0.25em] font-bold leading-none whitespace-nowrap select-none transition-opacity"
         style={{
           fontFamily:
             "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
         }}
       >
         {SAD_WATERMARK_TEXT}
-      </div>
+      </span>
     </div>
   );
 });

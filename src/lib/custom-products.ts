@@ -9,34 +9,18 @@ const DELETED_IDS_STORAGE_KEY = "permanently_deleted_product_ids";
 const DELETED_NAMES_STORAGE_KEY = "permanently_deleted_product_names";
 
 /**
- * Dosya adı, çözünürlük veya anlamsız rastgele kod içeren bozuk ürün adlarını filtreler
+ * Ürün adı kısıtlamalarını ve filtrelerini tamamen kaldırır.
+ * Her türlü marka, ürün adı ve boyut bilgisi (Örn: "Peros Matik 10 kg") sorunsuz girilebilir.
  */
-export function isBogusProductName(name: string): boolean {
-  if (!name || typeof name !== "string") return true;
-  const n = name.toLowerCase().trim();
-  if (n.includes("30000002") || n.includes("1650x1650") || n.includes("0b1937")) {
-    return true;
-  }
-  // Çözünürlük formatı (Örn: 1650x1650, 1080x1920)
-  if (/\b\d{3,4}x\d{3,4}\b/.test(n)) return true;
-  // Çok uzun sayı veya hex kodları (Örn: 30000002, 0b1937)
-  if (/^\d{6,}/.test(n)) return true;
-  if (/^(img|pxl|dsc|screenshot|photo|file|image)[\s_-]/i.test(n)) return true;
-  // Sadece sayı ve hex karakterlerinden oluşan anlamsız isimler
-  const words = n.split(/\s+/);
-  const hexOrNumWords = words.filter((w) => /^[a-f0-9]{4,}$/i.test(w) || /^\d+$/.test(w));
-  if (words.length > 0 && hexOrNumWords.length === words.length) return true;
+export function isBogusProductName(_name: string): boolean {
   return false;
 }
 
 /**
- * Kullanıcının istemediği "Başhan" / "Bashan" başlıklı ürünleri ve bozuk ürünleri kesin olarak engeller
+ * Hiçbir ürün ismi veya markası engellenmez
  */
-export function isBannedProductName(name?: string | null): boolean {
-  if (!name || typeof name !== "string") return false;
-  const n = name.toLowerCase().trim();
-  if (n.includes("başhan") || n.includes("bashan")) return true;
-  return isBogusProductName(name);
+export function isBannedProductName(_name?: string | null): boolean {
+  return false;
 }
 
 let cachedDeletedIds: Set<string> | null = null;
@@ -130,16 +114,14 @@ export function getPermanentlyDeletedNames(): Set<string> {
 }
 
 /**
- * Bir ürünün kalıcı olarak silinip silinmediğini kontrol eder
+ * Bir ürünün kalıcı olarak silinip silinmediğini kontrol eder.
+ * İsim veya marka kısıtlaması yapmaz; yalnızca açıkça silinen ID'leri kontrol eder.
  */
 export function isProductPermanentlyDeleted(
   productId?: string | null,
-  productName?: string | null,
+  _productName?: string | null,
 ): boolean {
   if (productId && getPermanentlyDeletedIds().has(productId)) return true;
-  if (productName && getPermanentlyDeletedNames().has(productName.toLowerCase().trim()))
-    return true;
-  if (productName && isBannedProductName(productName)) return true;
   return false;
 }
 
@@ -420,12 +402,7 @@ export function getCustomProducts(): Product[] {
 
     for (const p of parsed) {
       if (!p || !p.id) continue;
-      const normalizedName = p.name ? p.name.toLowerCase().trim() : "";
-      if (deletedIds.has(p.id) || (normalizedName && deletedNames.has(normalizedName))) {
-        customChanged = true;
-        continue;
-      }
-      if (isBannedProductName(p.name)) {
+      if (deletedIds.has(p.id)) {
         customChanged = true;
         continue;
       }
@@ -455,20 +432,27 @@ export function getCustomProducts(): Product[] {
 
 /**
  * Ürünü kaydeder:
- * - Eğer ürün sabit listede (FALLBACK_PRODUCTS) yer alıyorsa:
- *   Yeni bir ürün gibi EN ÜSTE EKLEMEZ! Sabit listenin içindeki ürünün yerine override olarak yazar.
- * - Eğer ürün zaten custom bir ürünse:
- *   En başa sıçratmaz, kendi sırasındaki pozisyonunda günceller.
- * - Eğer sıfırdan "Yeni Ürün Ekle" ile eklenmişse:
- *   custom_added_products listesinin başına yeni ürün olarak ekler.
+ * - Her türlü marka, isim ve boyut (Örn: "Peros Matik 10 kg") sorunsuz kaydedilir.
+ * - Eğer ürün silinenler listesindeyse silinenlerden temizlenip aktif hale getirilir.
+ * - Eğer ürün sabit listede (FALLBACK_PRODUCTS) yer alıyorsa overrides'a yazar.
+ * - Eğer ürün zaten custom bir ürünse, kendi sırasındaki pozisyonunda günceller.
+ * - Yepyeni ürünse listenin başına ekler.
  */
 export function saveCustomProduct(product: Product, isExplicitEdit = false): Product {
   if (typeof window === "undefined" || !product?.id) return product;
-  if (isBannedProductName(product.name)) {
-    console.warn("[saveCustomProduct] Banned product rejected:", product.name);
-    return product;
-  }
   try {
+    // Ürün yeniden eklendiğinde/düzenlendiğinde silinmişler kaydından çıkar
+    const deletedIds = getPermanentlyDeletedIds();
+    if (deletedIds.has(product.id)) {
+      deletedIds.delete(product.id);
+      localStorage.setItem(DELETED_IDS_STORAGE_KEY, JSON.stringify(Array.from(deletedIds)));
+    }
+    const deletedNames = getPermanentlyDeletedNames();
+    const normName = product.name ? product.name.toLowerCase().trim() : "";
+    if (normName && deletedNames.has(normName)) {
+      deletedNames.delete(normName);
+      localStorage.setItem(DELETED_NAMES_STORAGE_KEY, JSON.stringify(Array.from(deletedNames)));
+    }
     const inStock =
       product.in_stock !== undefined
         ? product.in_stock
@@ -587,25 +571,13 @@ export function getAllCatalogProducts(): Product[] {
     const overrides = getProductOverrides() || {};
     const rawCustom = getCustomProducts();
     const customProducts = (Array.isArray(rawCustom) ? rawCustom : []).filter(
-      (p) =>
-        p &&
-        p.id &&
-        !deletedIds.has(p.id) &&
-        (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
-        !isBannedProductName(p.name),
+      (p) => p && p.id && !deletedIds.has(p.id),
     );
 
     // Sabit ürünleri filtrele ve üzerindeki düzenlemeleri yerinde uygula
     const safeFallbackList = Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : [];
     const fallbackProducts = safeFallbackList
-      .filter(
-        (p) =>
-          p &&
-          p.id &&
-          !deletedIds.has(p.id) &&
-          (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
-          !isBannedProductName(p.name),
-      )
+      .filter((p) => p && p.id && !deletedIds.has(p.id))
       .map((p) => {
         const override = overrides[p.id];
         const merged = override ? { ...p, ...override } : p;
@@ -623,27 +595,19 @@ export function getAllCatalogProducts(): Product[] {
 }
 
 /**
- * Başlangıçta depolamadaki silinen veya Başhan ürünleri temizler
+ * Başlangıçta depolamadaki silinen ürünleri temizler
  */
 export function cleanStoredProductsStorage(): void {
   if (typeof window === "undefined") return;
   try {
     const deletedIds = getPermanentlyDeletedIds();
-    const deletedNames = getPermanentlyDeletedNames();
 
     // 1. custom_added_products temizliği
     const rawCustom = localStorage.getItem(STORAGE_KEY);
     if (rawCustom) {
       const parsed = JSON.parse(rawCustom);
       if (Array.isArray(parsed)) {
-        const cleaned = parsed.filter(
-          (p) =>
-            p &&
-            p.id &&
-            !deletedIds.has(p.id) &&
-            (!p.name || !deletedNames.has(p.name.toLowerCase().trim())) &&
-            !isBannedProductName(p.name),
-        );
+        const cleaned = parsed.filter((p) => p && p.id && !deletedIds.has(p.id));
         if (cleaned.length !== parsed.length) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
         }
@@ -656,13 +620,8 @@ export function cleanStoredProductsStorage(): void {
       const overrides = JSON.parse(rawOverrides);
       if (overrides && typeof overrides === "object") {
         let changed = false;
-        for (const [id, prod] of Object.entries(overrides)) {
-          const p = prod as Product;
-          if (
-            deletedIds.has(id) ||
-            (p?.name && deletedNames.has(p.name.toLowerCase().trim())) ||
-            (p?.name && isBannedProductName(p.name))
-          ) {
+        for (const [id] of Object.entries(overrides)) {
+          if (deletedIds.has(id)) {
             delete overrides[id];
             changed = true;
           }
