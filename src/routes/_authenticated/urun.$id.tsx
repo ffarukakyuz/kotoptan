@@ -212,18 +212,20 @@ function ProductDetail() {
           </Link>
 
           {/* Ürün fotosunun üstünde, Katalog yazısının sağında saydam 7 Sad Harfi (صصصصصصص) */}
-          <span
-            aria-hidden="true"
-            dir="rtl"
-            title="Bereket Filigranı (7 Sad Harfi)"
-            className="pointer-events-none select-none text-xl sm:text-2xl font-serif text-slate-800/35 dark:text-emerald-300/35 tracking-widest font-bold leading-none select-none"
-            style={{
-              fontFamily:
-                "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
-            }}
-          >
-            {SAD_WATERMARK_TEXT}
-          </span>
+          {shouldDisplaySadWatermark(product) && (
+            <span
+              aria-hidden="true"
+              dir="rtl"
+              title="Bereket Filigranı (7 Sad Harfi)"
+              className="pointer-events-none select-none text-sm sm:text-base font-serif text-slate-800/12 dark:text-emerald-300/15 tracking-widest font-normal leading-none"
+              style={{
+                fontFamily:
+                  "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
+              }}
+            >
+              {SAD_WATERMARK_TEXT}
+            </span>
+          )}
         </div>
 
         <div className="mt-5 grid gap-8 md:grid-cols-2">

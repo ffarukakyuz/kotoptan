@@ -55,7 +55,7 @@ import {
   isProductPermanentlyDeleted,
 } from "@/lib/custom-products";
 import { SadWatermark } from "@/components/SadWatermark";
-import { shouldDisplaySadWatermark, SAD_WATERMARK_TEXT } from "@/lib/sad-watermark";
+import { shouldDisplaySadWatermark } from "@/lib/sad-watermark";
 
 async function fetchProductsFromDatabase(): Promise<Product[]> {
   return getAllCatalogProducts();
@@ -685,21 +685,6 @@ function HeroProductCard({
           </span>
           <span className="tracking-wide">CANLI VİTRİN • 3 SN</span>
         </div>
-
-        {/* Saydam Bereket Filigranı (7 Sad Harfi - صصصصصصص) */}
-        {shouldDisplaySadWatermark(current) && (
-          <span
-            aria-hidden="true"
-            dir="rtl"
-            className="text-slate-800/35 dark:text-emerald-300/35 text-xs sm:text-sm font-serif tracking-widest font-bold select-none pointer-events-none"
-            style={{
-              fontFamily:
-                "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
-            }}
-          >
-            {SAD_WATERMARK_TEXT}
-          </span>
-        )}
 
         <div className="flex items-center gap-1.5">
           <button

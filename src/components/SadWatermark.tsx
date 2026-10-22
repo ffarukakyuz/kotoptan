@@ -57,7 +57,7 @@ export const SadWatermark = memo(function SadWatermark({
         className={`pointer-events-none select-none w-full flex items-center justify-center py-1.5 overflow-hidden ${className}`}
       >
         <span
-          className="text-slate-800/35 dark:text-emerald-300/35 text-base sm:text-lg font-serif tracking-[0.25em] font-bold leading-none whitespace-nowrap select-none"
+          className="text-slate-800/12 dark:text-emerald-300/15 text-sm sm:text-base font-serif tracking-[0.25em] font-normal leading-none whitespace-nowrap select-none"
           style={{
             fontFamily:
               "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
@@ -77,7 +77,7 @@ export const SadWatermark = memo(function SadWatermark({
         className={`pointer-events-none select-none w-full flex items-center justify-center py-0.5 overflow-hidden ${className}`}
       >
         <span
-          className="text-slate-800/35 dark:text-emerald-400/35 text-xs sm:text-sm font-serif tracking-[0.25em] font-bold leading-none whitespace-nowrap select-none"
+          className="text-slate-800/12 dark:text-emerald-300/15 text-xs sm:text-sm font-serif tracking-[0.25em] font-normal leading-none whitespace-nowrap select-none"
           style={{
             fontFamily:
               "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",
@@ -97,7 +97,7 @@ export const SadWatermark = memo(function SadWatermark({
       className={`pointer-events-none select-none w-full flex items-center justify-center -mt-0.5 sm:-mt-1 mb-1.5 py-0.5 overflow-hidden ${className}`}
     >
       <span
-        className="text-slate-800/35 dark:text-emerald-950/35 text-xs sm:text-sm font-serif tracking-[0.25em] font-bold leading-none whitespace-nowrap select-none transition-opacity"
+        className="text-slate-800/12 dark:text-emerald-300/15 text-xs sm:text-sm font-serif tracking-[0.25em] font-normal leading-none whitespace-nowrap select-none transition-opacity"
         style={{
           fontFamily:
             "'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Noto Naskh Arabic', serif",

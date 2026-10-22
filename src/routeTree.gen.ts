@@ -14,6 +14,7 @@ import { Route as GirisRouteImport } from './routes/giris'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSepetRouteImport } from './routes/_authenticated/sepet'
+import { Route as AuthenticatedSiparislerRouteImport } from './routes/_authenticated/siparisler'
 import { Route as AuthenticatedSiparislerimRouteImport } from './routes/_authenticated/siparislerim'
 import { Route as AuthenticatedYonetimRouteImport } from './routes/_authenticated/yonetim'
 import { Route as AuthenticatedUrunIdRouteImport } from './routes/_authenticated/urun.$id'
@@ -42,6 +43,11 @@ const AuthenticatedSepetRoute = AuthenticatedSepetRouteImport.update({
   path: '/sepet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSiparislerRoute = AuthenticatedSiparislerRouteImport.update({
+  id: '/siparisler',
+  path: '/siparisler',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSiparislerimRoute =
   AuthenticatedSiparislerimRouteImport.update({
     id: '/siparislerim',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/giris': typeof GirisRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sepet': typeof AuthenticatedSepetRoute
+  '/siparisler': typeof AuthenticatedSiparislerRoute
   '/siparislerim': typeof AuthenticatedSiparislerimRoute
   '/yonetim': typeof AuthenticatedYonetimRoute
   '/urun/$id': typeof AuthenticatedUrunIdRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/giris': typeof GirisRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sepet': typeof AuthenticatedSepetRoute
+  '/siparisler': typeof AuthenticatedSiparislerRoute
   '/siparislerim': typeof AuthenticatedSiparislerimRoute
   '/yonetim': typeof AuthenticatedYonetimRoute
   '/': typeof AuthenticatedIndexRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/giris': typeof GirisRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/sepet': typeof AuthenticatedSepetRoute
+  '/_authenticated/siparisler': typeof AuthenticatedSiparislerRoute
   '/_authenticated/siparislerim': typeof AuthenticatedSiparislerimRoute
   '/_authenticated/yonetim': typeof AuthenticatedYonetimRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
     | '/giris'
     | '/profil'
     | '/sepet'
+    | '/siparisler'
     | '/siparislerim'
     | '/yonetim'
     | '/urun/$id'
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/giris'
     | '/profil'
     | '/sepet'
+    | '/siparisler'
     | '/siparislerim'
     | '/yonetim'
     | '/'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/giris'
     | '/_authenticated/profil'
     | '/_authenticated/sepet'
+    | '/_authenticated/siparisler'
     | '/_authenticated/siparislerim'
     | '/_authenticated/yonetim'
     | '/_authenticated/'
@@ -161,6 +173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSepetRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/siparisler': {
+      id: '/_authenticated/siparisler'
+      path: '/siparisler'
+      fullPath: '/siparisler'
+      preLoaderRoute: typeof AuthenticatedSiparislerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/siparislerim': {
       id: '/_authenticated/siparislerim'
       path: '/siparislerim'
@@ -188,6 +207,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSepetRoute: typeof AuthenticatedSepetRoute
+  AuthenticatedSiparislerRoute: typeof AuthenticatedSiparislerRoute
   AuthenticatedSiparislerimRoute: typeof AuthenticatedSiparislerimRoute
   AuthenticatedYonetimRoute: typeof AuthenticatedYonetimRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -197,6 +217,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSepetRoute: AuthenticatedSepetRoute,
+  AuthenticatedSiparislerRoute: AuthenticatedSiparislerRoute,
   AuthenticatedSiparislerimRoute: AuthenticatedSiparislerimRoute,
   AuthenticatedYonetimRoute: AuthenticatedYonetimRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
