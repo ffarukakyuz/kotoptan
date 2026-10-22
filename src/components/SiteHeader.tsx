@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { PWAInstallModal } from "@/components/PWAInstallBanner";
-import { BRAND_LOGO_SRC, BRAND_MOTIF_SRC } from "@/lib/branding";
+import { BRAND_LOGO_SRC } from "@/lib/branding";
 
 export function SiteHeader() {
   const { totalQuantity } = useCart();
@@ -140,28 +140,20 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-black text-white backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo & Name */}
-        <Link to="/" className="group flex items-center gap-2.5 sm:gap-3">
-          <span className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl overflow-hidden shadow-md border shrink-0 transition-transform duration-200 group-hover:scale-105 active:scale-95 border-emerald-500/40 ring-1 ring-emerald-500/20 bg-[#040806] shadow-black/50">
+        <Link to="/" className="group flex items-center gap-2.5 sm:gap-3 select-none">
+          <div className="relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl overflow-hidden shrink-0 border border-emerald-500/35 shadow-[0_0_15px_rgba(16,185,129,0.2)] bg-[#040806] transition-transform duration-300 group-hover:scale-105 active:scale-95">
             <img
               src={BRAND_LOGO_SRC}
               alt="Kotoptan Logo"
-              className="h-full w-full object-contain p-0.5"
+              className="h-full w-full object-cover select-none"
               referrerPolicy="no-referrer"
             />
-          </span>
+          </div>
           <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-2">
-              <span className="text-lg sm:text-xl font-extrabold tracking-tight leading-none text-white">
-                Ko<span className="text-[#22c55e]">toptan</span>
-              </span>
-              <img
-                src={BRAND_MOTIF_SRC}
-                alt="Koruma Halkası"
-                className="h-5 w-5 sm:h-5.5 sm:w-5.5 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] select-none self-center"
-                title="Koruma Halkası"
-              />
-            </div>
-            <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase mt-1 leading-none text-emerald-400">
+            <span className="text-lg sm:text-xl font-extrabold tracking-tight leading-none text-white">
+              Ko<span className="text-[#22c55e]">toptan</span>
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase mt-1 leading-none text-emerald-400">
               Toptan Dağıtım
             </span>
           </div>
@@ -252,14 +244,14 @@ export function SiteHeader() {
         <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-1 border-t border-white/10 bg-[#060b08] px-4 py-3 shadow-xl md:hidden">
           {/* Logo & Marka Başlığı */}
           <div className="flex items-center gap-3 pb-3 mb-1 border-b border-white/10">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-black/40 border border-emerald-500/30 shrink-0">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden shrink-0 border border-emerald-500/35 shadow-[0_0_12px_rgba(16,185,129,0.2)] bg-[#040806]">
               <img
                 src={BRAND_LOGO_SRC}
                 alt="Kotoptan Logo"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover select-none"
                 referrerPolicy="no-referrer"
               />
-            </span>
+            </div>
             <div>
               <span className="text-base font-extrabold tracking-tight text-white block">
                 Ko<span className="text-[#22c55e]">toptan</span>

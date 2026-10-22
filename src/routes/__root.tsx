@@ -595,18 +595,21 @@ function RootAppContent() {
           }`}
         >
           <div className="mx-auto max-w-6xl px-4 text-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <span
+            <div
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm border ${
-                isYonetimPage ? "border-slate-200 bg-slate-100" : "border-white/20 bg-zinc-900"
+                isYonetimPage
+                  ? "border-slate-300 bg-slate-100"
+                  : "border-emerald-500/30 bg-[#040806]"
               }`}
             >
               <img
                 src={BRAND_LOGO_SRC}
-                alt="KasımOğulları Logo"
-                className="h-full w-full object-cover"
+                alt="Kotoptan Logo"
+                className="h-full w-full object-cover select-none"
                 referrerPolicy="no-referrer"
               />
-            </span>
+            </div>
+
             <div>
               <p className={`font-semibold ${isYonetimPage ? "text-slate-900" : "text-white"}`}>
                 KasımOğulları Ltd. Şti.

@@ -87,7 +87,10 @@ export const Route = createFileRoute("/_authenticated/")({
         content:
           "Ko Toptan — Bitlis, Tatvan, Ahlat, Adilcevaz, Güroymak ve Hizan marketlerine toptan gıda, bakliyat ve temizlik ürünleri doğrudan depo teslimatı.",
       },
-      { property: "og:image", content: "https://kotoptan.pages.dev/kotoptan-logo-v2.jpg" },
+      {
+        property: "og:image",
+        content: "https://kotoptan.pages.dev/kotoptan-official-logo.png?v=20261021-user-k-cube",
+      },
       { name: "twitter:card", content: "summary_large_image" },
       {
         name: "twitter:title",
@@ -98,7 +101,10 @@ export const Route = createFileRoute("/_authenticated/")({
         content:
           "Ko Toptan — Bitlis ve Tatvan merkezli bakkal ve marketlere toptan gıda, bakliyat ve temizlik ürünleri dağıtımı.",
       },
-      { name: "twitter:image", content: "https://kotoptan.pages.dev/kotoptan-logo-v2.jpg" },
+      {
+        name: "twitter:image",
+        content: "https://kotoptan.pages.dev/kotoptan-official-logo.png?v=20261021-user-k-cube",
+      },
     ],
   }),
   component: Index,
@@ -241,13 +247,16 @@ function Index() {
           {/* Hero Call-To-Action Copy & Badges */}
           <div className="mt-8 text-center sm:mt-10">
             {/* Ana Menü / Vitrin Logosu */}
-            <div className="mx-auto mb-4 flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/60 border border-emerald-500/40 ring-4 ring-emerald-500/15 bg-[#040806] transition-transform duration-300 hover:scale-105">
-              <img
-                src={BRAND_LOGO_SRC}
-                alt="Kotoptan Logo"
-                className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+            <div className="relative mx-auto mb-5 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center group select-none">
+              <div className="absolute -inset-2.5 rounded-3xl bg-emerald-500/25 blur-xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100" />
+              <div className="relative flex h-full w-full items-center justify-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-emerald-400/40 shadow-emerald-950/80 bg-[#040806] transition-transform duration-300 group-hover:scale-105">
+                <img
+                  src={BRAND_LOGO_SRC}
+                  alt="Kotoptan Logo"
+                  className="h-full w-full object-cover select-none"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#4ade80] shadow-sm">

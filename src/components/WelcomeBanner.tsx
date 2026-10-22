@@ -76,14 +76,15 @@ export function WelcomeBanner() {
 
             <div className="flex items-start justify-between gap-3 relative z-10">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md border border-emerald-500/30">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md border border-emerald-500/35 bg-[#040806] select-none">
                   <img
                     src={BRAND_LOGO_SRC}
                     alt="Kotoptan Logo"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover select-none"
                     referrerPolicy="no-referrer"
                   />
                 </div>
+
                 <div>
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-400">
                     <CheckCircle2 className="h-3 w-3" />

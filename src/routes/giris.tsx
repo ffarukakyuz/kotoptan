@@ -671,13 +671,13 @@ function AuthPage() {
 
       {/* Brand Header */}
       <div className="relative z-10 mb-6 text-center">
-        <div className="relative mb-4 flex items-center justify-center">
-          <div className="absolute -inset-4 rounded-full bg-emerald-500/25 blur-2xl animate-pulse pointer-events-none" />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl overflow-hidden shadow-2xl shadow-black/90 border border-emerald-500/40 ring-4 ring-emerald-500/20 bg-[#040806] transition-transform duration-500 hover:scale-105">
+        <div className="relative mb-5 flex items-center justify-center select-none">
+          <div className="absolute -inset-3 rounded-3xl bg-emerald-500/25 blur-2xl pointer-events-none" />
+          <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl shadow-black/90 border border-emerald-400/40 bg-[#040806] transition-transform duration-300 hover:scale-105">
             <img
               src={BRAND_LOGO_SRC}
               alt="Kotoptan Logo"
-              className="h-full w-full object-cover animate-pulse"
+              className="h-full w-full object-cover select-none"
               referrerPolicy="no-referrer"
             />
           </div>
