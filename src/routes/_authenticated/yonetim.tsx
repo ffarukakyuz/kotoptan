@@ -618,7 +618,7 @@ function ProductsPanel({
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
     initialData: () => getAllCatalogProducts(),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
     refetchOnMount: true,
   });
 
@@ -695,11 +695,18 @@ function ProductsPanel({
     // Sayfa açıldığında veya yerel katalog güncellendiğinde arka planda sunucu kod dosyalarına eşitle
     void syncCatalogToServer(true);
     const handler = () => {
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
       void syncCatalogToServer(true);
     };
     window.addEventListener("catalog_updated", handler);
-    return () => window.removeEventListener("catalog_updated", handler);
-  }, [syncCatalogToServer]);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("catalog_updated", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, [qc, syncCatalogToServer]);
 
   const reset = () => {
     setBusy(false);

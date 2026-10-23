@@ -150,7 +150,7 @@ function Index() {
     queryKey: ["live-supabase-products"],
     queryFn: fetchProductsFromDatabase,
     initialData: () => getAllCatalogProducts(),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
     refetchOnMount: true,
   });
 

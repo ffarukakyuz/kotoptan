@@ -467,7 +467,7 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
       in_stock: inStock,
     };
 
-    // Yerel stok haritasını eşitle
+    // 1. Yerel stok haritasını eşitle
     try {
       const rawStock = localStorage.getItem("custom_product_stock_status");
       const stockMap = rawStock ? JSON.parse(rawStock) : {};
@@ -477,37 +477,19 @@ export function saveCustomProduct(product: Product, isExplicitEdit = false): Pro
       // ignore
     }
 
-    const isFallbackItem = FALLBACK_PRODUCTS.some((fp) => fp.id === product.id);
+    // 2. Her düzenlemede overrides haritasına daima kaydet (böylece tüm görünümlerde anında yansır)
+    saveProductOverride(productWithStock);
 
-    if (isFallbackItem) {
-      // 1. Sabit ürün düzenleniyor: Overrides haritasına kaydet
-      saveProductOverride(productWithStock);
+    // 3. custom_added_products içinde varsa yerinde güncelle
+    const raw = getRawCustomProducts();
+    const existingIndex = raw.findIndex((p) => p.id === product.id);
 
-      // custom_added_products içinde varsa temizle ki çift görünmesin
-      const raw = getRawCustomProducts();
-      const cleaned = raw.filter((p) => p.id !== product.id);
-      if (cleaned.length !== raw.length) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-      }
-    } else {
-      // 2. Özel ürün (custom): Var ise yerinde güncelle, yoksa başa ekle
-      const existing = getRawCustomProducts();
-      const existingIndex = existing.findIndex((p) => p.id === product.id);
-
-      let updated: Product[];
-      if (existingIndex >= 0) {
-        // Yerinde güncelle (sırasını bozma)
-        updated = existing.map((p, idx) => (idx === existingIndex ? productWithStock : p));
-      } else if (isExplicitEdit) {
-        // Düzenleme modunda ama bulunamadıysa yine de override olarak sakla
-        saveProductOverride(productWithStock);
-        return productWithStock;
-      } else {
-        // Yepyeni ürün ekleme: başa koy
-        updated = [productWithStock, ...existing.filter((p) => p.id !== product.id)];
-      }
-
+    if (existingIndex >= 0) {
+      const updated = raw.map((p, idx) => (idx === existingIndex ? productWithStock : p));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } else if (!isExplicitEdit) {
+      // Yepyeni ürün ekleme: listenin en başına ekle
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([productWithStock, ...raw]));
     }
 
     window.dispatchEvent(new Event("catalog_updated"));
@@ -567,25 +549,31 @@ export function toggleProductSadWatermark(productId: string): boolean {
 export function getAllCatalogProducts(): Product[] {
   try {
     const deletedIds = getPermanentlyDeletedIds() || new Set();
-    const deletedNames = getPermanentlyDeletedNames() || new Set();
     const overrides = getProductOverrides() || {};
-    const rawCustom = getCustomProducts();
-    const customProducts = (Array.isArray(rawCustom) ? rawCustom : []).filter(
-      (p) => p && p.id && !deletedIds.has(p.id),
-    );
+    const rawCustom = getRawCustomProducts();
+    const seenIds = new Set<string>();
+    const result: Product[] = [];
 
-    // Sabit ürünleri filtrele ve üzerindeki düzenlemeleri yerinde uygula
+    // 1. Önce özel eklenen ürünleri al (yeni eklenenler en üstte)
+    for (const p of rawCustom) {
+      if (!p || !p.id || deletedIds.has(p.id) || seenIds.has(p.id)) continue;
+      seenIds.add(p.id);
+      const override = overrides[p.id];
+      const merged = override ? { ...p, ...override } : p;
+      result.push(normalizeProductWithOverrides(merged));
+    }
+
+    // 2. Ardından sabit katalog ürünlerini (FALLBACK_PRODUCTS) al ve üzerindeki düzenlemeleri uygula
     const safeFallbackList = Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : [];
-    const fallbackProducts = safeFallbackList
-      .filter((p) => p && p.id && !deletedIds.has(p.id))
-      .map((p) => {
-        const override = overrides[p.id];
-        const merged = override ? { ...p, ...override } : p;
-        return normalizeProductWithOverrides(merged);
-      });
+    for (const p of safeFallbackList) {
+      if (!p || !p.id || deletedIds.has(p.id) || seenIds.has(p.id)) continue;
+      seenIds.add(p.id);
+      const override = overrides[p.id];
+      const merged = override ? { ...p, ...override } : p;
+      result.push(normalizeProductWithOverrides(merged));
+    }
 
-    const normalizedCustom = customProducts.map(normalizeProductWithOverrides);
-    return [...normalizedCustom, ...fallbackProducts];
+    return result;
   } catch (err) {
     console.warn("[getAllCatalogProducts] Error retrieving products, using clean fallback:", err);
     return (Array.isArray(FALLBACK_PRODUCTS) ? FALLBACK_PRODUCTS : []).map(
@@ -595,40 +583,50 @@ export function getAllCatalogProducts(): Product[] {
 }
 
 /**
- * Başlangıçta depolamadaki silinen ürünleri temizler
+ * Başlangıçta depolamadaki silinen ürünleri temizler ve Peros Matik gibi güncellemeleri senkronize eder
  */
 export function cleanStoredProductsStorage(): void {
   if (typeof window === "undefined") return;
   try {
     const deletedIds = getPermanentlyDeletedIds();
 
-    // 1. custom_added_products temizliği
+    const fixPeros = (p: Product): Product => {
+      if (
+        p &&
+        (p.id === "custom-1792273562598" ||
+          p.name === "eros Matik 10 Kg" ||
+          p.name?.toLowerCase().includes("eros matik"))
+      ) {
+        return { ...p, name: "Peros Matik 10 kg" };
+      }
+      return p;
+    };
+
+    // 1. custom_added_products temizliği & Peros düzeltmesi
     const rawCustom = localStorage.getItem(STORAGE_KEY);
     if (rawCustom) {
       const parsed = JSON.parse(rawCustom);
       if (Array.isArray(parsed)) {
-        const cleaned = parsed.filter((p) => p && p.id && !deletedIds.has(p.id));
-        if (cleaned.length !== parsed.length) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-        }
+        const cleaned = parsed
+          .filter((p) => p && p.id && !deletedIds.has(p.id))
+          .map(fixPeros);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
       }
     }
 
-    // 2. custom_product_overrides temizliği
+    // 2. custom_product_overrides temizliği & Peros düzeltmesi
     const rawOverrides = localStorage.getItem(OVERRIDES_STORAGE_KEY);
     if (rawOverrides) {
       const overrides = JSON.parse(rawOverrides);
       if (overrides && typeof overrides === "object") {
-        let changed = false;
-        for (const [id] of Object.entries(overrides)) {
+        for (const [id, prod] of Object.entries(overrides)) {
           if (deletedIds.has(id)) {
             delete overrides[id];
-            changed = true;
+          } else if (prod && typeof prod === "object") {
+            overrides[id] = fixPeros(prod as Product);
           }
         }
-        if (changed) {
-          localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
-        }
+        localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
       }
     }
   } catch (err) {

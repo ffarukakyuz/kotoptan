@@ -1,4 +1,6 @@
 import "./lib/error-capture";
+import fs from "node:fs";
+import path from "node:path";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -244,17 +246,47 @@ export default {
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const data = (await request.json().catch(() => ({}))) as any;
-            const id = data.id || `ko-prod-${Date.now()}`;
+            const id = data.id || `custom-${Date.now()}`;
+            const inStock = data.in_stock !== false;
             const product = {
               id,
               name: data.name,
               category: data.category || "gida",
-              unit: data.unit || "koli",
+              unit: data.unit || "adet",
               description: data.description || "",
               image_url: data.image_url || null,
               is_active: data.is_active !== false,
+              in_stock: inStock,
               hasSadWatermark: data.hasSadWatermark === true,
             };
+
+            // Disk üzerindeki src/data/products.ts dosyasını kalıcı olarak güncelle
+            try {
+              const productsPath = path.resolve(process.cwd(), "src/data/products.ts");
+              if (fs.existsSync(productsPath)) {
+                const currentContent = fs.readFileSync(productsPath, "utf-8");
+                const jsonMatch = currentContent.match(
+                  /export const FALLBACK_PRODUCTS: Product\[\] = (\[[\s\S]*?\]);\s*$/,
+                );
+                if (jsonMatch && jsonMatch[1]) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  let list: any[] = JSON.parse(jsonMatch[1]);
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const idx = list.findIndex((p: any) => p && p.id === id);
+                  if (idx >= 0) {
+                    list[idx] = { ...list[idx], ...product };
+                  } else {
+                    list = [product, ...list];
+                  }
+                  const serialized = JSON.stringify(list, null, 2);
+                  const source = `import type { Product } from "@/lib/catalog";\n\n/**\n * Canlı siteden ve Yönetim Panelinden senkronize edilmiş ürün kataloğu.\n * Toplam ürün sayısı: ${list.length}\n * Senkronizasyon tarihi: ${new Date().toISOString()}\n */\nexport const FALLBACK_PRODUCTS: Product[] = ${serialized};\n`;
+                  fs.writeFileSync(productsPath, source, "utf-8");
+                }
+              }
+            } catch (diskErr) {
+              console.warn("[/api/products POST] Disk write notice:", diskErr);
+            }
+
             return new Response(JSON.stringify({ ok: true, product }), {
               headers: jsonHeaders,
             });
@@ -269,6 +301,28 @@ export default {
 
         if (request.method === "DELETE") {
           const id = url.searchParams.get("id");
+          if (id) {
+            try {
+              const productsPath = path.resolve(process.cwd(), "src/data/products.ts");
+              if (fs.existsSync(productsPath)) {
+                const currentContent = fs.readFileSync(productsPath, "utf-8");
+                const jsonMatch = currentContent.match(
+                  /export const FALLBACK_PRODUCTS: Product\[\] = (\[[\s\S]*?\]);\s*$/,
+                );
+                if (jsonMatch && jsonMatch[1]) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  let list: any[] = JSON.parse(jsonMatch[1]);
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  list = list.filter((p: any) => p && p.id !== id);
+                  const serialized = JSON.stringify(list, null, 2);
+                  const source = `import type { Product } from "@/lib/catalog";\n\n/**\n * Canlı siteden ve Yönetim Panelinden senkronize edilmiş ürün kataloğu.\n * Toplam ürün sayısı: ${list.length}\n * Senkronizasyon tarihi: ${new Date().toISOString()}\n */\nexport const FALLBACK_PRODUCTS: Product[] = ${serialized};\n`;
+                  fs.writeFileSync(productsPath, source, "utf-8");
+                }
+              }
+            } catch (diskErr) {
+              console.warn("[/api/products DELETE] Disk write notice:", diskErr);
+            }
+          }
           return new Response(JSON.stringify({ ok: true, id }), { headers: jsonHeaders });
         }
 
