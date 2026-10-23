@@ -13,6 +13,7 @@ import {
   Truck,
   XCircle,
   AlertCircle,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ import {
   applyOrderPatch,
   permanentlyDeleteOrder,
   isArchivedOrder,
+  saveAllOrdersToSystem,
   type StoredOrder,
 } from "@/lib/order-storage";
 
@@ -44,6 +46,7 @@ export function AdminOrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: ()
   const [search, setSearch] = useState("");
   const [orderToDelete, setOrderToDelete] = useState<StoredOrder | null>(null);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: rawOrders = [], isLoading } = useQuery({
     queryKey: ["admin-orders"],
@@ -228,6 +231,37 @@ export function AdminOrdersPanel({ onNavigateToDrive }: { onNavigateToDrive?: ()
               className="h-8 pl-8 text-xs"
             />
           </div>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={async () => {
+              setIsSaving(true);
+              try {
+                const res = await saveAllOrdersToSystem(rawOrders);
+                toast.success(
+                  res.count > 0
+                    ? `${res.count} sipariş sisteme kaydedildi.`
+                    : "Siparişler sisteme kaydedildi.",
+                );
+                refresh();
+              } catch {
+                toast.error("Sisteme kaydedilemedi.");
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            disabled={isSaving}
+            className="h-8 px-2.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer shrink-0 gap-1 shadow-xs"
+            title="Tüm siparişleri sisteme kaydet"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">Sisteme Kaydet</span>
+          </Button>
           <Button
             type="button"
             variant="outline"

@@ -197,14 +197,14 @@ export const Route = createFileRoute("/_authenticated/yonetim")({
 });
 
 const productSchema = z.object({
-  name: z.string().trim().min(1, "Ürün adı gerekli").max(300),
-  description: z.string().trim().max(1000).optional().default(""),
-  category: z.string().trim().optional().default("gida"),
-  unit: z.string().trim().max(50).optional().default("adet"),
-  image_url: z.string().trim().max(2000000).optional().nullable().default(""),
-  is_active: z.boolean().optional().default(true),
-  in_stock: z.boolean().optional().default(true),
-  hasSadWatermark: z.boolean().optional().default(false),
+  name: z.string().trim().min(1, "Ürün adı zorunludur").max(500),
+  description: z.any().transform((v) => (v ? String(v).trim() : "")),
+  category: z.any().transform((v) => (v ? String(v).trim() : "gida")),
+  unit: z.any().transform((v) => (v ? String(v).trim() : "adet")),
+  image_url: z.any().transform((v) => (typeof v === "string" ? v.trim() : "")),
+  is_active: z.any().transform((v) => v !== false),
+  in_stock: z.any().transform((v) => v !== false),
+  hasSadWatermark: z.any().transform((v) => Boolean(v)),
 });
 
 const emptyProduct = {
@@ -305,9 +305,19 @@ function AdminPage() {
     queryKey: ["admin-products"],
     queryFn: fetchAdminProductsList,
     initialData: () => getAllCatalogProducts(),
-    staleTime: 1000 * 60 * 5,
     refetchOnMount: true,
   });
+
+  useEffect(() => {
+    const handleCatalogUpdated = () => {
+      void qc.invalidateQueries({ queryKey: ["admin-products"] });
+      void qc.invalidateQueries({ queryKey: ["products", "active"] });
+    };
+    window.addEventListener("catalog_updated", handleCatalogUpdated);
+    return () => {
+      window.removeEventListener("catalog_updated", handleCatalogUpdated);
+    };
+  }, [qc]);
 
   const { data: chatSessions = [] } = useQuery({
     queryKey: ["admin-chat-sessions"],
@@ -772,7 +782,11 @@ function ProductsPanel({
       const updateInCache = (old: Product[] | undefined) => {
         if (!old) return [customProd];
         if (isEdit) {
-          return old.map((p) => (p.id === finalId ? { ...p, ...customProd } : p));
+          const exists = old.some((p) => p.id === finalId);
+          if (exists) {
+            return old.map((p) => (p.id === finalId ? { ...p, ...customProd } : p));
+          }
+          return [customProd, ...old];
         }
         return [customProd, ...old.filter((p) => p.id !== finalId)];
       };
@@ -789,6 +803,7 @@ function ProductsPanel({
         window.dispatchEvent(new Event("catalog_updated"));
         window.dispatchEvent(new Event("storage"));
       }
+      void syncCatalogToServer(true);
     } catch (err) {
       console.error("[Product Submit Error]:", err);
       toast.error("Ürün kaydedilirken bir hata oluştu");

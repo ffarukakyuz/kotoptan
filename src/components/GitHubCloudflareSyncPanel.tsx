@@ -56,7 +56,14 @@ export function GitHubCloudflareSyncPanel({
   const [isPushingGit, setIsPushingGit] = useState(false);
   const [githubToken, setGithubToken] = useState<string>(() => {
     try {
-      return localStorage.getItem("ko_github_token") || "";
+      const stored = localStorage.getItem("ko_github_token");
+      if (stored && stored.trim()) return stored.trim();
+      const envToken = (import.meta.env.VITE_GITHUB_TOKEN as string) || "";
+      if (envToken) {
+        localStorage.setItem("ko_github_token", envToken);
+        return envToken;
+      }
+      return "";
     } catch {
       return "";
     }

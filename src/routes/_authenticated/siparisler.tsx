@@ -24,6 +24,7 @@ import {
   Minus,
   PauseCircle,
   Loader2,
+  Save,
   Route as RouteIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +37,7 @@ import {
   permanentlyDeleteOrder,
   purgeAllTestOrders,
   isArchivedOrder,
+  saveAllOrdersToSystem,
 } from "@/lib/order-storage";
 import { seedAllDistrictTestOrders } from "@/lib/district-sample-orders";
 import {
@@ -131,6 +133,7 @@ function AdminOrdersRoutePage() {
   // Deneme siparişleri işlemleri
   const [isPurging, setIsPurging] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSavingSystem, setIsSavingSystem] = useState(false);
 
   // Fetch all orders
   const {
@@ -249,6 +252,24 @@ function AdminOrdersRoutePage() {
     },
     [refresh],
   );
+
+  // Tüm siparişleri ve güncel durumları sisteme ve veritabanına kaydet
+  const handleSaveOrdersToSystem = async () => {
+    setIsSavingSystem(true);
+    try {
+      const res = await saveAllOrdersToSystem(rawOrders);
+      toast.success(
+        res.count > 0
+          ? `${res.count} sipariş ve durum güncellemeleri başarıyla sisteme kaydedildi.`
+          : "Siparişler sisteme kaydedildi.",
+      );
+      refresh();
+    } catch {
+      toast.error("Siparişler sisteme kaydedilirken bir hata oluştu.");
+    } finally {
+      setIsSavingSystem(false);
+    }
+  };
 
   // Kalıcı sipariş silme
   const executeDeleteOrder = async () => {
@@ -402,6 +423,22 @@ function AdminOrdersRoutePage() {
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>{isPurging ? "Siliniyor..." : "Testleri Sil"}</span>
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => void handleSaveOrdersToSystem()}
+              disabled={isSavingSystem}
+              className="h-8.5 px-3.5 text-xs gap-1.5 font-bold bg-emerald-700 hover:bg-emerald-600 text-white shadow-xs cursor-pointer"
+              title="Tüm siparişleri, güncellemeleri ve durumları sisteme ve veritabanına kaydeder"
+            >
+              {isSavingSystem ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              <span>{isSavingSystem ? "Kaydediliyor..." : "Sisteme Kaydet"}</span>
             </Button>
 
             <Button
@@ -1078,6 +1115,23 @@ function AdminOrdersRoutePage() {
                             <span>Arşivle</span>
                           </Button>
                         )}
+
+                        {/* Sisteme Kaydet Butonu */}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={isUpdating}
+                          onClick={() => {
+                            void patchOrder(o.id, {}, "Sipariş sisteme kaydedildi.");
+                          }}
+                          className="h-8 text-xs font-semibold text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer gap-1"
+                          title="Bu siparişi ve güncel durumunu sisteme kaydet"
+                        >
+                          <Save className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="hidden sm:inline">Sisteme Kaydet</span>
+                          <span className="sm:hidden">Kaydet</span>
+                        </Button>
 
                         {/* Düzenle Butonu */}
                         <Button

@@ -40,7 +40,8 @@ export function saveGitHubConfig(cfg: Partial<GitHubConfig>): GitHubConfig {
     branch: cfg.branch || current.branch || DEFAULT_BRANCH,
   };
   try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(updated, null, 2), "utf-8");
+    const toDisk = { ...updated, token: "" };
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(toDisk, null, 2), "utf-8");
   } catch (err) {
     console.warn("[github-sync] Error saving config:", err);
   }

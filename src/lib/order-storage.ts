@@ -202,6 +202,82 @@ export async function applyOrderPatch(
 }
 
 /**
+ * Siparişleri ve durum değişikliklerini kalıcı olarak sisteme ve Supabase veritabanına kaydeder.
+ */
+export async function saveAllOrdersToSystem(orders: StoredOrder[]): Promise<{ count: number }> {
+  if (typeof window === "undefined" || !orders || orders.length === 0) {
+    return { count: 0 };
+  }
+
+  const overrides = getOrderStatusOverrides();
+  const updatedList = orders.map((o) => {
+    const override = overrides[o.id] || overrides[String(o.id)];
+    if (override) {
+      return {
+        ...o,
+        status: override.status ?? o.status,
+        archived_at: override.archived_at !== undefined ? override.archived_at : o.archived_at,
+        note: override.note !== undefined ? override.note : o.note,
+      };
+    }
+    return o;
+  });
+
+  // 1. Yerel depolamaya konsolide edilmiş hali yaz
+  try {
+    localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updatedList));
+  } catch (err) {
+    console.warn("[saveAllOrdersToSystem] Local storage write warning:", err);
+  }
+
+  // 2. Supabase ile senkronize et
+  for (const o of updatedList) {
+    if (!o.id) continue;
+    try {
+      const orderPayload: Record<string, unknown> = {
+        id: String(o.id),
+        created_at: o.created_at || new Date().toISOString(),
+        archived_at: o.archived_at || null,
+        status: o.status || "yeni",
+        full_name: o.full_name || "",
+        business_name: o.business_name || "",
+        district: o.district || "tatvan",
+        phone: o.phone || "",
+        address: o.address || "",
+        note: o.note || "",
+      };
+      if (o.user_id) {
+        orderPayload["user_id"] = o.user_id;
+      }
+      await supabase.from("orders").upsert(orderPayload);
+    } catch (err) {
+      console.warn(`[saveAllOrdersToSystem] Supabase error for order ${o.id}:`, err);
+    }
+
+    if (Array.isArray(o.order_items) && o.order_items.length > 0) {
+      for (const item of o.order_items) {
+        if (!item || !item.id) continue;
+        try {
+          await supabase.from("order_items").upsert({
+            id: String(item.id),
+            order_id: String(o.id),
+            product_name: item.product_name,
+            unit: item.unit || "adet",
+            quantity: item.quantity || 1,
+          });
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  window.dispatchEvent(new Event("orders_updated"));
+  window.dispatchEvent(new Event("storage"));
+  return { count: updatedList.length };
+}
+
+/**
  * Tek bir siparişi kalıcı olarak siler
  */
 export async function permanentlyDeleteOrder(id: string): Promise<void> {
