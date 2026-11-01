@@ -1,0 +1,5 @@
+{
+  "name": "Kotoptan",
+  "description": "Ko Toptan (Kotoptan) toptan gıda, bakliyat ve temizlik malları dağıtım ve katalog yönetim platformu.",
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

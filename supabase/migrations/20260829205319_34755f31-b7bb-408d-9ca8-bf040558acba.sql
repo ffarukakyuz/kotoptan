@@ -1,0 +1,16 @@
+INSERT INTO public.products (name, description, category, unit) VALUES
+('Ayçiçek Yağı 5 L', 'Koli içi 4 adet', 'gida', 'koli'),
+('Toz Şeker 50 kg', 'Çuval', 'gida', 'çuval'),
+('Un 50 kg', 'Ekmeklik un çuval', 'gida', 'çuval'),
+('Salça 830 g', 'Domates salçası, koli içi 12 adet', 'gida', 'koli'),
+('Makarna 500 g', 'Burgu makarna, koli içi 20 paket', 'gida', 'koli'),
+('Kuru Fasulye 25 kg', 'Dermason', 'bakliyat', 'çuval'),
+('Nohut 25 kg', 'İri nohut', 'bakliyat', 'çuval'),
+('Yeşil Mercimek 25 kg', 'Çuval', 'bakliyat', 'çuval'),
+('Kırmızı Mercimek 25 kg', 'Çuval', 'bakliyat', 'çuval'),
+('Pirinç 25 kg', 'Baldo pirinç', 'bakliyat', 'çuval'),
+('Bulaşık Deterjanı 4 L', 'Koli içi 4 adet', 'temizlik', 'koli'),
+('Çamaşır Suyu 4 L', 'Koli içi 4 adet', 'temizlik', 'koli'),
+('Toz Çamaşır Deterjanı 10 kg', 'Tekli', 'temizlik', 'adet'),
+('Yüzey Temizleyici 5 L', 'Koli içi 4 adet', 'temizlik', 'koli'),
+('Tuvalet Kağıdı 32''li', 'Paket', 'temizlik', 'paket');

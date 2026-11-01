@@ -1,0 +1,1 @@
+insert into public.user_roles (user_id, role) values ('fad7ca0b-1d88-48fb-9cc3-2e1df9abfa25', 'admin') on conflict (user_id, role) do nothing;
