@@ -14,7 +14,6 @@ import {
   PackageCheck,
   ShieldCheck,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { findFallbackUser, FALLBACK_USERS } from "@/data/users";
 
 interface CustomerProfileModalProps {
@@ -78,25 +77,35 @@ export function CustomerProfileModal({
       let foundDistrict = fallback?.district || initialDistrict || "";
       const isAdm = fallback?.role === "admin";
 
-      // 2. Supabase profiles tablosundan ara
+      // 2. Server API / Cloudflare D1 üzerinden kullanıcıyı ara
       try {
-        let query = supabase.from("profiles").select("*");
-        if (userId) {
-          query = query.eq("id", userId);
-        } else if (shortPhone) {
-          query = query.ilike("phone", `%${shortPhone}%`);
-        } else if (userName) {
-          query = query.ilike("full_name", `%${userName}%`);
-        }
-
-        const { data, error } = await query.limit(1).maybeSingle();
-        if (!error && data) {
-          foundName = data.full_name || foundName;
-          foundBusiness = data.business_name || foundBusiness;
-          foundPhone = data.phone || foundPhone;
-          foundAddress = data.address || foundAddress;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if ((data as any).district) foundDistrict = (data as any).district;
+        const uRes = await fetch("/api/users");
+        if (uRes.ok) {
+          const uBody = await uRes.json();
+          if (uBody?.ok && Array.isArray(uBody.users)) {
+            const match = uBody.users.find(
+              (u: {
+                id?: string;
+                phone?: string;
+                fullName?: string;
+                businessName?: string;
+                address?: string;
+                district?: string;
+              }) =>
+                (userId && u.id === userId) ||
+                (shortPhone && u.phone && u.phone.includes(shortPhone)) ||
+                (userName &&
+                  u.fullName &&
+                  u.fullName.toLowerCase().includes(userName.toLowerCase())),
+            );
+            if (match) {
+              foundName = match.fullName || foundName;
+              foundBusiness = match.businessName || foundBusiness;
+              foundPhone = match.phone || foundPhone;
+              foundAddress = match.address || foundAddress;
+              if (match.district) foundDistrict = match.district;
+            }
+          }
         }
       } catch (err) {
         console.warn("[CustomerProfileModal] profile fetch error:", err);
@@ -114,20 +123,24 @@ export function CustomerProfileModal({
         else foundDistrict = "Tatvan";
       }
 
-      // 3. Sipariş geçmişini sorgula
+      // 3. Sipariş geçmişini sorgula (/api/orders)
       let ordersCount = 0;
       let lastOrderDate: string | null = null;
       try {
         if (shortPhone) {
-          const { data: orders } = await supabase
-            .from("orders")
-            .select("id, created_at")
-            .ilike("phone", `%${shortPhone}%`)
-            .order("created_at", { ascending: false });
-
-          if (orders && orders.length > 0) {
-            ordersCount = orders.length;
-            lastOrderDate = orders[0]?.created_at || null;
+          const oRes = await fetch(`/api/orders?isAdmin=true`);
+          if (oRes.ok) {
+            const oBody = await oRes.json();
+            if (oBody?.ok && Array.isArray(oBody.orders)) {
+              const userOrders = oBody.orders.filter(
+                (o: { phone?: string; created_at?: string }) =>
+                  o.phone && o.phone.includes(shortPhone),
+              );
+              if (userOrders.length > 0) {
+                ordersCount = userOrders.length;
+                lastOrderDate = userOrders[0]?.created_at || null;
+              }
+            }
           }
         }
       } catch {

@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import {
   LOCAL_ORDERS_KEY,
   DELETED_ORDERS_KEY,
@@ -1028,51 +1027,17 @@ export async function seedAllDistrictTestOrders(): Promise<{ count: number; dist
     console.warn("[seedAllDistrictTestOrders] LocalStorage write error:", err);
   }
 
-  // 2. Supabase varsa oraya da yazmayı dene (hata verse bile localde %100 çalışır)
+  // 2. Sunucu API (/api/orders) ve D1 veritabanına da eşitle
   try {
-    const dbOrders = allOrdersToCreate.map((o) => ({
-      id: o.id,
-      created_at: o.created_at,
-      archived_at: o.archived_at,
-      status: o.status,
-      full_name: o.full_name,
-      business_name: o.business_name,
-      district: o.district,
-      phone: o.phone,
-      address: o.address,
-      note: o.note,
-    }));
-
-    await supabase.from("orders").upsert(dbOrders, { onConflict: "id" });
-
-    const allDbItems: Array<{
-      id: string;
-      order_id: string;
-      product_name: string;
-      unit: string;
-      quantity: number;
-    }> = [];
-
-    allOrdersToCreate.forEach((o) => {
-      o.order_items.forEach((item) => {
-        allDbItems.push({
-          id: item.id,
-          order_id: o.id,
-          product_name: item.product_name,
-          unit: item.unit,
-          quantity: item.quantity,
-        });
+    for (const o of allOrdersToCreate) {
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(o),
       });
-    });
-
-    if (allDbItems.length > 0) {
-      await supabase.from("order_items").upsert(allDbItems, { onConflict: "id" });
     }
   } catch (err) {
-    console.warn(
-      "[seedAllDistrictTestOrders] Supabase sync notice (local storage is primary):",
-      err,
-    );
+    console.warn("[seedAllDistrictTestOrders] Server sync notice:", err);
   }
 
   // Olayları tetikle ki UI anında yenilensin

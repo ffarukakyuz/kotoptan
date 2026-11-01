@@ -3,8 +3,6 @@ import { useEffect, useState, useCallback } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { MapPin, Navigation, Loader2, Trash2 } from "lucide-react";
-
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,17 +211,6 @@ function ProfilePage() {
       districtName = findNearestBitlisDistrict(coords.lat, coords.lng).label;
     }
 
-    let supabaseSaved = false;
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({ id: user.id, ...parsed.data, district: districtName })
-        .eq("id", user.id);
-      if (!error) supabaseSaved = true;
-    } catch {
-      // Supabase connection error
-    }
-
     if (coords) {
       saveUserDefaultLocation({
         lat: coords.lat,
@@ -287,14 +274,7 @@ function ProfilePage() {
       const userId = user.id;
       const userPhone = profile?.phone || form.phone || "";
 
-      // 1. Supabase Profiles tablosundan sil
-      try {
-        await supabase.from("profiles").delete().eq("id", userId);
-      } catch (e) {
-        console.warn("Supabase profile delete error:", e);
-      }
-
-      // 2. Server API üzerinden sil
+      // 1. Server API ve Cloudflare D1 üzerinden sil
       try {
         await fetch(`/api/users?id=${encodeURIComponent(userId)}`, { method: "DELETE" });
         if (userPhone) {

@@ -14,7 +14,6 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -277,87 +276,10 @@ function CartPage() {
       // Sipariş notu opsiyoneldir; kullanıcının yazdığı kişisel not haricinde sipariş ürünleri buraya eklenmez
       const orderNote = parsed.data.note ? parsed.data.note.trim() : "";
 
-      let dbOrderId: string | null = null;
-
-      // 1. Supabase orders tablosuna kaydetmeyi dene
-      try {
-        const { data: order, error } = await supabase
-          .from("orders")
-          .insert({
-            user_id: user.id,
-            full_name: parsed.data.full_name,
-            business_name: parsed.data.business_name,
-            district: parsed.data.district,
-            phone: parsed.data.phone,
-            address: parsed.data.address,
-            note: orderNote.slice(0, 500),
-          })
-          .select("id")
-          .single();
-
-        if (order && !error) {
-          dbOrderId = order.id;
-        }
-      } catch (err) {
-        console.warn("[Sepet] Supabase order insert uyarısı:", err);
-      }
-
-      // 2. Supabase'e sipariş kaydedildiyse kalemleri (order_items) ekle
-      if (dbOrderId) {
-        try {
-          let validDbProductIds = new Set<string>();
-          try {
-            const { data: dbProducts } = await supabase.from("products").select("id");
-            if (dbProducts && Array.isArray(dbProducts)) {
-              validDbProductIds = new Set(dbProducts.map((p) => p.id));
-            }
-          } catch {
-            // ignore
-          }
-
-          const isValidUuid = (val?: string | null): boolean =>
-            typeof val === "string" &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
-          const itemsPayload = items.map((i) => ({
-            order_id: dbOrderId as string,
-            product_id:
-              i.productId && isValidUuid(i.productId) && validDbProductIds.has(i.productId)
-                ? i.productId
-                : null,
-            product_name: i.name || "Ürün",
-            unit: i.unit || "adet",
-            quantity: i.quantity || 1,
-          }));
-
-          const { error: itemsError } = await supabase.from("order_items").insert(itemsPayload);
-          if (itemsError) {
-            console.warn(
-              "[Sepet] order_items ilk deneme hatası, null product_id ile deneniyor:",
-              itemsError,
-            );
-            const fallbackPayload = items.map((i) => ({
-              order_id: dbOrderId as string,
-              product_id: null,
-              product_name: i.name || "Ürün",
-              unit: i.unit || "adet",
-              quantity: i.quantity || 1,
-            }));
-            await supabase.from("order_items").insert(fallbackPayload);
-          }
-        } catch (itemErr) {
-          console.warn("[Sepet] order_items insert istisnası:", itemErr);
-        }
-      }
-
-      // 3. Siparişi her koşulda yerel depoya da güvenle kaydet (ko_local_orders)
-      // Böylece sunucu/ağ durumundan bağımsız olarak sipariş asla kaybolmaz
-      const generateSafeId = () =>
+      const finalOrderId =
         typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : `ko-ord-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-      const finalOrderId = dbOrderId || generateSafeId();
       try {
         const localOrderRecord = {
           id: finalOrderId,

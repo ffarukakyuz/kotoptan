@@ -1,1 +1,0 @@
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS district text NOT NULL DEFAULT '';

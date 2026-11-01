@@ -35,7 +35,6 @@ import { toast } from "sonner";
 
 import { analyzeProductPhoto } from "@/lib/gemini";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { categoryLabel, type Product } from "@/lib/catalog";
 import { saveCustomProduct } from "@/lib/custom-products";
 import { isInvalidProductInput } from "@/lib/fmcg-knowledge";
@@ -673,22 +672,26 @@ function SupportChatInner() {
         saveCustomProduct(newProduct);
 
         try {
-          await supabase.from("products").insert({
-            id: newProduct.id,
-            name: newProduct.name,
-            category: newProduct.category,
-            unit: newProduct.unit,
-            description: newProduct.description,
-            image_url: currentImg,
-            is_active: true,
+          await fetch("/api/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: newProduct.id,
+              name: newProduct.name,
+              category: newProduct.category,
+              unit: newProduct.unit,
+              description: newProduct.description,
+              image_url: currentImg,
+              is_active: true,
+            }),
           });
-        } catch (supabaseErr) {
-          console.warn("[SupportChat] Supabase background sync:", supabaseErr);
+        } catch (apiErr) {
+          console.warn("[SupportChat] Product background sync:", apiErr);
         }
 
         void qc.invalidateQueries({ queryKey: ["admin-products"] });
         void qc.invalidateQueries({ queryKey: ["products"] });
-        void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+        void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
         window.dispatchEvent(new Event("catalog_updated"));
 
         toast.success(`"${extracted.name}" şirket kataloğumuza eklendi!`);

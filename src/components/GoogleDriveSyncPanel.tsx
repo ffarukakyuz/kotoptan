@@ -37,9 +37,8 @@ import {
   type DriveUser,
   type DriveFileItem,
   type DriveOrder,
-} from "@/lib/google-drive";
+} from "@/lib/google-drive-sync";
 import type { Product } from "@/lib/catalog";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -251,11 +250,16 @@ export function GoogleDriveSyncPanel({
           is_active: p.is_active ?? true,
         };
 
-        const { error } = await supabase
-          .from("products")
-          .upsert({ id: p.id, ...payload }, { onConflict: "id" });
-
-        if (!error) importedCount++;
+        try {
+          const res = await fetch("/api/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: p.id, ...payload }),
+          });
+          if (res.ok) importedCount++;
+        } catch {
+          // continue
+        }
       }
 
       toast.success(

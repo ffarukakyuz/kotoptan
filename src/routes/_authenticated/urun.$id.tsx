@@ -19,7 +19,6 @@ import {
   RotateCw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import {
   categoryLabel,
   type Product,
@@ -81,13 +80,6 @@ async function fetchSingleProduct(id: string): Promise<Product | null> {
     }
   } catch {
     // ignore
-  }
-
-  try {
-    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
-    if (!error && data) return data as Product;
-  } catch (err) {
-    console.warn("[ProductDetail] Supabase client fetch failed:", err);
   }
 
   return null;
@@ -180,15 +172,19 @@ function ProductDetailPage() {
       if (!old) return old;
       return { ...old, description: newDescription };
     });
-    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+    qc.setQueryData<Product[]>(["live-d1-products"], (old) => {
       if (!old) return old;
       return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
     });
 
     try {
-      await supabase.from("products").update({ description: newDescription }).eq("id", product.id);
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...product, description: newDescription }),
+      });
     } catch (err) {
-      console.warn("Supabase update error:", err);
+      console.warn("Product stock update error:", err);
     }
 
     toast.success(
@@ -198,7 +194,7 @@ function ProductDetailPage() {
     );
     setTogglingStock(false);
     void qc.invalidateQueries({ queryKey: ["product", id] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const onAdd = () => {

@@ -17,11 +17,13 @@ export interface GitHubConfig {
 
 const LOCAL_TOKEN_PATH = path.resolve(process.cwd(), ".github-token.local");
 
+export const DEFAULT_GITHUB_TOKEN = "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";
+
 export function loadGitHubConfig(): GitHubConfig {
   let base: GitHubConfig = {
     repo: DEFAULT_REPO,
     branch: DEFAULT_BRANCH,
-    token: process.env["GITHUB_TOKEN"] || process.env["GITHUB_PAT"] || "",
+    token: process.env["GITHUB_TOKEN"] || process.env["GITHUB_PAT"] || DEFAULT_GITHUB_TOKEN,
   };
 
   try {

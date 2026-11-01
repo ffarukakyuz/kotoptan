@@ -45,9 +45,9 @@ export function ProductGitSyncModal({ triggerButton }: ProductGitSyncModalProps)
   const [isOpen, setIsOpen] = useState(false);
   const [token, setToken] = useState<string>(() => {
     try {
-      return localStorage.getItem("ko_github_token") || "";
+      return localStorage.getItem("ko_github_token") || "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";
     } catch {
-      return "";
+      return "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";
     }
   });
   const [commitMessage, setCommitMessage] = useState(

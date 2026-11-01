@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BRAND_LOGO_SRC } from "@/lib/branding";
-import { supabase } from "@/integrations/supabase/client";
 import {
   categoryLabel,
   type Product,
@@ -68,16 +67,6 @@ async function fetchProductsFromDatabase(): Promise<Product[]> {
     }
   } catch (err) {
     console.warn("[index.tsx] /api/products fetch notice:", err);
-  }
-
-  // Supabase fallback
-  try {
-    const { data, error } = await supabase.from("products").select("*").eq("is_active", true);
-    if (!error && data && data.length > 0) {
-      return data as unknown as Product[];
-    }
-  } catch (sbErr) {
-    console.warn("[index.tsx] supabase fallback notice:", sbErr);
   }
 
   return typeof window === "undefined" ? FALLBACK_PRODUCTS : getAllCatalogProducts();
@@ -170,7 +159,7 @@ function IndexPage() {
   }, [isMounted]);
 
   const { data: dbProducts, isLoading: isQueryLoading } = useQuery({
-    queryKey: ["live-supabase-products"],
+    queryKey: ["live-d1-products"],
     queryFn: fetchProductsFromDatabase,
     initialData: () =>
       typeof window === "undefined" ? FALLBACK_PRODUCTS : getAllCatalogProducts(),
@@ -659,15 +648,19 @@ function HeroProductCard({
     const baseDesc = cleanProductDescription(current.description);
     const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
-    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+    qc.setQueryData<Product[]>(["live-d1-products"], (old) => {
       if (!old) return old;
       return old.map((p) => (p.id === current.id ? { ...p, description: newDescription } : p));
     });
 
     try {
-      await supabase.from("products").update({ description: newDescription }).eq("id", current.id);
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...current, description: newDescription }),
+      });
     } catch (err) {
-      console.warn("Supabase stock update error:", err);
+      console.warn("Product stock update error:", err);
     }
 
     toast.success(
@@ -676,7 +669,7 @@ function HeroProductCard({
         : `"${current.name}" stokta yok olarak işaretlendi.`,
     );
     setTogglingHeroStock(false);
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const handleQuickAdd = () => {
@@ -989,15 +982,19 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
     const baseDesc = cleanProductDescription(product.description);
     const newDescription = newStatus ? baseDesc : baseDesc ? `${baseDesc} [TÜKENDİ]` : "[TÜKENDİ]";
 
-    qc.setQueryData<Product[]>(["live-supabase-products"], (old) => {
+    qc.setQueryData<Product[]>(["live-d1-products"], (old) => {
       if (!old) return old;
       return old.map((p) => (p.id === product.id ? { ...p, description: newDescription } : p));
     });
 
     try {
-      await supabase.from("products").update({ description: newDescription }).eq("id", product.id);
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...product, description: newDescription }),
+      });
     } catch (err) {
-      console.warn("Supabase stock update error:", err);
+      console.warn("Product stock update error:", err);
     }
 
     toast.success(
@@ -1006,7 +1003,7 @@ const CatalogProductCard = memo(function CatalogProductCard({ product }: { produ
         : `"${product.name}" stokta yok olarak işaretlendi.`,
     );
     setTogglingStock(false);
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const handleAdd = () => {

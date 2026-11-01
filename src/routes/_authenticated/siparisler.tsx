@@ -30,7 +30,6 @@ import {
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import {
   mergeOrdersWithLocal,
   applyOrderPatch,
@@ -146,14 +145,15 @@ function AdminOrdersRoutePage() {
     queryFn: async () => {
       let remoteOrders: DeliveryOrder[] = [];
       try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
-          )
-          .order("created_at", { ascending: false });
-        if (!error && data) {
-          remoteOrders = data as DeliveryOrder[];
+        const res = await fetch("/api/orders");
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json.orders)) {
+            remoteOrders = json.orders.map((o: Record<string, unknown>) => ({
+              ...o,
+              order_items: (o["items"] || o["order_items"] || []) as DeliveryOrder["order_items"],
+            })) as DeliveryOrder[];
+          }
         }
       } catch (err) {
         console.warn("[Siparişler] Remote orders query error:", err);

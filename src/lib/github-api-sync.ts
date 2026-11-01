@@ -148,8 +148,10 @@ export function downloadCatalogBackupFile(): void {
  * GitHub REST API üzerinden tarayıcıdan doğrudan git commit & push işlemini gerçekleştirir.
  * Bu sayede Cloudflare Pages veya statik ortamda bile git CLI olmadan gerçek commit atılır.
  */
+export const DEFAULT_GITHUB_TOKEN = "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";
+
 export async function pushCatalogDirectlyToGitHub(options: {
-  token: string;
+  token?: string;
   repo?: string;
   branch?: string;
   commitMessage?: string;
@@ -161,7 +163,7 @@ export async function pushCatalogDirectlyToGitHub(options: {
     options.onProgress?.(msg);
   };
 
-  const token = options.token.trim();
+  const token = (options.token || DEFAULT_GITHUB_TOKEN).trim();
   const repo = (options.repo || "ffarukakyuz/kotoptan").trim();
   const branch = (options.branch || "main").trim();
   const commitMsg = (

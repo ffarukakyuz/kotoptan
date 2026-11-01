@@ -7,9 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session, User } from "@supabase/supabase-js";
 
-import { supabase } from "@/integrations/supabase/client";
 import { isUserAdmin } from "@/lib/admin-config";
 import { findFallbackUser, type FallbackUser } from "@/data/users";
 
@@ -22,9 +20,22 @@ export type Profile = {
   district?: string;
 };
 
+export type AuthUser = {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  user_metadata?: Record<string, unknown>;
+  aud?: string;
+  created_at?: string;
+};
+
+export type AuthSession = {
+  user: AuthUser;
+};
+
 type AuthContextValue = {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: AuthSession | null;
   profile: Profile | null;
   isAdmin: boolean;
   loading: boolean;
@@ -38,7 +49,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const LOCAL_SESSION_KEY = "ko_local_auth_session";
 
 function getInitialStoredAuth(): {
-  user: User | null;
+  user: AuthUser | null;
   profile: Profile | null;
   isAdmin: boolean;
   hasStoredSession: boolean;
@@ -52,17 +63,14 @@ function getInitialStoredAuth(): {
       const parsed = JSON.parse(rawLocal);
       if (parsed && typeof parsed === "object" && parsed.user) {
         return {
-          user: parsed.user as User,
+          user: parsed.user as AuthUser,
           profile: (parsed.profile as Profile) || null,
           isAdmin: Boolean(parsed.isAdmin),
           hasStoredSession: true,
         };
       }
     }
-    const hasSbToken = Object.keys(localStorage).some(
-      (k) => k.startsWith("sb-") && k.endsWith("-auth-token"),
-    );
-    return { user: null, profile: null, isAdmin: false, hasStoredSession: hasSbToken };
+    return { user: null, profile: null, isAdmin: false, hasStoredSession: false };
   } catch {
     return { user: null, profile: null, isAdmin: false, hasStoredSession: false };
   }
@@ -70,34 +78,20 @@ function getInitialStoredAuth(): {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [initial] = useState(getInitialStoredAuth);
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(initial.user);
+  const [session, setSession] = useState<AuthSession | null>(
+    initial.user ? { user: initial.user } : null,
+  );
+  const [user, setUser] = useState<AuthUser | null>(initial.user);
   const [profile, setProfile] = useState<Profile | null>(initial.profile);
   const [isAdmin, setIsAdmin] = useState(initial.isAdmin);
-  const [loading, setLoading] = useState(initial.hasStoredSession && !initial.user);
+  const [loading, setLoading] = useState(false);
 
-  const loadDetails = useCallback(async (userId: string, currentUser?: User | null) => {
+  const loadDetails = useCallback(async (userId: string, currentUser?: AuthUser | null) => {
     let prof: Profile | null = null;
-    let isDbAdmin = false;
 
-    // 1. Önce Supabase profiles tablosunu dene
+    // 1. D1 / Users API veya yerel kullanıcı verisine bak
     try {
-      const { data: profileRow, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, business_name, phone, address")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (!error && profileRow) {
-        prof = profileRow as Profile;
-      }
-    } catch (err) {
-      console.warn("[useAuth] Supabase profile fetch failed, using fallback:", err);
-    }
-
-    // 2. Supabase yanıt vermediyse veya profil boşsa, yerel kullanıcı verisine bak
-    if (!prof) {
-      const identifier = currentUser?.email || userId;
+      const identifier = currentUser?.email || currentUser?.phone || userId;
       const fallback = findFallbackUser(identifier);
       if (fallback) {
         prof = {
@@ -118,32 +112,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           district: String(currentUser.user_metadata["district"] || ""),
         };
       }
+    } catch (err) {
+      console.warn("[useAuth] Profile fetch notice:", err);
     }
 
     setProfile(prof);
 
-    // 3. Yönetici rol kontrolü
-    try {
-      const { data: roleRow } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      isDbAdmin = roleRow?.role === "admin";
-    } catch {
-      // Supabase kapalıysa yerel kontrole geç
-    }
-
-    const adminStatus = isDbAdmin || isUserAdmin(currentUser ?? { id: userId }, prof);
+    // 2. Yönetici kontrolü
+    const adminStatus = isUserAdmin(currentUser ?? { id: userId }, prof);
     setIsAdmin(adminStatus);
   }, []);
 
   const loginWithFallbackUser = useCallback((fUser: FallbackUser) => {
-    const mockUser = {
+    const mockUser: AuthUser = {
       id: fUser.id,
-      app_metadata: {},
       user_metadata: {
         full_name: fUser.fullName,
         business_name: fUser.businessName,
@@ -153,7 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       aud: "authenticated",
       created_at: new Date().toISOString(),
       email: fUser.email,
-    } as unknown as User;
+      phone: fUser.phone,
+    };
 
     const prof: Profile = {
       id: fUser.id,
@@ -161,11 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       business_name: fUser.businessName,
       phone: fUser.phone,
       address: fUser.address,
+      district: fUser.district || "Tatvan",
     };
 
     const isAdm = fUser.role === "admin" || isUserAdmin({ id: fUser.id, email: fUser.email }, prof);
 
     setUser(mockUser);
+    setSession({ user: mockUser });
     setProfile(prof);
     setIsAdmin(isAdm);
     setLoading(false);
@@ -187,100 +172,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    let active = true;
-
-    // Supabase Auth listener
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!active) return;
-      if (nextSession?.user) {
-        setSession(nextSession);
-        setUser(nextSession.user);
-        void loadDetails(nextSession.user.id, nextSession.user);
-        // Supabase oturumu başarıyla geldiyse yerel yedeği senkronize et
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.removeItem(LOCAL_SESSION_KEY);
-          } catch {
-            // ignore Safari storage restriction
-          }
-        }
-      }
-    });
-
-    // Emniyet mekanizması: En geç 1.5 saniye içinde loading durumunu kesin olarak false yap
-    const safetyTimer = setTimeout(() => {
-      if (active) {
-        setLoading(false);
-      }
-    }, 1500);
-
-    // İlk oturum kontrolü (Hibrit: Supabase -> Yerel Depolama)
-    void (async () => {
-      let foundUser: User | null = null;
+    // İlk oturum kontrolü
+    if (typeof window !== "undefined") {
       try {
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-          setTimeout(() => resolve({ data: { session: null } }), 1000),
-        );
-        const { data } = await Promise.race([sessionPromise, timeoutPromise]);
-        if (data?.session?.user) {
-          setSession(data.session);
-          foundUser = data.session.user;
-          setUser(foundUser);
-          if (active) await loadDetails(foundUser.id, foundUser);
-        }
-      } catch (sbErr) {
-        console.warn("[useAuth] Supabase getSession error, checking local fallback:", sbErr);
-      }
-
-      // Supabase'de oturum yoksa, daha önce kaydedilmiş yerel oturumu kontrol et
-      if (!foundUser && typeof window !== "undefined") {
-        try {
-          const rawLocal = localStorage.getItem(LOCAL_SESSION_KEY);
-          if (rawLocal) {
-            const parsed = JSON.parse(rawLocal);
-            if (parsed && typeof parsed === "object" && parsed.user) {
-              setUser(parsed.user as User);
-              setProfile((parsed.profile as Profile) || null);
-              setIsAdmin(Boolean(parsed.isAdmin));
-            }
-          }
-        } catch (err) {
-          console.warn("[useAuth] Failed parsing local session:", err);
-          try {
-            localStorage.removeItem(LOCAL_SESSION_KEY);
-          } catch {
-            // ignore
+        const rawLocal = localStorage.getItem(LOCAL_SESSION_KEY);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (parsed && typeof parsed === "object" && parsed.user) {
+            setUser(parsed.user as AuthUser);
+            setSession({ user: parsed.user as AuthUser });
+            setProfile((parsed.profile as Profile) || null);
+            setIsAdmin(Boolean(parsed.isAdmin));
           }
         }
+      } catch (err) {
+        console.warn("[useAuth] Failed parsing local session:", err);
       }
-
-      if (active) {
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      active = false;
-      clearTimeout(safetyTimer);
-      try {
-        sub?.subscription?.unsubscribe();
-      } catch {
-        // ignore
-      }
-    };
-  }, [loadDetails]);
+    }
+    setLoading(false);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     if (user) await loadDetails(user.id, user);
   }, [user, loadDetails]);
 
   const signOut = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Supabase kopsa bile yerel oturumu sonlandır
-    }
     if (typeof window !== "undefined") {
       try {
         localStorage.removeItem(LOCAL_SESSION_KEY);

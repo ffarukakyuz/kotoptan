@@ -58,14 +58,9 @@ export function GitHubCloudflareSyncPanel({
     try {
       const stored = localStorage.getItem("ko_github_token");
       if (stored && stored.trim()) return stored.trim();
-      const envToken = (import.meta.env.VITE_GITHUB_TOKEN as string) || "";
-      if (envToken) {
-        localStorage.setItem("ko_github_token", envToken);
-        return envToken;
-      }
-      return "";
+      return "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";
     } catch {
-      return "";
+      return "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";
     }
   });
   const [showTokenInput, setShowTokenInput] = useState(false);

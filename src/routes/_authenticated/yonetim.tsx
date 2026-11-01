@@ -58,7 +58,6 @@ import { getPublicProductImageUrl, handleProductImageError } from "@/lib/product
 import { ProductGitSyncModal } from "@/components/ProductGitSyncModal";
 import { MasterSaveSyncModal } from "@/components/MasterSaveSyncModal";
 import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { FALLBACK_PRODUCTS } from "@/data/products";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -295,26 +294,6 @@ function AdminPage() {
         console.warn("[Admin] API fetch orders notice:", apiErr);
       }
 
-      // 2. Supabase üzerinden çek
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            "id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
-          )
-          .order("created_at", { ascending: false });
-        if (!error && data && data.length > 0) {
-          const existingIds = new Set(remoteOrders.map((o) => o.id));
-          for (const sbOrder of data as unknown as AdminOrder[]) {
-            if (!existingIds.has(sbOrder.id)) {
-              remoteOrders.push(sbOrder);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[Admin] Supabase fetch orders error:", err);
-      }
-
       return mergeOrdersWithLocal<AdminOrder>(remoteOrders, null, true);
     },
     refetchInterval: 4000,
@@ -496,7 +475,7 @@ function AdminPage() {
               products={allProducts}
               onCatalogUpdated={() => {
                 void qc.invalidateQueries({ queryKey: ["admin-products"] });
-                void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+                void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
               }}
             />
           </GlobalErrorBoundary>
@@ -736,7 +715,7 @@ function ProductsPanel({
     const handler = () => {
       void qc.invalidateQueries({ queryKey: ["admin-products"] });
       void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+      void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
       void syncCatalogToServer(true);
     };
     window.addEventListener("catalog_updated", handler);
@@ -820,40 +799,6 @@ function ProductsPanel({
         console.warn("[Product Submit] Server API note:", apiErr);
       }
 
-      // Supabase senkronizasyonu (UUID güvenli)
-      try {
-        const isUuid = (v?: string | null) =>
-          typeof v === "string" &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-
-        if (editingId && isUuid(editingId)) {
-          await supabase
-            .from("products")
-            .update({
-              name: payload.name,
-              category: payload.category,
-              unit: payload.unit,
-              description: payload.description,
-              image_url: payload.image_url,
-              is_active: payload.is_active,
-            })
-            .eq("id", editingId);
-        } else {
-          const sbUuid = isUuid(finalId) ? finalId : crypto.randomUUID();
-          await supabase.from("products").insert({
-            id: sbUuid,
-            name: payload.name,
-            category: payload.category,
-            unit: payload.unit,
-            description: payload.description,
-            image_url: payload.image_url,
-            is_active: payload.is_active,
-          });
-        }
-      } catch (err) {
-        console.warn("[Product Submit] Supabase note:", err);
-      }
-
       // Optimistic cache update: Düzenlenen ürünü kendi yerinde güncelle, yeni ürünü başa ekle
       const updateInCache = (old: Product[] | undefined) => {
         if (!old) return [customProd];
@@ -868,13 +813,13 @@ function ProductsPanel({
       };
       qc.setQueryData<Product[]>(["admin-products"], updateInCache);
       qc.setQueryData<Product[]>(["products", "active"], updateInCache);
-      qc.setQueryData<Product[]>(["live-supabase-products"], updateInCache);
+      qc.setQueryData<Product[]>(["live-d1-products"], updateInCache);
 
       toast.success(isEdit ? "Ürün başarıyla güncellendi" : "Ürün başarıyla eklendi");
       reset();
       void qc.invalidateQueries({ queryKey: ["admin-products"] });
       void qc.invalidateQueries({ queryKey: ["products", "active"] });
-      void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+      void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("catalog_updated"));
         window.dispatchEvent(new Event("storage"));
@@ -906,9 +851,13 @@ function ProductsPanel({
       saveCustomProduct({ ...targetCustom, is_active: false }, true);
     }
 
-    // 3. Supabase'i de güncellemeye çalış
+    // 3. Cloudflare D1 ve sunucu veritabanını güncelle
     try {
-      await supabase.from("products").update({ is_active: false }).eq("id", product.id);
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...product, is_active: false }),
+      });
     } catch {
       // ignore
     }
@@ -922,7 +871,7 @@ function ProductsPanel({
     qc.setQueryData<Product[]>(["products", "active"], (old) =>
       old ? old.filter((p) => p.id !== product.id) : old,
     );
-    qc.setQueryData<Product[]>(["live-supabase-products"], updateInactive);
+    qc.setQueryData<Product[]>(["live-d1-products"], updateInactive);
 
     setActionBusy(false);
     toast.success(`"${product.name}" arşive kaldırıldı.`);
@@ -931,7 +880,7 @@ function ProductsPanel({
     }
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const restoreProduct = async (product: Product) => {
@@ -947,9 +896,13 @@ function ProductsPanel({
       saveCustomProduct({ ...targetCustom, is_active: true }, true);
     }
 
-    // 3. Supabase'i de güncelle
+    // 3. Cloudflare D1 ve sunucu veritabanında aktif yap
     try {
-      await supabase.from("products").update({ is_active: true }).eq("id", product.id);
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...product, is_active: true }),
+      });
     } catch {
       // ignore
     }
@@ -960,7 +913,7 @@ function ProductsPanel({
       return old.map((p) => (p.id === product.id ? { ...p, is_active: true } : p));
     };
     qc.setQueryData<Product[]>(["admin-products"], updateActive);
-    qc.setQueryData<Product[]>(["live-supabase-products"], updateActive);
+    qc.setQueryData<Product[]>(["live-d1-products"], updateActive);
 
     setActionBusy(false);
     toast.success(`"${product.name}" başarıyla geri yüklendi ve kataloğa eklendi.`);
@@ -970,7 +923,7 @@ function ProductsPanel({
     }
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const permanentlyDeleteProduct = async (product: Product) => {
@@ -982,10 +935,13 @@ function ProductsPanel({
       old ? old.filter((p) => p.id !== product.id && p.name !== product.name) : old;
     qc.setQueryData<Product[]>(["admin-products"], removeProduct);
     qc.setQueryData<Product[]>(["products", "active"], removeProduct);
-    qc.setQueryData<Product[]>(["live-supabase-products"], removeProduct);
+    qc.setQueryData<Product[]>(["live-d1-products"], removeProduct);
 
     try {
-      await supabase.from("products").delete().eq("id", product.id);
+      await fetch(
+        `/api/products?id=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}`,
+        { method: "DELETE" },
+      );
     } catch {
       // ignore
     }
@@ -997,7 +953,7 @@ function ProductsPanel({
     }
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
@@ -1033,21 +989,17 @@ function ProductsPanel({
     };
     qc.setQueryData<Product[]>(["admin-products"], updateProductList);
     qc.setQueryData<Product[]>(["products", "active"], updateProductList);
-    qc.setQueryData<Product[]>(["live-supabase-products"], (updateList) =>
-      updateProductList(updateList),
-    );
+    qc.setQueryData<Product[]>(["live-d1-products"], (updateList) => updateProductList(updateList));
 
     // 4. Veritabanına da yaz
     try {
-      const { error } = await supabase
-        .from("products")
-        .update({ description: newDescription })
-        .eq("id", product.id);
-      if (error) {
-        console.warn("[toggleStockStatus] Supabase update note:", error.message);
-      }
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProduct),
+      });
     } catch (err) {
-      console.warn("[toggleStockStatus] err:", err);
+      console.warn("[toggleStockStatus] D1 sync err:", err);
     }
 
     toast.success(
@@ -1058,7 +1010,7 @@ function ProductsPanel({
     setTogglingStockId(null);
     void qc.invalidateQueries({ queryKey: ["admin-products"] });
     void qc.invalidateQueries({ queryKey: ["products", "active"] });
-    void qc.invalidateQueries({ queryKey: ["live-supabase-products"] });
+    void qc.invalidateQueries({ queryKey: ["live-d1-products"] });
   };
 
   const normalizedData = useMemo(
@@ -1106,11 +1058,16 @@ function ProductsPanel({
 
         const resolved = getPublicProductImageUrl(p.image_url, p.name, p.category);
         if (resolved && resolved !== p.image_url) {
-          const { error } = await supabase
-            .from("products")
-            .update({ image_url: resolved })
-            .eq("id", p.id);
-          if (!error) updatedCount++;
+          try {
+            const syncRes = await fetch("/api/products", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...p, image_url: resolved }),
+            });
+            if (syncRes.ok) updatedCount++;
+          } catch {
+            // ignore
+          }
         }
       }
       if (updatedCount > 0) {
@@ -2169,40 +2126,7 @@ function UsersPanel() {
         return d.startsWith("0") ? d.slice(1) : d;
       };
 
-      // 1. Doğrudan profiles tablosundan çek (Supabase)
-      try {
-        const { data: profiles, error: profError } = await supabase
-          .from("profiles")
-          .select("id, full_name, business_name, phone, address, created_at, updated_at")
-          .order("created_at", { ascending: false });
-
-        if (!profError && profiles && profiles.length > 0) {
-          for (const p of profiles) {
-            if (isUserDeleted(p.id, p.phone)) continue;
-            const isGuest = p.phone === "misafir" || p.full_name?.toLowerCase().includes("misafir");
-            const admin = isUserAdmin({ id: p.id }, p);
-            const key = normalizePhoneDigits(p.phone) || p.id;
-            userMap.set(key, {
-              id: p.id,
-              email: isGuest ? "misafir@kotoptan.local" : null,
-              phone: p.phone,
-              created_at: p.created_at,
-              last_sign_in_at: null,
-              is_admin: admin,
-              full_name: p.full_name,
-              business_name: isGuest
-                ? "Misafir Hesabı"
-                : p.business_name || (admin ? "Kotoptan Yönetim" : ""),
-              profile_phone: p.phone,
-              address: p.address,
-            });
-          }
-        }
-      } catch (err) {
-        console.warn("Direct profiles query fallback:", err);
-      }
-
-      // 2. Sunucu API (/api/users) üzerinden kayıtlı müşterileri çek
+      // 1. Sunucu API (/api/users) üzerinden kayıtlı müşterileri çek
       try {
         const serverRes = await fetch("/api/users");
         if (serverRes.ok) {
@@ -2334,32 +2258,7 @@ function UsersPanel() {
       const phone = String(form.get("phone") ?? "").trim();
       const address = String(form.get("address") ?? "").trim();
 
-      // 1. Doğrudan supabase profiles tablosunu güncelle
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: editing.id,
-        full_name,
-        business_name,
-        phone,
-        address,
-      });
-      if (profileError) throw profileError;
-
-      // 2. Server function çağrısı (varsa ek yetki güncellemesi)
-      try {
-        await updateUser({
-          data: {
-            id: editing.id,
-            full_name,
-            business_name,
-            phone,
-            address,
-          },
-        });
-      } catch (err) {
-        console.warn("Server updateUser fallback:", err);
-      }
-
-      // 3. Sunucu API (/api/users) güncelle
+      // 1. Sunucu API (/api/users) güncelle
       try {
         await fetch("/api/users", {
           method: "POST",
@@ -2374,6 +2273,21 @@ function UsersPanel() {
         });
       } catch (err) {
         console.warn("Server API user sync fallback:", err);
+      }
+
+      // 2. Server function çağrısı (varsa ek yetki güncellemesi)
+      try {
+        await updateUser({
+          data: {
+            id: editing.id,
+            full_name,
+            business_name,
+            phone,
+            address,
+          },
+        });
+      } catch (err) {
+        console.warn("Server updateUser fallback:", err);
       }
 
       await refreshUsers();
@@ -2393,13 +2307,6 @@ function UsersPanel() {
     const newPassword = String(form.get("password") ?? "");
     setBusy(true);
     try {
-      // Eğer kendi oturumunun şifresini değiştiriyorsa
-      const { data: currentAuth } = await supabase.auth.getUser();
-      if (currentAuth?.user?.id === passwordUser.id) {
-        const { error: upErr } = await supabase.auth.updateUser({ password: newPassword });
-        if (upErr) throw upErr;
-      }
-
       try {
         await resetPassword({
           data: { id: passwordUser.id, password: newPassword },
@@ -2446,20 +2353,6 @@ function UsersPanel() {
       qc.setQueryData<AppUser[]>(["admin", "users"], (prev) =>
         (prev ?? []).filter((u) => !isUserDeleted(u.id, u.phone)),
       );
-
-      // 3. Supabase Profiles tablosundan silmeyi dene
-      try {
-        await supabase.from("profiles").delete().eq("id", targetId);
-      } catch (sbErr) {
-        console.warn("Supabase profile deletion warning:", sbErr);
-      }
-      if (targetPhone) {
-        try {
-          await supabase.from("profiles").delete().eq("phone", targetPhone);
-        } catch {
-          // ignore
-        }
-      }
 
       // 4. Server API (/api/users?id=...) üzerinden sil
       try {

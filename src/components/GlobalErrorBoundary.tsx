@@ -51,7 +51,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     try {
       if (typeof window !== "undefined") {
         // Eski veya bozuk verileri yerel depolamadan temizle
-        const prefixes = ["kotoptan_", "ko_", "supabase.auth."];
+        const prefixes = ["kotoptan_", "ko_"];
         const keys = Object.keys(localStorage);
         for (const k of keys) {
           if (prefixes.some((p) => k.startsWith(p))) {

@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export const LOCAL_ORDERS_KEY = "ko_local_orders";
 export const ORDER_OVERRIDES_KEY = "ko_order_status_overrides";
 export const DELETED_ORDERS_KEY = "ko_deleted_order_ids";
@@ -185,19 +183,7 @@ export async function applyOrderPatch(
     console.warn("[applyOrderPatch] Local orders write error:", err);
   }
 
-  // 3. Supabase veritabanını güncelle
-  try {
-    const dbPayload: Record<string, unknown> = {};
-    if (finalPatch.status !== undefined) dbPayload["status"] = finalPatch.status;
-    if (finalPatch.archived_at !== undefined) dbPayload["archived_at"] = finalPatch.archived_at;
-    if (finalPatch.note !== undefined) dbPayload["note"] = finalPatch.note;
-
-    await supabase.from("orders").update(dbPayload).eq("id", id);
-  } catch (err) {
-    console.warn("[applyOrderPatch] Supabase update warning:", err);
-  }
-
-  // 4. Sunucu API (/api/orders) güncelle
+  // 3. Sunucu API (/api/orders) güncelle
   try {
     await fetch("/api/orders", {
       method: "PATCH",
@@ -213,7 +199,7 @@ export async function applyOrderPatch(
 }
 
 /**
- * Siparişleri ve durum değişikliklerini kalıcı olarak sisteme ve Supabase veritabanına kaydeder.
+ * Siparişleri ve durum değişikliklerini kalıcı olarak sisteme ve sunucu/D1 veritabanına kaydeder.
  */
 export async function saveAllOrdersToSystem(orders: StoredOrder[]): Promise<{ count: number }> {
   if (typeof window === "undefined" || !orders || orders.length === 0) {
@@ -241,45 +227,17 @@ export async function saveAllOrdersToSystem(orders: StoredOrder[]): Promise<{ co
     console.warn("[saveAllOrdersToSystem] Local storage write warning:", err);
   }
 
-  // 2. Supabase ile senkronize et
+  // 2. Sunucu API ve D1 ile senkronize et
   for (const o of updatedList) {
     if (!o.id) continue;
     try {
-      const orderPayload: Record<string, unknown> = {
-        id: String(o.id),
-        created_at: o.created_at || new Date().toISOString(),
-        archived_at: o.archived_at || null,
-        status: o.status || "yeni",
-        full_name: o.full_name || "",
-        business_name: o.business_name || "",
-        district: o.district || "tatvan",
-        phone: o.phone || "",
-        address: o.address || "",
-        note: o.note || "",
-      };
-      if (o.user_id) {
-        orderPayload["user_id"] = o.user_id;
-      }
-      await supabase.from("orders").upsert(orderPayload);
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(o),
+      });
     } catch (err) {
-      console.warn(`[saveAllOrdersToSystem] Supabase error for order ${o.id}:`, err);
-    }
-
-    if (Array.isArray(o.order_items) && o.order_items.length > 0) {
-      for (const item of o.order_items) {
-        if (!item || !item.id) continue;
-        try {
-          await supabase.from("order_items").upsert({
-            id: String(item.id),
-            order_id: String(o.id),
-            product_name: item.product_name,
-            unit: item.unit || "adet",
-            quantity: item.quantity || 1,
-          });
-        } catch {
-          // ignore
-        }
-      }
+      console.warn(`[saveAllOrdersToSystem] Server error for order ${o.id}:`, err);
     }
   }
 
@@ -314,19 +272,7 @@ export async function permanentlyDeleteOrder(id: string): Promise<void> {
     console.warn("[permanentlyDeleteOrder] Local error:", err);
   }
 
-  try {
-    await supabase.from("order_items").delete().eq("order_id", strId);
-  } catch (err) {
-    console.warn("[permanentlyDeleteOrder] Supabase order_items delete warning:", err);
-  }
-
-  try {
-    await supabase.from("orders").delete().eq("id", strId);
-  } catch (err) {
-    console.warn("[permanentlyDeleteOrder] Supabase delete warning:", err);
-  }
-
-  // 4. Sunucu API (/api/orders?id=...) sil
+  // 2. Sunucu API (/api/orders?id=...) sil
   try {
     await fetch(`/api/orders?id=${encodeURIComponent(strId)}`, {
       method: "DELETE",
@@ -340,14 +286,13 @@ export async function permanentlyDeleteOrder(id: string): Promise<void> {
 }
 
 /**
- * Sunucu API (/api/orders), Supabase ve yerel depodan siparişleri çeker ve birleştirir.
+ * Sunucu API (/api/orders) ve yerel depodan siparişleri çeker ve birleştirir.
  */
 export async function fetchRemoteAndServerOrders<T extends StoredOrder = StoredOrder>(
   currentUserId?: string | null,
   isAdmin: boolean = false,
 ): Promise<T[]> {
   let serverOrders: T[] = [];
-  let remoteOrders: T[] = [];
 
   // 1. Sunucu API (/api/orders) üzerinden çek
   try {
@@ -365,32 +310,7 @@ export async function fetchRemoteAndServerOrders<T extends StoredOrder = StoredO
     console.warn("[fetchRemoteAndServerOrders] Server orders fetch error:", err);
   }
 
-  // 2. Supabase üzerinden çek
-  try {
-    let query = supabase
-      .from("orders")
-      .select(
-        "id, user_id, created_at, archived_at, status, full_name, business_name, district, phone, address, note, order_items(id, product_name, unit, quantity)",
-      );
-    if (!isAdmin && currentUserId) {
-      query = query.eq("user_id", currentUserId);
-    }
-    const { data, error } = await query.order("created_at", { ascending: false });
-    if (!error && data) {
-      remoteOrders = data as unknown as T[];
-    }
-  } catch (err) {
-    console.warn("[fetchRemoteAndServerOrders] Supabase orders fetch error:", err);
-  }
-
-  // 3. İki kaynağı birleştir ve yerel kayıtlar & geçersiz kılmalar ile harmanla
-  const serverIds = new Set(serverOrders.map((o) => String(o.id)));
-  const mergedRemote = [
-    ...serverOrders,
-    ...remoteOrders.filter((ro) => !serverIds.has(String(ro.id))),
-  ];
-
-  return mergeOrdersWithLocal<T>(mergedRemote, currentUserId, isAdmin);
+  return mergeOrdersWithLocal<T>(serverOrders, currentUserId, isAdmin);
 }
 
 export const TEST_ORDERS_PURGED_FLAG = "ko_test_orders_purged_flag_v3";
@@ -442,13 +362,6 @@ export async function purgeAllTestOrders(): Promise<number> {
     console.warn("[purgeAllTestOrders] Local purge error:", err);
   }
 
-  try {
-    await supabase.from("order_items").delete().like("order_id", "test-order-%");
-    await supabase.from("orders").delete().like("id", "test-order-%");
-  } catch (err) {
-    console.warn("[purgeAllTestOrders] Supabase purge warning:", err);
-  }
-
   window.dispatchEvent(new Event("orders_updated"));
   window.dispatchEvent(new Event("storage"));
   return purgedCount;
@@ -458,7 +371,7 @@ export async function purgeAllTestOrders(): Promise<number> {
  * Mevcut tüm deneme ve test siparişlerini hem yerel depodan hem de veritabanından tamamen yok eder.
  */
 /**
- * Sipariş içindeki bir ürünün miktarını günceller (hem local hem supabase)
+ * Sipariş içindeki bir ürünün miktarını günceller
  */
 export async function updateOrderItemQuantity(
   orderId: string,
@@ -483,18 +396,12 @@ export async function updateOrderItemQuantity(
     console.warn("[updateOrderItemQuantity] local error:", err);
   }
 
-  try {
-    await supabase.from("order_items").update({ quantity }).eq("id", itemId);
-  } catch (err) {
-    console.warn("[updateOrderItemQuantity] Supabase update warning:", err);
-  }
-
   window.dispatchEvent(new Event("orders_updated"));
   window.dispatchEvent(new Event("storage"));
 }
 
 /**
- * Sipariş içindeki bir ürünü çıkarır (hem local hem supabase)
+ * Sipariş içindeki bir ürünü çıkarır
  */
 export async function removeOrderItem(orderId: string, itemId: string): Promise<void> {
   if (typeof window === "undefined" || !orderId || !itemId) return;
@@ -509,12 +416,6 @@ export async function removeOrderItem(orderId: string, itemId: string): Promise<
     }
   } catch (err) {
     console.warn("[removeOrderItem] local error:", err);
-  }
-
-  try {
-    await supabase.from("order_items").delete().eq("id", itemId);
-  } catch (err) {
-    console.warn("[removeOrderItem] Supabase delete warning:", err);
   }
 
   window.dispatchEvent(new Event("orders_updated"));
@@ -540,14 +441,6 @@ export async function purgeAllOrders(): Promise<void> {
     localStorage.setItem(TEST_ORDERS_PURGED_FLAG_V4, "true");
   } catch (err) {
     console.warn("[purgeAllOrders] Local purge error:", err);
-  }
-
-  try {
-    // Supabase'deki tüm kayıtları silmeyi dene
-    await supabase.from("order_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    await supabase.from("orders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-  } catch (err) {
-    console.warn("[purgeAllOrders] Supabase purge warning:", err);
   }
 
   window.dispatchEvent(new Event("orders_updated"));

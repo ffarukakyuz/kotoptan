@@ -16,7 +16,6 @@ import {
   EyeOff,
 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { ADMIN_MEMBERS } from "@/lib/admin-config";
 import {
   authenticateFallbackUser,
@@ -360,40 +359,6 @@ function AuthPage() {
       return;
     }
 
-    // 3. Supabase Auth sorgusu (hızlı 800ms zaman aşımıyla)
-    let targetEmail = "";
-    if (identifier.includes("@")) {
-      targetEmail = identifier.toLowerCase().trim();
-    } else if (normalized.length >= 10) {
-      targetEmail = phoneIdentity(identifier);
-    }
-
-    if (targetEmail) {
-      try {
-        type SbAuthRes = {
-          data: { user: { id: string; email?: string } | null; session: unknown } | null;
-          error: Error | null;
-        };
-        const sbResult = await withTimeout<SbAuthRes>(
-          supabase.auth.signInWithPassword({
-            email: targetEmail,
-            password: rawPassword,
-          }) as Promise<SbAuthRes>,
-          800,
-          { data: null, error: new Error("Supabase auth timeout") },
-        );
-
-        if (!sbResult?.error && sbResult?.data?.user) {
-          setBusy(false);
-          setSuccessEntering(true);
-          toast.success("Giriş yapıldı");
-          return;
-        }
-      } catch (sbErr) {
-        console.warn("[Auth] Supabase auth threw, switching to fallback:", sbErr);
-      }
-    }
-
     // 4. Sunucudaki kullanıcıları kontrol et
     try {
       const serverRes = await withTimeout(fetch("/api/users"), 1000);
@@ -496,112 +461,7 @@ function AuthPage() {
       lng: finalLng,
     };
 
-    // 1. Önce Supabase Auth ile kayıt yapmayı dene (2 saniye zaman aşımlı)
-    try {
-      type SbSignUpRes = {
-        data: { user: { id: string; email?: string } | null; session: unknown } | null;
-        error: Error | null;
-      };
-      const signUpRes = await withTimeout<SbSignUpRes>(
-        supabase.auth.signUp({
-          email: targetEmail,
-          password,
-          options: { data: metaWithLocation },
-        }) as Promise<SbSignUpRes>,
-        2000,
-        { data: null, error: new Error("Supabase signUp timeout") },
-      );
-      const signUpData = signUpRes?.data;
-      const error = signUpRes?.error;
-
-      if (!error) {
-        // Otomatik Giriş
-        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-          email: targetEmail,
-          password,
-        });
-
-        const activeUserId = loginData?.user?.id || signUpData?.user?.id;
-        if (activeUserId) {
-          try {
-            await supabase.from("profiles").upsert({
-              id: activeUserId,
-              full_name: metaWithLocation.full_name,
-              business_name: metaWithLocation.business_name,
-              phone: metaWithLocation.phone,
-              address: effectiveAddress,
-            });
-          } catch (profErr) {
-            console.warn("Profile upsert warning:", profErr);
-          }
-        }
-
-        // Sunucu veritabanına ve Üyeler paneline anında kaydet
-        try {
-          await fetch("/api/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: activeUserId,
-              phone: metaWithLocation.phone,
-              email: targetEmail,
-              fullName: metaWithLocation.full_name,
-              businessName: metaWithLocation.business_name,
-              address: effectiveAddress,
-              district: effectiveDistrict,
-              lat: finalLat,
-              lng: finalLng,
-              role: "customer",
-              passwords: [password, "123456"],
-            }),
-          });
-        } catch (apiErr) {
-          console.warn("Server user sync warning:", apiErr);
-        }
-
-        // Yerel kullanıcı deposuna da ekle (Üyeler tablosunda anında görünür)
-        saveLocalUser({
-          id: activeUserId,
-          phone: metaWithLocation.phone,
-          normalizedPhone: normalizePhone(metaWithLocation.phone),
-          email: targetEmail,
-          fullName: metaWithLocation.full_name,
-          businessName: metaWithLocation.business_name,
-          address: effectiveAddress,
-          district: effectiveDistrict,
-          role: "customer",
-          passwords: [password, "123456"],
-        });
-
-        saveUserDefaultLocation({
-          lat: finalLat,
-          lng: finalLng,
-          address: effectiveAddress,
-          district: effectiveDistrict,
-          city: "Bitlis",
-        });
-
-        window.dispatchEvent(new CustomEvent("kotoptan:users-updated"));
-        window.dispatchEvent(new CustomEvent("kotoptan:location-updated"));
-
-        if (!loginError) {
-          setBusy(false);
-          setSuccessEntering(true);
-          toast.success("Hesabınız ve teslimat konumunuz başarıyla kaydedildi!");
-          return;
-        }
-      } else if (error.message.includes("already registered")) {
-        setBusy(false);
-        toast.error("Bu telefon numarasıyla zaten bir hesap kayıtlı. Lütfen giriş yapın.");
-        setLoginPhone(meta.phone);
-        setMode("login");
-        return;
-      }
-    } catch (sbErr) {
-      console.warn("[Auth] Supabase signUp failed, falling back to local user store:", sbErr);
-    }
-
-    // 2. Supabase hata verdiyse veya kapalıysa yerel ve sunucu yedek olarak kaydet
+    // Cloudflare D1 veritabanına ve yerel kullanıcı havuzuna kaydet
     try {
       await fetch("/api/users", {
         method: "POST",
@@ -620,7 +480,7 @@ function AuthPage() {
         }),
       });
     } catch (apiErr) {
-      console.warn("Server user sync fallback warning:", apiErr);
+      console.warn("Server user sync notice:", apiErr);
     }
 
     const saved = saveLocalUser({
