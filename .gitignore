@@ -37,4 +37,3 @@ dist-ssr
 *.sw?
 bun.lock
 .aistudio/
-public/assets/aistudio/
