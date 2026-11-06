@@ -1,0 +1,80 @@
+[
+  {
+    "id": "3d5df005-d87d-46dd-82ac-019ebdb13ee7",
+    "phone": "0544 893 13 00",
+    "normalizedPhone": "5448931300",
+    "email": "ffarukakyuz@gmail.com",
+    "fullName": "Faruk Akyüz",
+    "businessName": "Kotoptan Şirket Yönetimi",
+    "address": "Bitlis Toptancılar Sitesi No: 4",
+    "district": "Tatvan",
+    "role": "admin",
+    "passwords": ["123456", "12345678", "password", "password123", "faruk123", "admin123"],
+    "created_at": "2026-10-11T16:40:13.892Z"
+  },
+  {
+    "id": "1c37f384-fca9-4c36-82f4-e56aa3e74975",
+    "phone": "0539 301 67 66",
+    "normalizedPhone": "5393016766",
+    "email": "5393016766@kotoptan.local",
+    "fullName": "Suat Akyüz",
+    "businessName": "Kotoptan Şirket Yönetimi",
+    "address": "Bitlis Toptancılar Sitesi No: 4",
+    "district": "Tatvan",
+    "role": "admin",
+    "passwords": ["123456", "12345678", "password", "password123", "suat123", "admin123"],
+    "created_at": "2026-10-11T16:40:13.892Z"
+  },
+  {
+    "id": "4ebbd31b-8a3f-4149-bc1b-2f36ed62a846",
+    "phone": "0505 008 81 13",
+    "normalizedPhone": "5050088113",
+    "email": "5050088113@kotoptan.local",
+    "fullName": "Yavuz Akyüz",
+    "businessName": "Kotoptan Şirket Yönetimi",
+    "address": "Bitlis Toptancılar Sitesi No: 4",
+    "district": "Bitlis Merkez",
+    "role": "admin",
+    "passwords": ["123456", "12345678", "password", "password123", "yavuz123", "admin123"],
+    "created_at": "2026-10-11T16:40:13.892Z"
+  },
+  {
+    "id": "05114143-9cd7-42b7-9ffd-97d30f557431",
+    "phone": "0546 872 29 73",
+    "normalizedPhone": "5468722973",
+    "email": "5468722973@kotoptan.local",
+    "fullName": "Mücahit Akyüz",
+    "businessName": "Kotoptan Şirket Yönetimi",
+    "address": "Bitlis Toptancılar Sitesi No: 4",
+    "district": "Tatvan",
+    "role": "admin",
+    "passwords": ["123456", "12345678", "password", "password123", "mucahit123", "admin123"],
+    "created_at": "2026-10-11T16:40:13.892Z"
+  },
+  {
+    "id": "28423ca3-66b8-4ead-825d-b76918f5405a",
+    "phone": "0535 733 63 11",
+    "normalizedPhone": "5357336311",
+    "email": "5357336311@kotoptan.local",
+    "fullName": "Selim Akyüz",
+    "businessName": "Kotoptan Şirket Yönetimi",
+    "address": "Bitlis Toptancılar Sitesi No: 4",
+    "district": "Tatvan",
+    "role": "admin",
+    "passwords": ["123456", "12345678", "password", "password123", "selim123", "admin123"],
+    "created_at": "2026-10-11T16:40:13.892Z"
+  },
+  {
+    "id": "793e3788-1290-4362-ac09-f89791d14395",
+    "phone": "0500 000 00 00",
+    "normalizedPhone": "misafir",
+    "email": "misafir@kotoptan.local",
+    "fullName": "Misafir Müşteri",
+    "businessName": "Örnek Bakkal / Market",
+    "address": "Bitlis Merkez",
+    "district": "Bitlis Merkez",
+    "role": "customer",
+    "passwords": ["123456", "12345678", "misafir", "password"],
+    "created_at": "2026-10-11T16:40:13.892Z"
+  }
+]

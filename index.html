@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="tr" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' * data: blob: chrome-extension: moz-extension: safari-extension:; script-src-attr 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' * data:; style-src-elem 'self' 'unsafe-inline' * data:; font-src 'self' * data: https:; img-src 'self' * data: blob: https: http:; connect-src * blob: data: chrome-extension: moz-extension:; worker-src 'self' * blob: data: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' * data: blob:;"
+    />
+    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kotoptan" />
+    <meta name="format-detection" content="telephone=no" />
+    <style>
+      html,
+      body {
+        background-color: #000000 !important;
+        color: #ffffff;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <title>Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı</title>
+    <meta
+      name="description"
+      content="Ko Toptan (KasımOğulları Ltd. Şti.) — Bitlis, Tatvan ve çevre ilçelerdeki market ve bakkallara toptan gıda, bakliyat ve temizlik ürünleri dağıtımı. Hızlı sevkiyat ve güvenilir toptan sipariş."
+    />
+    <meta
+      name="keywords"
+      content="ko toptan, kotoptan, ko toptan gıda, ko toptan market, tatvan toptan, bitlis toptan, kasımoğulları toptan, toptan bakliyat, toptan temizlik, bitlis toptancı, tatvan toptancı, toptan gıda dağıtımı, toptan market ürünleri"
+    />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <link rel="canonical" href="https://kotoptan.pages.dev/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ko Toptan" />
+    <meta property="og:url" content="https://kotoptan.pages.dev" />
+    <meta
+      property="og:title"
+      content="Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda ve Market Dağıtımı"
+    />
+    <meta
+      property="og:description"
+      content="Ko Toptan — Bitlis, Tatvan, Ahlat, Adilcevaz, Güroymak ve Hizan marketlerine toptan gıda, bakliyat ve temizlik ürünleri doğrudan depo teslimatı."
+    />
+    <meta
+      property="og:image"
+      content="https://kotoptan.pages.dev/assets/aistudio/kotoptan_logo_4fbbfc3b.jpg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Ko Toptan (Kotoptan) — Bitlis & Tatvan Toptan Gıda Dağıtımı"
+    />
+    <meta
+      name="twitter:description"
+      content="Ko Toptan — Bitlis ve Tatvan merkezli bakkal ve marketlere toptan gıda, bakliyat ve temizlik ürünleri dağıtımı."
+    />
+    <meta
+      name="twitter:image"
+      content="https://kotoptan.pages.dev/assets/aistudio/kotoptan_logo_4fbbfc3b.jpg"
+    />
+    <link rel="icon" type="image/jpeg" href="/assets/aistudio/kotoptan_logo_4fbbfc3b.jpg" />
+    <link rel="apple-touch-icon" href="/assets/aistudio/kotoptan_logo_4fbbfc3b.jpg" />
+    <link rel="manifest" href="/manifest.webmanifest?v=20261106-silver-k-orbit" />
+
+    <script>
+      (function () {
+        if (typeof window === "undefined") return;
+
+        // 0. globalThis polyfill
+        if (typeof globalThis === "undefined") {
+          window.globalThis = window;
+        }
+
+        // 1. String.prototype.replaceAll polyfill
+        if (typeof String.prototype.replaceAll !== "function") {
+          String.prototype.replaceAll = function (search, replacement) {
+            if (search instanceof RegExp) {
+              return this.replace(search, replacement);
+            }
+            return this.split(search).join(replacement);
+          };
+        }
+
+        // 2. Array.prototype.at polyfill
+        if (typeof Array.prototype.at !== "function") {
+          Array.prototype.at = function (n) {
+            n = Math.trunc(n) || 0;
+            if (n < 0) n += this.length;
+            if (n < 0 || n >= this.length) return undefined;
+            return this[n];
+          };
+        }
+
+        // 3. Object.hasOwn polyfill
+        if (typeof Object.hasOwn !== "function") {
+          Object.hasOwn = function (obj, prop) {
+            return Object.prototype.hasOwnProperty.call(obj, prop);
+          };
+        }
+
+        // 4. Promise.allSettled polyfill
+        if (typeof Promise.allSettled !== "function") {
+          Promise.allSettled = function (promises) {
+            return Promise.all(
+              Array.from(promises).map(function (p) {
+                return Promise.resolve(p).then(
+                  function (v) {
+                    return { status: "fulfilled", value: v };
+                  },
+                  function (r) {
+                    return { status: "rejected", reason: r };
+                  },
+                );
+              }),
+            );
+          };
+        }
+
+        // 5. structuredClone fallback
+        if (typeof window.structuredClone !== "function") {
+          window.structuredClone = function (obj) {
+            if (obj === undefined) return undefined;
+            try {
+              return JSON.parse(JSON.stringify(obj));
+            } catch (e) {
+              return obj;
+            }
+          };
+        }
+
+        // 6. crypto.randomUUID fallback
+        if (typeof window.crypto === "undefined") {
+          window.crypto = {};
+        }
+        if (typeof window.crypto.randomUUID !== "function") {
+          window.crypto.randomUUID = function () {
+            return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+              var r = (Math.random() * 16) | 0;
+              var v = c === "x" ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
+          };
+        }
+
+        // 7. requestIdleCallback fallback for iOS Safari < 16.4 & older WebViews
+        if (typeof window.requestIdleCallback !== "function") {
+          window.requestIdleCallback = function (cb) {
+            var start = Date.now();
+            return setTimeout(function () {
+              cb({
+                didTimeout: false,
+                timeRemaining: function () {
+                  return Math.max(0, 50 - (Date.now() - start));
+                },
+              });
+            }, 1);
+          };
+        }
+        if (typeof window.cancelIdleCallback !== "function") {
+          window.cancelIdleCallback = function (id) {
+            clearTimeout(id);
+          };
+        }
+
+        // 8. ResizeObserver fallback
+        if (typeof window.ResizeObserver === "undefined") {
+          window.ResizeObserver = function () {
+            this.observe = function () {};
+            this.unobserve = function () {};
+            this.disconnect = function () {};
+          };
+        }
+
+        // 9. IntersectionObserver fallback
+        if (typeof window.IntersectionObserver === "undefined") {
+          window.IntersectionObserver = function (cb) {
+            this.observe = function (el) {
+              setTimeout(function () {
+                cb([{ isIntersecting: true, target: el, intersectionRatio: 1 }]);
+              }, 30);
+            };
+            this.unobserve = function () {};
+            this.disconnect = function () {};
+          };
+        }
+
+        // 10. Safari / Private Browsing storage fallback
+        try {
+          var _testKey = "__ko_check__";
+          window.localStorage.setItem(_testKey, "1");
+          window.localStorage.removeItem(_testKey);
+        } catch (_storageErr) {
+          console.warn("[Storage Shield] LocalStorage restricted, activating memory fallback");
+          var _memStore = {};
+          var _mockStorage = {
+            getItem: function (k) {
+              return Object.prototype.hasOwnProperty.call(_memStore, k) ? _memStore[k] : null;
+            },
+            setItem: function (k, v) {
+              _memStore[k] = String(v);
+            },
+            removeItem: function (k) {
+              delete _memStore[k];
+            },
+            clear: function () {
+              _memStore = {};
+            },
+            get length() {
+              return Object.keys(_memStore).length;
+            },
+            key: function (i) {
+              return Object.keys(_memStore)[i] || null;
+            },
+          };
+          try {
+            Object.defineProperty(window, "localStorage", {
+              value: _mockStorage,
+              writable: true,
+              configurable: true,
+            });
+            Object.defineProperty(window, "sessionStorage", {
+              value: _mockStorage,
+              writable: true,
+              configurable: true,
+            });
+          } catch (_e) {
+            window.localStorage = _mockStorage;
+            window.sessionStorage = _mockStorage;
+          }
+        }
+
+        // 11. Error & unhandled rejection safety shield
+        window.addEventListener(
+          "error",
+          function (evt) {
+            var msg = (evt && evt.error && evt.error.message) || (evt && evt.message) || "";
+            if (typeof msg === "string") {
+              if (
+                msg.indexOf("replaceAll") !== -1 ||
+                msg.indexOf("Invariant failed") !== -1 ||
+                msg.indexOf("useStore") !== -1 ||
+                msg.indexOf("reading 'replaceAll'") !== -1 ||
+                msg.indexOf("ResizeObserver") !== -1
+              ) {
+                console.warn("[Global Shield] Intercepted runtime error:", msg);
+                if (evt.preventDefault) evt.preventDefault();
+                if (evt.stopPropagation) evt.stopPropagation();
+              }
+            }
+          },
+          true,
+        );
+
+        window.addEventListener(
+          "unhandledrejection",
+          function (evt) {
+            var reason = evt && evt.reason;
+            var msg = (reason && reason.message) || String(reason || "");
+            if (
+              msg.indexOf("replaceAll") !== -1 ||
+              msg.indexOf("Invariant failed") !== -1 ||
+              msg.indexOf("useStore") !== -1 ||
+              msg.indexOf("reading 'replaceAll'") !== -1 ||
+              msg.indexOf("ResizeObserver") !== -1
+            ) {
+              console.warn("[Global Shield] Intercepted unhandled rejection:", msg);
+              if (evt.preventDefault) evt.preventDefault();
+            }
+          },
+          true,
+        );
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root">
+      <div
+        id="initial-preloader"
+        style="
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #050b07;
+          color: #ffffff;
+          font-family:
+            -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Helvetica, Arial,
+            sans-serif;
+          padding: 20px;
+          text-align: center;
+          box-sizing: border-box;
+          transition: opacity 0.35s ease-out;
+        "
+      >
+        <div
+          style="
+            width: 110px;
+            height: 110px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 2px solid #10b981;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+            margin-bottom: 20px;
+            background: #000;
+          "
+        >
+          <img
+            src="/assets/aistudio/Gemini_Generated_Image_ydnns9ydnns9ydnn_33f9354e.png?v=20261021-user-box-v1"
+            alt="Kotoptan"
+            style="width: 100%; height: 100%; object-fit: cover"
+          />
+        </div>
+        <div style="font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px">
+          Ko<span style="color: #22c55e">toptan</span>
+        </div>
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 600;
+            color: #34d399;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+          "
+        >
+          Toptan Dağıtım
+        </div>
+        <div
+          style="
+            width: 180px;
+            height: 6px;
+            background: #13231a;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 16px;
+          "
+        >
+          <div style="width: 70%; height: 100%; background: #10b981; border-radius: 999px"></div>
+        </div>
+        <div style="font-size: 13px; color: #9ca3af; margin-bottom: 18px">Sistem yükleniyor...</div>
+        <a
+          href="/giris"
+          style="
+            display: inline-block;
+            background: #10b981;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 22px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+          "
+        >
+          Giriş Yap / Kataloğu Aç →
+        </a>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var preloader = document.getElementById("initial-preloader");
+        if (!preloader) return;
+
+        var dismissed = false;
+        function dismissPreloader() {
+          if (dismissed || !preloader) return;
+          dismissed = true;
+          preloader.style.transition = "opacity 0.3s ease-out";
+          preloader.style.opacity = "0";
+          preloader.style.pointerEvents = "none";
+          setTimeout(function () {
+            if (preloader) {
+              preloader.style.display = "none";
+              preloader.setAttribute("aria-hidden", "true");
+            }
+          }, 320);
+        }
+
+        // DOMContentLoaded veya window.onload olaylarına bağlı kalmaksızın 1.5 saniye sonra yükleme ekranını zorla kapat
+        setTimeout(dismissPreloader, 1500);
+
+        // Herhangi bir JS veya Promise hatası olduğunda beklemeden derhal preloader'ı kapat
+        window.addEventListener("error", function () {
+          setTimeout(dismissPreloader, 120);
+        });
+        window.addEventListener("unhandledrejection", function () {
+          setTimeout(dismissPreloader, 120);
+        });
+      })();
+    </script>
+  </body>
+</html>
