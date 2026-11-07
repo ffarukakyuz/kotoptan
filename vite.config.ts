@@ -605,6 +605,16 @@ export default defineConfig({
   },
   vite: {
     base: "/",
+    server: {
+      host: "0.0.0.0",
+      port: 3000,
+      allowedHosts: true,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    },
     plugins: [apiGeminiPlugin()],
     define: {
       "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
